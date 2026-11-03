@@ -11,7 +11,7 @@
 
 - [상세 기획서 PPTX (20장)](docs/planning/부산까지_상세기획서_v1.0.pptx)
 - [개발 요구사항 원문](PRD.md)
-- [1차 발표 PDF (8장)](docs/presentation/부산까지_기획2_1차발표.pdf)
+- [1차 발표 PDF (9장)](docs/presentation/부산까지_기획2_1차발표.pdf)
 - [개발 계획](PLAN.md)
 - [제출 확인 목록](docs/presentation/SUBMISSION_CHECKLIST.md)
 - [콘셉트 이미지 및 출처](docs/references/ASSETS.md)
