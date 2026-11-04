@@ -6,6 +6,7 @@ from time import perf_counter
 
 import pico2d
 import sdl2
+from pico2d import pico2d as canvas
 
 from player import Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
@@ -109,9 +110,33 @@ def update_world(game, frame_time):
         game.player.update(frame_time)
 
 
+def enlarge_window():
+    logical_height = HEIGHT + 64
+    display = sdl2.SDL_GetWindowDisplayIndex(canvas.window)
+    usable = sdl2.SDL_Rect()
+    if display < 0 or sdl2.SDL_GetDisplayUsableBounds(display, usable) != 0:
+        return
+
+    scale = min(1.5, (usable.w - 40) / WIDTH, (usable.h - 80) / logical_height)
+    if scale <= 1:
+        return
+    if sdl2.SDL_RenderSetLogicalSize(canvas.renderer, WIDTH, logical_height) != 0:
+        return
+
+    window_width = round(WIDTH * scale)
+    window_height = round(logical_height * scale)
+    sdl2.SDL_SetWindowSize(canvas.window, window_width, window_height)
+    sdl2.SDL_SetWindowPosition(
+        canvas.window,
+        usable.x + (usable.w - window_width) // 2,
+        usable.y + (usable.h - window_height) // 2,
+    )
+
+
 def main():
     pico2d.open_canvas(WIDTH, HEIGHT + 64, sync=True)
     try:
+        enlarge_window()
         game = Exploration()
         font_path = Path(pico2d.__file__).parent / "data" / "ConsolaMalgun.ttf"
         font = pico2d.load_font(str(font_path), 16)
