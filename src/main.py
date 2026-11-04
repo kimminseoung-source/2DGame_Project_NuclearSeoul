@@ -57,7 +57,7 @@ def render_world(game, font):
     font.draw(ex - 16, ey - 30, "EXIT", (135, 231, 185))
     if not has_filter:
         sx, sy = game.supply
-        draw_filter_icon(sx, sy)
+        draw_filter_icon(sx, sy, scale=2 / 3)
         if near_player(game, game.supply):
             font.draw(sx - 38, sy + 30, "E  PICK UP", (252, 218, 143))
         else:

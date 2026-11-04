@@ -3,10 +3,10 @@
 import pico2d
 
 
-def draw_filter_icon(x, y):
-    pico2d.draw_rectangle(x - 9, y - 11, x + 9, y + 7, 215, 167, 74, filled=True)
-    pico2d.draw_rectangle(x - 6, y + 8, x + 6, y + 11, 144, 157, 160, filled=True)
-    pico2d.draw_rectangle(x - 6, y - 4, x + 6, y + 1, 66, 53, 40, filled=True)
+def draw_filter_icon(x, y, scale=1.0):
+    pico2d.draw_rectangle(x - 9 * scale, y - 11 * scale, x + 9 * scale, y + 7 * scale, 215, 167, 74, filled=True)
+    pico2d.draw_rectangle(x - 6 * scale, y + 8 * scale, x + 6 * scale, y + 11 * scale, 144, 157, 160, filled=True)
+    pico2d.draw_rectangle(x - 6 * scale, y - 4 * scale, x + 6 * scale, y + 1 * scale, 66, 53, 40, filled=True)
 
 
 def draw_filter_slot(x, y, count, font):
