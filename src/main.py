@@ -15,12 +15,17 @@ from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, TileMap
 
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
+PICKUP_CROUCH = 0.12
+PICKUP_CONTACT = 0.28
+PICKUP_STAND = 0.46
+PICKUP_DURATION = 0.58
 
 
 class Exploration:
     def __init__(self):
         self.player_image = pico2d.load_image(str(ASSETS / "survivor_walk.png"))
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter.png")))
+        self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup.png"))
         self.exploration_map = TileMap()
         reset_world(self)
 
@@ -30,10 +35,12 @@ def near_player(game, point):
 
 
 def interact(game):
+    if game.pickup_time is not None:
+        return
     if not game.has_filter and near_player(game, game.supply):
-        game.has_filter = True
-        game.filter_count += 1
-        game.message = "Filter collected. Find the exit."
+        game.pickup_time = 0.0
+        game.player.face_pickup(*game.supply)
+        game.message = "Picking up filter..."
     elif near_player(game, game.exit):
         if not game.has_filter:
             game.message = "Collect the filter before leaving."
@@ -58,12 +65,15 @@ def render_world(game, font):
     if not has_filter:
         sx, sy = game.supply
         draw_filter_icon(sx, sy, scale=2 / 3)
-        if near_player(game, game.supply):
+        if game.pickup_time is None and near_player(game, game.supply):
             font.draw(sx - 38, sy + 30, "E  PICK UP", (252, 218, 143))
         else:
             font.draw(sx - 23, sy - 25, "FILTER", (252, 218, 143))
 
-    game.player.draw()
+    if game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
+        game.player.draw_pickup()
+    else:
+        game.player.draw()
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     font.draw(16, HEIGHT + 44, "WASD Move   E Interact   Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
@@ -74,6 +84,7 @@ def render_world(game, font):
 def enter_area(game, in_shelter):
     game.in_shelter = in_shelter
     game.has_filter = False
+    game.pickup_time = None
     if in_shelter:
         game.tile_map = game.shelter
         game.supply, game.exit = SHELTER_SUPPLY, SHELTER_EXIT
@@ -84,7 +95,7 @@ def enter_area(game, in_shelter):
         game.supply, game.exit = SUPPLY, EXIT
         spawn = SPAWN
         game.message = "Outside: collect the spare filter and reach the next shelter."
-    game.player = Player(*spawn, game.tile_map, game.player_image)
+    game.player = Player(*spawn, game.tile_map, game.player_image, game.pickup_image)
 
 
 def reset_world(game):
@@ -109,7 +120,16 @@ def handle_events(game):
 
 
 def update_world(game, frame_time):
-    if not game.finished:
+    if game.pickup_time is not None:
+        previous_time = game.pickup_time
+        game.pickup_time += min(frame_time, 0.05)
+        if previous_time < PICKUP_CONTACT <= game.pickup_time:
+            game.has_filter = True
+            game.filter_count += 1
+            game.message = "Filter collected. Find the exit."
+        if game.pickup_time >= PICKUP_DURATION:
+            game.pickup_time = None
+    elif not game.finished:
         game.player.update(frame_time)
 
 
