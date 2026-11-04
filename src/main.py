@@ -26,7 +26,7 @@ class Exploration:
         self.player_image = pico2d.load_image(str(ASSETS / "survivor_walk.png"))
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter.png")))
         self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup.png"))
-        self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak.png"))
+        self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak_walk.png"))
         self.exploration_map = TileMap()
         reset_world(self)
 
