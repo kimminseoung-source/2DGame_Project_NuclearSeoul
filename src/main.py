@@ -26,6 +26,7 @@ class Exploration:
         self.player_image = pico2d.load_image(str(ASSETS / "survivor_walk.png"))
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter.png")))
         self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup.png"))
+        self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak.png"))
         self.exploration_map = TileMap()
         reset_world(self)
 
@@ -75,7 +76,7 @@ def render_world(game, font):
     else:
         game.player.draw()
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    font.draw(16, HEIGHT + 44, "WASD Move   E Interact   Esc Quit", (181, 197, 209))
+    font.draw(16, HEIGHT + 44, "WASD Move   Shift Sneak   E Interact   Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.filter_count, font)
     pico2d.update_canvas()
@@ -95,7 +96,9 @@ def enter_area(game, in_shelter):
         game.supply, game.exit = SUPPLY, EXIT
         spawn = SPAWN
         game.message = "Outside: collect the spare filter and reach the next shelter."
-    game.player = Player(*spawn, game.tile_map, game.player_image, game.pickup_image)
+    game.player = Player(
+        *spawn, game.tile_map, game.player_image, game.pickup_image, game.sneak_image,
+    )
 
 
 def reset_world(game):

@@ -24,3 +24,11 @@ Create a transparent PNG sprite sheet for one identical Korean post-apocalyptic 
 ### 생성 프롬프트
 
 Make a NEW transparent 2D pixel-art gameplay sprite sheet referencing the identical survivor and pixel style in the supplied walking sheet. Keep exactly the same yellow ochre hood, teal visor gas mask, charcoal pants, boots and compact backpack. Output a SQUARE sheet with FOUR equally sized quadrants in a 2 by 2 grid. Each quadrant contains exactly ONE distinct frame of the SAME CHARACTER in a LOW CROUCH, one knee bent, reaching one gloved hand DOWN TOWARD THE FLOOR to pick up an invisible item. Top left: facing camera DOWN. Top right: facing LEFT. Bottom left: facing RIGHT. Bottom right: facing UP away from viewer. Very clear lowered knees and torso and hand near floor. All full-body figures centered, aligned scale, completely isolated with large transparent margins, no overlap. Cropped figure height about 3/4 of the reference character height relative to figure width. Crisp retro pixel edges, limited palette. No background, no loot item, no grid lines, no labels, no glow, no floor, no shadows. Original walking sprites are only appearance reference; use the new pickup pose in every quadrant.
+
+## 주인공 조용히 걷기 자세
+
+`survivor_sneak.png`는 기존 걷기 스프라이트를 참고해 내장 이미지 생성 도구로 만든 네 방향 자세입니다.
+
+### 생성 프롬프트
+
+Create a transparent square 2 by 2 pixel art sprite sheet, exactly four distinct low crouch-stealth-walking frames of the SAME yellow ochre hooded survivor in the attached walk sheet. Match gas mask, teal visor, charcoal trousers, backpack, colors and pixel density. Top left facing DOWN toward viewer, top right LEFT, bottom left RIGHT, bottom right UP away from viewer. Each is crouched with knees bent, torso lowered, alert forward lean, one foot stepping slowly, hands near chest, no reaching for ground. Exactly one entire figure centered in each quadrant with spacious transparent padding, feet baseline consistent within each row. Sharp retro pixels, no text, no grid, no shadow, no props. Gameplay sprites suitable for 36px height.

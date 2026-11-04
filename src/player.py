@@ -7,6 +7,7 @@ import sdl2
 
 PLAYER_HALF_SIZE = 11
 WALK_SPEED = 150
+SNEAK_SPEED = 85
 MAX_FRAME_TIME = 0.05
 FRAME_WIDTH = 160
 FRAME_HEIGHT = 248
@@ -22,18 +23,29 @@ PICKUP_FRAMES = (
     (781, 792, 1063, 1127),
 )
 
+# Pixel bounds from the top-left, ordered down, left, right, up.
+SNEAK_FRAMES = (
+    (192, 131, 462, 535),
+    (756, 138, 1071, 531),
+    (193, 746, 482, 1141),
+    (795, 737, 1064, 1141),
+)
+
 
 class Player:
-    def __init__(self, x, y, tile_map, image, pickup_image):
+    def __init__(self, x, y, tile_map, image, pickup_image, sneak_image):
         self.x, self.y = x, y
         self.tile_map = tile_map
         self.image = image
         self.pickup_image = pickup_image
+        self.sneak_image = sneak_image
+        self.sneaking = False
         self.direction = 0
         self.walk_time = 0.0
 
     def update(self, frame_time):
         keys = sdl2.SDL_GetKeyboardState(None)
+        self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
         length = hypot(direction_x, direction_y)
@@ -47,7 +59,8 @@ class Player:
             self.direction = 3 if direction_y > 0 else 0
 
         step_time = min(frame_time, MAX_FRAME_TIME)
-        distance = WALK_SPEED * step_time
+        speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
+        distance = speed * step_time
         next_x = self.x + direction_x / length * distance
         next_y = self.y + direction_y / length * distance
         old_position = self.x, self.y
@@ -75,7 +88,20 @@ class Player:
             self.x, self.y - 11 + height / 2, width, height,
         )
 
+    def draw_sneak(self):
+        left, top, right, bottom = SNEAK_FRAMES[self.direction]
+        height = 38
+        width = round(height * (right - left) / (bottom - top))
+        bob = int(self.walk_time / 0.2) % 2
+        self.sneak_image.clip_draw(
+            left, self.sneak_image.h - bottom, right - left, bottom - top,
+            self.x, self.y - 11 + height / 2 + bob, width, height,
+        )
+
     def draw(self):
+        if self.sneaking:
+            self.draw_sneak()
+            return
         frame = 0
         if self.walk_time:
             frame = WALK_FRAMES[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_FRAMES)]
