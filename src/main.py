@@ -39,7 +39,7 @@ def interact(game):
         return
     if not game.has_filter and near_player(game, game.supply):
         game.pickup_time = 0.0
-        game.player.face_pickup(*game.supply)
+        game.player.start_pickup()
         game.message = "Picking up filter..."
     elif near_player(game, game.exit):
         if not game.has_filter:

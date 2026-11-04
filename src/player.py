@@ -63,12 +63,7 @@ class Player:
         else:
             self.walk_time = 0.0
 
-    def face_pickup(self, x, y):
-        dx, dy = x - self.x, y - self.y
-        if abs(dx) >= abs(dy) and dx:
-            self.direction = 2 if dx > 0 else 1
-        elif dy:
-            self.direction = 3 if dy > 0 else 0
+    def start_pickup(self):
         self.walk_time = 0.0
 
     def draw_pickup(self):
