@@ -8,6 +8,7 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
+from item_ui import draw_filter_icon, draw_filter_slot
 from player import Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
 from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, TileMap
@@ -56,15 +57,17 @@ def render_world(game, font):
     font.draw(ex - 16, ey - 30, "EXIT", (135, 231, 185))
     if not has_filter:
         sx, sy = game.supply
-        pico2d.draw_rectangle(sx - 10, sy - 13, sx + 10, sy + 12, 235, 184, 82, filled=True)
-        pico2d.draw_rectangle(sx - 8, sy - 4, sx + 8, sy + 3, 76, 57, 37, filled=True)
-        font.draw(sx - 23, sy - 25, "FILTER", (252, 218, 143))
+        draw_filter_icon(sx, sy)
+        if near_player(game, game.supply):
+            font.draw(sx - 38, sy + 30, "E  PICK UP", (252, 218, 143))
+        else:
+            font.draw(sx - 23, sy - 25, "FILTER", (252, 218, 143))
 
     game.player.draw()
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     font.draw(16, HEIGHT + 44, "WASD Move   E Interact   Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
-    font.draw(WIDTH - 133, HEIGHT + 44, f"Filters: {game.filter_count}", (245, 222, 169))
+    draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.filter_count, font)
     pico2d.update_canvas()
 
 
