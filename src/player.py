@@ -11,10 +11,13 @@ SNEAK_SPEED = 85
 MAX_FRAME_TIME = 0.05
 FRAME_WIDTH = 160
 FRAME_HEIGHT = 248
-FRAME_CENTERS = (178, 478, 777, 1074)
+IDLE_FRAME_CENTER = 178
 ROW_BOTTOMS = (283, 592, 901, 1208)
-WALK_FRAMES = (1, 2, 3, 2)
-WALK_FRAME_TIME = 0.12
+WALK_FRAME_WIDTH = 144
+WALK_FRAME_HEIGHT = 204
+WALK_FRAME_COUNT = 8
+WALK_FRAME_TIME = 0.06
+SNEAK_ANIMATION_RATE = 0.8
 # Pixel bounds from the top-left of the pickup sprite sheet, in facing order.
 PICKUP_FRAMES = (
     (219, 186, 473, 526),
@@ -23,34 +26,21 @@ PICKUP_FRAMES = (
     (781, 792, 1063, 1127),
 )
 
-# Pixel bounds from the top-left, ordered down, left, right, up.
-SNEAK_FRAMES = (
-    ((83, 41, 245, 287), (386, 43, 551, 291), (696, 43, 861, 291), (1005, 43, 1167, 289)),
-    ((93, 346, 247, 591), (384, 346, 561, 591), (698, 346, 858, 591), (1011, 346, 1164, 591)),
-    ((83, 644, 228, 888), (368, 646, 547, 888), (695, 646, 855, 888), (1004, 646, 1152, 888)),
-    ((89, 957, 248, 1205), (390, 958, 545, 1208), (702, 958, 859, 1208), (1008, 958, 1167, 1206)),
-)
-SNEAK_STEPS = (1, 3, 2, 3)
-SNEAK_FRAME_TIME = 0.15
-
 
 class Player:
-    def __init__(self, x, y, tile_map, image, pickup_image, sneak_image):
+    def __init__(self, x, y, tile_map, image, pickup_image, walk_cycle_image):
         self.x, self.y = x, y
         self.tile_map = tile_map
         self.image = image
         self.pickup_image = pickup_image
-        self.sneak_image = sneak_image
+        self.walk_cycle_image = walk_cycle_image
         self.sneaking = False
         self.direction = 0
         self.walk_time = 0.0
 
     def update(self, frame_time):
         keys = sdl2.SDL_GetKeyboardState(None)
-        sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
-        if self.sneaking != sneaking:
-            self.walk_time = 0.0
-            self.sneaking = sneaking
+        self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
         length = hypot(direction_x, direction_y)
@@ -77,7 +67,8 @@ class Player:
             self.y = next_y
 
         if (self.x, self.y) != old_position:
-            self.walk_time += step_time
+            animation_rate = SNEAK_ANIMATION_RATE if self.sneaking else 1.0
+            self.walk_time += step_time * animation_rate
         else:
             self.walk_time = 0.0
 
@@ -93,32 +84,21 @@ class Player:
             self.x, self.y - 11 + height / 2, width, height,
         )
 
-    def draw_sneak(self):
-        frame = 0
-        if self.walk_time:
-            frame = SNEAK_STEPS[int(self.walk_time / SNEAK_FRAME_TIME) % len(SNEAK_STEPS)]
-        # The back-view step frames advance the same foot in the artwork.
-        flip = "h" if self.direction == 3 and frame == 2 else ""
-        if flip:
-            frame = 1
-        left, top, right, bottom = SNEAK_FRAMES[self.direction][frame]
-        height = 43
-        width = round(height * (right - left) / (bottom - top))
-        self.sneak_image.clip_composite_draw(
-            left, self.sneak_image.h - bottom, right - left, bottom - top,
-            0, flip, self.x, self.y - 11 + height / 2, width, height,
-        )
-
     def draw(self):
-        if self.sneaking:
-            self.draw_sneak()
-            return
-        frame = 0
+        height = 43 if self.sneaking else 50
+        draw_y = self.y - PLAYER_HALF_SIZE + height / 2
         if self.walk_time:
-            frame = WALK_FRAMES[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_FRAMES)]
+            frame = int(self.walk_time / WALK_FRAME_TIME) % WALK_FRAME_COUNT
+            row_bottom = (self.direction + 1) * WALK_FRAME_HEIGHT
+            self.walk_cycle_image.clip_draw(
+                frame * WALK_FRAME_WIDTH, self.walk_cycle_image.h - row_bottom,
+                WALK_FRAME_WIDTH, WALK_FRAME_HEIGHT, self.x, draw_y, 35, height,
+            )
+            return
+
         self.image.clip_draw(
-            FRAME_CENTERS[frame] - FRAME_WIDTH // 2,
+            IDLE_FRAME_CENTER - FRAME_WIDTH // 2,
             self.image.h - ROW_BOTTOMS[self.direction],
             FRAME_WIDTH, FRAME_HEIGHT,
-            self.x, self.y + 13, 32, 50,
+            self.x, draw_y, 32, height,
         )

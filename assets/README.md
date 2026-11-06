@@ -37,6 +37,8 @@ Create a transparent square 2 by 2 pixel art sprite sheet, exactly four distinct
 
 `survivor_sneak_walk.png`는 기존 주인공 자세를 참고해 내장 이미지 생성 도구로 만든 네 방향 걷기 시트입니다.
 
+게임에서 사용하는 이동 시트와 제작 기준은 [캐릭터 애니메이션 가이드](ANIMATION_GUIDE.md)에 정리했습니다.
+
 ### 생성 프롬프트
 
 Make a transparent square 4x4 pixel-art gameplay sprite sheet. Same ochre hood, gas mask with teal visor, backpack and charcoal trousers as references. NEW motion: cautious stealth WALK, both knees only slightly flexed, crouch just a little, torso leaning slightly forward, BOTH feet under body when idle. Never kneeling or squatting; keep knees above boots and off ground. Four rows down-facing, left-facing, right-facing, up-facing. Exactly 4 columns in each row: col1 idle standing in slight crouch, col2 long step with LEFT leg forward and RIGHT leg behind, col3 unmistakable long step with RIGHT leg forward and LEFT leg behind, col4 passing feet together. Make column 2 vs 3 meaningfully different: show alternating arms and changing pants folds and boot positions, in side view visibly swap which leg is foremost; in front/back make left boot visibly extended in one and right boot in the other. Whole character same scale and consistent floor baseline. One sprite centered per equal cell, ample transparent gutters, no shadows, captions, borders or objects, crisp retro pixel edges. Same body proportions and pixel density as walking reference. 16 full-body sprites.
