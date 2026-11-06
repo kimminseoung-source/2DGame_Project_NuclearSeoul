@@ -39,7 +39,7 @@ class Player:
         self.walk_time = 0.0
         self.idle_time = 0.0
 
-    def update(self, frame_time):
+    def update(self, frame_time, speed_multiplier=1.0):
         keys = sdl2.SDL_GetKeyboardState(None)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
@@ -56,7 +56,7 @@ class Player:
             self.direction = 3 if direction_y > 0 else 0
 
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
-        distance = speed * step_time
+        distance = speed * speed_multiplier * step_time
         next_x = self.x + direction_x / length * distance
         next_y = self.y + direction_y / length * distance
         old_position = self.x, self.y
@@ -70,7 +70,7 @@ class Player:
         if (self.x, self.y) != old_position:
             self.idle_time = 0.0
             animation_rate = SNEAK_ANIMATION_RATE if self.sneaking else 1.0
-            self.walk_time += step_time * animation_rate
+            self.walk_time += step_time * animation_rate * speed_multiplier
         else:
             self.update_idle(step_time)
 

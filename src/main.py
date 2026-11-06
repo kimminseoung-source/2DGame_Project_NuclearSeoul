@@ -19,6 +19,10 @@ PICKUP_CROUCH = 0.12
 PICKUP_CONTACT = 0.28
 PICKUP_STAND = 0.46
 PICKUP_DURATION = 0.58
+DEFAULT_SPEED = 100
+MIN_SPEED = 50
+MAX_SPEED = 150
+SPEED_STEP = 10
 
 
 class Exploration:
@@ -29,6 +33,8 @@ class Exploration:
         self.walk_image = pico2d.load_image(str(ASSETS / "survivor_walk_6frames.png"))
         self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak_6frames.png"))
         self.exploration_map = TileMap()
+        self.settings_open = False
+        self.speed_percent = DEFAULT_SPEED
         reset_world(self)
 
 
@@ -55,6 +61,16 @@ def interact(game):
         game.message = "Move closer to the supply or exit."
 
 
+def draw_settings(game, font):
+    left, bottom = WIDTH // 2 - 176, HEIGHT // 2 - 66
+    pico2d.draw_rectangle(left, bottom, left + 352, bottom + 132, 15, 23, 31, filled=True)
+    pico2d.draw_rectangle(left, bottom, left + 352, bottom + 132, 135, 170, 157)
+    font.draw(left + 22, bottom + 103, "SETTINGS", (181, 197, 209))
+    font.draw(left + 22, bottom + 70, f"Movement speed   < {game.speed_percent}% >", (252, 218, 143))
+    font.draw(left + 22, bottom + 42, "Left / Right: adjust   R: reset", (181, 197, 209))
+    font.draw(left + 22, bottom + 18, "F1 / Esc: resume", (181, 197, 209))
+
+
 def render_world(game, font):
     pico2d.clear_canvas()
     game.tile_map.draw()
@@ -77,9 +93,11 @@ def render_world(game, font):
     else:
         game.player.draw()
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    font.draw(16, HEIGHT + 44, "WASD Move   Shift Sneak   E Interact   Esc Quit", (181, 197, 209))
+    font.draw(16, HEIGHT + 44, "WASD Move   Shift Sneak   E Interact   F1 Settings   Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.filter_count, font)
+    if game.settings_open:
+        draw_settings(game, font)
     pico2d.update_canvas()
 
 
@@ -115,6 +133,19 @@ def handle_events(game):
             return False
         if event.type != sdl2.SDL_KEYDOWN:
             continue
+        if event.key == sdl2.SDLK_F1:
+            game.settings_open = not game.settings_open
+            continue
+        if game.settings_open:
+            if event.key == sdl2.SDLK_ESCAPE:
+                game.settings_open = False
+            elif event.key == sdl2.SDLK_LEFT:
+                game.speed_percent = max(MIN_SPEED, game.speed_percent - SPEED_STEP)
+            elif event.key == sdl2.SDLK_RIGHT:
+                game.speed_percent = min(MAX_SPEED, game.speed_percent + SPEED_STEP)
+            elif event.key == sdl2.SDLK_r:
+                game.speed_percent = DEFAULT_SPEED
+            continue
         if event.key == sdl2.SDLK_ESCAPE:
             return False
         if event.key == sdl2.SDLK_e and not game.finished:
@@ -125,6 +156,8 @@ def handle_events(game):
 
 
 def update_world(game, frame_time):
+    if game.settings_open:
+        return
     if game.pickup_time is not None:
         previous_time = game.pickup_time
         game.pickup_time += min(frame_time, 0.05)
@@ -135,7 +168,7 @@ def update_world(game, frame_time):
         if game.pickup_time >= PICKUP_DURATION:
             game.pickup_time = None
     elif not game.finished:
-        game.player.update(frame_time)
+        game.player.update(frame_time, game.speed_percent / 100)
 
 
 def enlarge_window():
