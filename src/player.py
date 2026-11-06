@@ -10,13 +10,12 @@ WALK_SPEED = 150
 SNEAK_SPEED = 85
 MAX_FRAME_TIME = 0.05
 FRAME_WIDTH = 160
-FRAME_HEIGHT = 248
-IDLE_FRAME_CENTER = 178
-ROW_BOTTOMS = (283, 592, 901, 1208)
-WALK_FRAME_WIDTH = 144
-WALK_FRAME_HEIGHT = 204
-WALK_FRAME_COUNT = 8
-WALK_FRAME_TIME = 0.06
+FRAME_HEIGHT = 224
+FRAME_COUNT = 6
+DRAW_HEIGHT = 50
+DRAW_WIDTH = 36
+IDLE_FRAME_TIME = 0.18
+WALK_FRAME_TIME = 0.08
 SNEAK_ANIMATION_RATE = 0.8
 # Pixel bounds from the top-left of the pickup sprite sheet, in facing order.
 PICKUP_FRAMES = (
@@ -28,15 +27,17 @@ PICKUP_FRAMES = (
 
 
 class Player:
-    def __init__(self, x, y, tile_map, image, pickup_image, walk_cycle_image):
+    def __init__(self, x, y, tile_map, idle_image, pickup_image, walk_image, sneak_image):
         self.x, self.y = x, y
         self.tile_map = tile_map
-        self.image = image
+        self.idle_image = idle_image
         self.pickup_image = pickup_image
-        self.walk_cycle_image = walk_cycle_image
+        self.walk_image = walk_image
+        self.sneak_image = sneak_image
         self.sneaking = False
         self.direction = 0
         self.walk_time = 0.0
+        self.idle_time = 0.0
 
     def update(self, frame_time):
         keys = sdl2.SDL_GetKeyboardState(None)
@@ -44,8 +45,9 @@ class Player:
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
         length = hypot(direction_x, direction_y)
+        step_time = min(frame_time, MAX_FRAME_TIME)
         if length == 0:
-            self.walk_time = 0.0
+            self.update_idle(step_time)
             return
 
         if direction_x:
@@ -53,7 +55,6 @@ class Player:
         else:
             self.direction = 3 if direction_y > 0 else 0
 
-        step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
         distance = speed * step_time
         next_x = self.x + direction_x / length * distance
@@ -67,13 +68,19 @@ class Player:
             self.y = next_y
 
         if (self.x, self.y) != old_position:
+            self.idle_time = 0.0
             animation_rate = SNEAK_ANIMATION_RATE if self.sneaking else 1.0
             self.walk_time += step_time * animation_rate
         else:
-            self.walk_time = 0.0
+            self.update_idle(step_time)
+
+    def update_idle(self, step_time):
+        self.walk_time = 0.0
+        self.idle_time = (self.idle_time + step_time) % (IDLE_FRAME_TIME * FRAME_COUNT)
 
     def start_pickup(self):
         self.walk_time = 0.0
+        self.idle_time = 0.0
 
     def draw_pickup(self):
         left, top, right, bottom = PICKUP_FRAMES[self.direction]
@@ -85,20 +92,15 @@ class Player:
         )
 
     def draw(self):
-        height = 43 if self.sneaking else 50
-        draw_y = self.y - PLAYER_HALF_SIZE + height / 2
         if self.walk_time:
-            frame = int(self.walk_time / WALK_FRAME_TIME) % WALK_FRAME_COUNT
-            row_bottom = (self.direction + 1) * WALK_FRAME_HEIGHT
-            self.walk_cycle_image.clip_draw(
-                frame * WALK_FRAME_WIDTH, self.walk_cycle_image.h - row_bottom,
-                WALK_FRAME_WIDTH, WALK_FRAME_HEIGHT, self.x, draw_y, 35, height,
-            )
-            return
-
-        self.image.clip_draw(
-            IDLE_FRAME_CENTER - FRAME_WIDTH // 2,
-            self.image.h - ROW_BOTTOMS[self.direction],
-            FRAME_WIDTH, FRAME_HEIGHT,
-            self.x, draw_y, 32, height,
+            image = self.sneak_image if self.sneaking else self.walk_image
+            frame = int(self.walk_time / WALK_FRAME_TIME) % FRAME_COUNT
+        else:
+            image = self.idle_image
+            frame = int(self.idle_time / IDLE_FRAME_TIME) % FRAME_COUNT
+        row_bottom = (self.direction + 1) * FRAME_HEIGHT
+        image.clip_draw(
+            frame * FRAME_WIDTH, image.h - row_bottom,
+            FRAME_WIDTH, FRAME_HEIGHT, self.x,
+            self.y - PLAYER_HALF_SIZE + DRAW_HEIGHT / 2, DRAW_WIDTH, DRAW_HEIGHT,
         )
