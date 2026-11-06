@@ -9,16 +9,15 @@ import sdl2
 from pico2d import pico2d as canvas
 
 from item_ui import draw_filter_icon, draw_filter_slot
-from player import Player
+from player import FRAME_COUNT, Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
 from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, TileMap
 
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
-PICKUP_CROUCH = 0.12
-PICKUP_CONTACT = 0.28
-PICKUP_STAND = 0.46
 PICKUP_DURATION = 0.58
+PICKUP_FRAME_TIME = PICKUP_DURATION / FRAME_COUNT
+PICKUP_CONTACT = PICKUP_FRAME_TIME * 3
 DEFAULT_SPEED = 100
 MIN_SPEED = 50
 MAX_SPEED = 150
@@ -29,9 +28,9 @@ class Exploration:
     def __init__(self):
         self.idle_image = pico2d.load_image(str(ASSETS / "survivor_idle_6frames.png"))
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter.png")))
-        self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup.png"))
-        self.walk_image = pico2d.load_image(str(ASSETS / "survivor_walk_6frames.png"))
-        self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak_6frames.png"))
+        self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup_classic_6frames.png"))
+        self.walk_image = pico2d.load_image(str(ASSETS / "survivor_walk_classic_6frames.png"))
+        self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak_classic_6frames.png"))
         self.exploration_map = TileMap()
         self.settings_open = False
         self.speed_percent = DEFAULT_SPEED
@@ -88,8 +87,9 @@ def render_world(game, font):
         else:
             font.draw(sx - 23, sy - 25, "FILTER", (252, 218, 143))
 
-    if game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
-        game.player.draw_pickup()
+    if game.pickup_time is not None:
+        frame = min(int(game.pickup_time / PICKUP_FRAME_TIME), FRAME_COUNT - 1)
+        game.player.draw_pickup(frame)
     else:
         game.player.draw()
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)

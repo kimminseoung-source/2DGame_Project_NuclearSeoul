@@ -9,21 +9,12 @@ PLAYER_HALF_SIZE = 11
 WALK_SPEED = 150
 SNEAK_SPEED = 85
 MAX_FRAME_TIME = 0.05
-FRAME_WIDTH = 160
 FRAME_HEIGHT = 224
 FRAME_COUNT = 6
 DRAW_HEIGHT = 50
-DRAW_WIDTH = 36
 IDLE_FRAME_TIME = 0.18
 WALK_FRAME_TIME = 0.08
 SNEAK_ANIMATION_RATE = 0.8
-# Pixel bounds from the top-left of the pickup sprite sheet, in facing order.
-PICKUP_FRAMES = (
-    (219, 186, 473, 526),
-    (769, 187, 1078, 522),
-    (175, 785, 490, 1123),
-    (781, 792, 1063, 1127),
-)
 
 
 class Player:
@@ -82,14 +73,8 @@ class Player:
         self.walk_time = 0.0
         self.idle_time = 0.0
 
-    def draw_pickup(self):
-        left, top, right, bottom = PICKUP_FRAMES[self.direction]
-        height = 34
-        width = round(height * (right - left) / (bottom - top))
-        self.pickup_image.clip_draw(
-            left, self.pickup_image.h - bottom, right - left, bottom - top,
-            self.x, self.y - 11 + height / 2, width, height,
-        )
+    def draw_pickup(self, frame):
+        self.draw_frame(self.pickup_image, frame)
 
     def draw(self):
         if self.walk_time:
@@ -98,9 +83,14 @@ class Player:
         else:
             image = self.idle_image
             frame = int(self.idle_time / IDLE_FRAME_TIME) % FRAME_COUNT
+        self.draw_frame(image, frame)
+
+    def draw_frame(self, image, frame):
+        frame_width = image.w // FRAME_COUNT
+        draw_width = round(frame_width * DRAW_HEIGHT / FRAME_HEIGHT)
         row_bottom = (self.direction + 1) * FRAME_HEIGHT
         image.clip_draw(
-            frame * FRAME_WIDTH, image.h - row_bottom,
-            FRAME_WIDTH, FRAME_HEIGHT, self.x,
-            self.y - PLAYER_HALF_SIZE + DRAW_HEIGHT / 2, DRAW_WIDTH, DRAW_HEIGHT,
+            frame * frame_width, image.h - row_bottom,
+            frame_width, FRAME_HEIGHT, self.x,
+            self.y - PLAYER_HALF_SIZE + DRAW_HEIGHT / 2, draw_width, DRAW_HEIGHT,
         )

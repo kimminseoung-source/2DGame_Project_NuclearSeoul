@@ -5,14 +5,25 @@
 | 동작 | 시트 | 한 주기 |
 | --- | --- | --- |
 | 서 있기 | `survivor_idle_6frames.png` | 1.08초. 두 발을 고정한 채 미세하게 호흡한다. |
-| 걷기 | `survivor_walk_6frames.png` | 0.48초. 두 발을 번갈아 내딛는다. |
-| 조용히 걷기 | `survivor_sneak_6frames.png` | 0.60초. 무릎을 조금 굽히고 몸을 기울인다. |
+| 걷기 | `survivor_walk_classic_6frames.png` | 기본 속도에서 0.48초. 발을 디디고 체중을 옮기는 자세를 반복한다. |
+| 조용히 걷기 | `survivor_sneak_classic_6frames.png` | 기본 속도에서 0.60초. 무릎을 굽히고 몸을 앞으로 기울인다. |
+| 줍기 | `survivor_pickup_classic_6frames.png` | 0.58초간 한 번 재생한다. 4번째 프레임에서 필터를 획득한다. |
 
-세 시트 모두 투명 PNG이며 160×224픽셀 칸을 6열×4행으로 배치한다. 행 순서는 아래, 왼쪽, 오른쪽, 위다. 각 칸은 게임에서 36×50 크기로 그리고, 발이 닿는 바닥을 같은 위치에 둔다. 서기와 걷기의 그림 높이는 208픽셀이다. 조용히 걷기는 몸을 낮춘 자세를 살려 200픽셀에 맞춘다. 이동 중 Shift를 눌러도 걷기 주기의 위치는 이어진다.
+모든 시트는 투명 PNG이며 6열×4행이다. 행 순서는 아래, 왼쪽, 오른쪽, 위다. 대기 칸은 160×224픽셀이고 나머지 동작은 팔과 발을 뻗을 공간을 확보하기 위해 192×224픽셀이다. 게임에서 칸 높이 50픽셀과 바닥 기준점을 공통으로 쓴다. 서기와 걷기는 그림 높이 약 208픽셀, 조용히 걷기는 약 198픽셀을 기준으로 맞췄다. 줍기는 한 방향 안에서 같은 배율로 모든 자세를 배치해 굽히는 깊이를 살렸다.
 
-게임 크기에서 동작을 전환하며 후드와 배낭의 크기, 발 위치, 색 변화, 첫 프레임과 마지막 프레임의 연결을 확인한다. 줍기는 `survivor_pickup.png`의 전용 자세를 쓴다.
+게임 크기에서 동작을 전환하며 후드와 배낭의 크기, 발 위치, 색 변화, 첫 프레임과 마지막 프레임의 연결을 확인한다. 보행은 발이 교대하도록 프레임을 재배치하고, 정면 잠입과 뒷모습의 일부 프레임은 좌우 반전을 사용했다.
 
-## 이미지 생성에 사용한 요청
+## 이전 동작을 참고한 이미지 생성 요청
+
+내장 imagegen에 기존 `survivor_walk.png`, `survivor_sneak_walk.png`, `survivor_sneak.png`, `survivor_pickup.png`에 해당하는 사용자 첨부 이미지를 동작별로 전달했다.
+
+> Production pixel sprite sheet. Match attached earlier game art exactly, dark charcoal pixel outline and muted ochre hood, teal lenses, dark gray boots and olive backpack, no relighting or proportion changes. Six equally spaced columns and FOUR rows on a landscape canvas, one centered full-body character per cell, ample gutters. Row order DOWN/front, LEFT, RIGHT, UP/back. Each row has the same six sequential poses seen from that direction. Same floor contact line across every frame in each row. PNG transparent alpha outside each character, no cast shadow, gradient, grid, text, props. Exact six columns, exact four rows.
+
+- **걷기** — Rebuild the reference ordinary walking motion. Preserve the original walking silhouettes and alternate legs. Sequence near-foot contact, weight on near foot, passing pose, far-foot contact, weight on far foot, passing pose. Side views must visibly swap the leading boot halfway through.
+- **조용히 걷기** — Rebuild the FIRST reference's low cautious gait with the SECOND reference's bent-knee, forward-leaning body, and held-in bent elbows. Keep shoulders forward and hips lowered in ALL six frames. Feet alternate clearly, one leads then the other, with a passing pose between. No kneeling; standing height achieved by pose, no scaling.
+- **줍기** — A one-shot ground pickup, not a loop. Exact pose of first reference at frame 4: one knee down and one gloved hand reaching floor. Start upright like second reference at frame 1, frame 2 bend knees and hips, frame 3 lower onto one knee reaching, frame 4 touch the ground, frame 5 rise halfway with closed hand, frame 6 stand upright. Boots fixed and same mask/head size even while lowered. No visible object.
+
+## 대기 이미지 생성에 사용한 요청
 
 내장 imagegen 도구에 `survivor_walk.png`를 참조로 전달했다.
 
