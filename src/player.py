@@ -23,25 +23,29 @@ PICKUP_FRAMES = (
     (781, 792, 1063, 1127),
 )
 
+# Pixel bounds from the top-left, ordered down, left, right, up.
+SNEAK_FRAMES = (
+    ((83, 41, 245, 287), (386, 43, 551, 291), (696, 43, 861, 291), (1005, 43, 1167, 289)),
+    ((93, 346, 247, 591), (384, 346, 561, 591), (698, 346, 858, 591), (1011, 346, 1164, 591)),
+    ((83, 644, 228, 888), (368, 646, 547, 888), (695, 646, 855, 888), (1004, 646, 1152, 888)),
+    ((89, 957, 248, 1205), (390, 958, 545, 1208), (702, 958, 859, 1208), (1008, 958, 1167, 1206)),
+)
+SNEAK_STEPS = (1, 3, 2, 3)
 SNEAK_FRAME_TIME = 0.15
-SNEAK_TRANSITION_TIME = 0.12
-SNEAK_KNEE_DROP = 4
-SNEAK_LEG_HEIGHT = 22
 
 
 class Player:
-    def __init__(self, x, y, tile_map, image, pickup_image):
+    def __init__(self, x, y, tile_map, image, pickup_image, sneak_image):
         self.x, self.y = x, y
         self.tile_map = tile_map
         self.image = image
         self.pickup_image = pickup_image
+        self.sneak_image = sneak_image
         self.sneaking = False
-        self.sneak_bend = 0.0
         self.direction = 0
         self.walk_time = 0.0
 
     def update(self, frame_time, speed_multiplier=1.0):
-        step_time = min(frame_time, MAX_FRAME_TIME)
         keys = sdl2.SDL_GetKeyboardState(None)
         sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         if self.sneaking != sneaking:
@@ -49,11 +53,6 @@ class Player:
             next_frame_time = SNEAK_FRAME_TIME if sneaking else WALK_FRAME_TIME
             self.walk_time *= next_frame_time / previous_frame_time
             self.sneaking = sneaking
-        bend_step = step_time / SNEAK_TRANSITION_TIME
-        if self.sneaking:
-            self.sneak_bend = min(1.0, self.sneak_bend + bend_step)
-        else:
-            self.sneak_bend = max(0.0, self.sneak_bend - bend_step)
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
         length = hypot(direction_x, direction_y)
@@ -66,6 +65,7 @@ class Player:
         else:
             self.direction = 3 if direction_y > 0 else 0
 
+        step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
         distance = speed * step_time * speed_multiplier
         next_x = self.x + direction_x / length * distance
@@ -95,41 +95,32 @@ class Player:
             self.x, self.y - 11 + height / 2, width, height,
         )
 
-    def draw(self):
+    def draw_sneak(self):
         frame = 0
         if self.walk_time:
-            frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
-            frame = WALK_FRAMES[int(self.walk_time / frame_time) % len(WALK_FRAMES)]
-        left = FRAME_CENTERS[frame] - FRAME_WIDTH // 2
-        bottom = self.image.h - ROW_BOTTOMS[self.direction]
-        drop = round(SNEAK_KNEE_DROP * self.sneak_bend)
-        if drop:
-            self.draw_bent_walk(left, bottom, drop)
-            return
-        self.image.clip_draw(
-            left, bottom,
-            FRAME_WIDTH, FRAME_HEIGHT,
-            self.x, self.y + 13, 32, 50,
+            frame = SNEAK_STEPS[int(self.walk_time / SNEAK_FRAME_TIME) % len(SNEAK_STEPS)]
+        # The back-view step frames advance the same foot in the artwork.
+        flip = "h" if self.direction == 3 and frame == 2 else ""
+        if flip:
+            frame = 1
+        left, top, right, bottom = SNEAK_FRAMES[self.direction][frame]
+        height = 46
+        width = round(height * (right - left) / (bottom - top))
+        self.sneak_image.clip_composite_draw(
+            left, self.sneak_image.h - bottom, right - left, bottom - top,
+            0, flip, self.x, self.y - 12 + height / 2, width, height,
         )
 
-    def draw_bent_walk(self, left, bottom, drop):
-        # Keep the upper body at its original scale and the boots at ground level.
-        ground = self.y - 12
-        source_leg_height = round(FRAME_HEIGHT * SNEAK_LEG_HEIGHT / 50)
-        leg_height = SNEAK_LEG_HEIGHT - drop
-        upper_height = 50 - SNEAK_LEG_HEIGHT
-        facing = (0, -1, 1, 0)[self.direction]
-        for row in range(leg_height):
-            start = round(row * source_leg_height / leg_height)
-            end = round((row + 1) * source_leg_height / leg_height)
-            # The middle of the leg moves forward. The boot and hip stay aligned.
-            knee = 1 - abs(2 * row / (leg_height - 1) - 1)
-            offset = facing * round(knee * drop / 2)
-            self.image.clip_draw(
-                left, bottom + start, FRAME_WIDTH, end - start,
-                self.x + offset, ground + row + 0.5, 32, 1,
-            )
+    def draw(self):
+        if self.sneaking:
+            self.draw_sneak()
+            return
+        frame = 0
+        if self.walk_time:
+            frame = WALK_FRAMES[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_FRAMES)]
         self.image.clip_draw(
-            left, bottom + source_leg_height, FRAME_WIDTH, FRAME_HEIGHT - source_leg_height,
-            self.x, ground + leg_height + upper_height / 2, 32, upper_height,
+            FRAME_CENTERS[frame] - FRAME_WIDTH // 2,
+            self.image.h - ROW_BOTTOMS[self.direction],
+            FRAME_WIDTH, FRAME_HEIGHT,
+            self.x, self.y + 13, 32, 50,
         )
