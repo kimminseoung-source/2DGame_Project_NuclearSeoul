@@ -23,24 +23,15 @@ PICKUP_FRAMES = (
     (781, 792, 1063, 1127),
 )
 
-# Pixel bounds from the top-left, ordered down, left, right, up.
-SNEAK_FRAMES = (
-    ((83, 41, 245, 287), (386, 43, 551, 291), (696, 43, 861, 291), (1005, 43, 1167, 289)),
-    ((93, 346, 247, 591), (384, 346, 561, 591), (698, 346, 858, 591), (1011, 346, 1164, 591)),
-    ((83, 644, 228, 888), (368, 646, 547, 888), (695, 646, 855, 888), (1004, 646, 1152, 888)),
-    ((89, 957, 248, 1205), (390, 958, 545, 1208), (702, 958, 859, 1208), (1008, 958, 1167, 1206)),
-)
-SNEAK_STEPS = (1, 3, 2, 3)
 SNEAK_FRAME_TIME = 0.15
 
 
 class Player:
-    def __init__(self, x, y, tile_map, image, pickup_image, sneak_image):
+    def __init__(self, x, y, tile_map, image, pickup_image):
         self.x, self.y = x, y
         self.tile_map = tile_map
         self.image = image
         self.pickup_image = pickup_image
-        self.sneak_image = sneak_image
         self.sneaking = False
         self.direction = 0
         self.walk_time = 0.0
@@ -49,7 +40,9 @@ class Player:
         keys = sdl2.SDL_GetKeyboardState(None)
         sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         if self.sneaking != sneaking:
-            self.walk_time = 0.0
+            previous_frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
+            next_frame_time = SNEAK_FRAME_TIME if sneaking else WALK_FRAME_TIME
+            self.walk_time *= next_frame_time / previous_frame_time
             self.sneaking = sneaking
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
@@ -93,29 +86,11 @@ class Player:
             self.x, self.y - 11 + height / 2, width, height,
         )
 
-    def draw_sneak(self):
-        frame = 0
-        if self.walk_time:
-            frame = SNEAK_STEPS[int(self.walk_time / SNEAK_FRAME_TIME) % len(SNEAK_STEPS)]
-        # The back-view step frames advance the same foot in the artwork.
-        flip = "h" if self.direction == 3 and frame == 2 else ""
-        if flip:
-            frame = 1
-        left, top, right, bottom = SNEAK_FRAMES[self.direction][frame]
-        height = 43
-        width = round(height * (right - left) / (bottom - top))
-        self.sneak_image.clip_composite_draw(
-            left, self.sneak_image.h - bottom, right - left, bottom - top,
-            0, flip, self.x, self.y - 11 + height / 2, width, height,
-        )
-
     def draw(self):
-        if self.sneaking:
-            self.draw_sneak()
-            return
         frame = 0
         if self.walk_time:
-            frame = WALK_FRAMES[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_FRAMES)]
+            frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
+            frame = WALK_FRAMES[int(self.walk_time / frame_time) % len(WALK_FRAMES)]
         self.image.clip_draw(
             FRAME_CENTERS[frame] - FRAME_WIDTH // 2,
             self.image.h - ROW_BOTTOMS[self.direction],
