@@ -39,7 +39,7 @@ python src/main.py
 - `docs/presentation/`: 발표 PDF와 제출 확인 목록
 - `docs/references/`: 콘셉트 이미지·참고 근거
 - `src/`: 이후 게임 코드 작성 위치
-- `assets/`: 이후 실제 게임 이미지·음원 배치 위치
+- `assets/`: 게임 이미지·음원과 [도트 리소스 제작 가이드](assets/ART_GUIDE.md)
 
 ## 개발 원칙
 
