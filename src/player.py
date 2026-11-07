@@ -42,7 +42,7 @@ MOVEMENT_DIRECTIONS = {
     (-1, -1): 4, (1, -1): 5, (-1, 1): 6, (1, 1): 7,
 }
 DIAGONAL_COMPONENTS = ((0, 1), (0, 2), (3, 1), (3, 2))
-DIAGONAL_RELEASE_GRACE = 0.08
+DIAGONAL_RELEASE_GRACE = 0.2
 
 
 class Player:
