@@ -132,11 +132,30 @@ class Player:
         frame = 0
         if self.walk_time:
             frame = WALK_FRAMES[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_FRAMES)]
+        if frame == 3 and self.direction in (0, 3):
+            self.draw_reverse_step()
+            return
         self.image.clip_draw(
             FRAME_CENTERS[frame] - FRAME_WIDTH // 2,
             self.image.h - ROW_BOTTOMS[self.direction],
             FRAME_WIDTH, FRAME_HEIGHT,
             self.x, self.y + 13, 32, 50,
+        )
+
+    def draw_reverse_step(self):
+        # Reuse the opposite leg pose while keeping the sleeves and patch in place.
+        leg_height = 89
+        leg_draw_height = 18
+        bottom = self.image.h - ROW_BOTTOMS[self.direction]
+        ground = self.y - 12
+        self.image.clip_composite_draw(
+            FRAME_CENTERS[1] - FRAME_WIDTH // 2, bottom, FRAME_WIDTH, leg_height,
+            0, "h", self.x, ground + leg_draw_height / 2, 32, leg_draw_height,
+        )
+        self.image.clip_draw(
+            FRAME_CENTERS[3] - FRAME_WIDTH // 2, bottom + leg_height,
+            FRAME_WIDTH, FRAME_HEIGHT - leg_height,
+            self.x, ground + leg_draw_height + 16, 32, 32,
         )
 
     def draw_diagonal(self, image, frame):

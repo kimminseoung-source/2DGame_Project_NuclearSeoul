@@ -35,6 +35,9 @@ class Exploration:
             pico2d.load_image(str(ASSETS / name))
             for name in ("survivor_diagonal_walk.png", "survivor_diagonal_sneak.png", "survivor_diagonal_pickup.png")
         )
+        # Match the brighter sneak sheets to the corresponding walk palettes.
+        sdl2.SDL_SetTextureColorMod(self.sneak_image.texture, 227, 230, 212)
+        sdl2.SDL_SetTextureColorMod(self.diagonal_images[1].texture, 242, 245, 210)
         self.exploration_map = TileMap()
         self.settings_open = False
         self.speed_percent = DEFAULT_SPEED
