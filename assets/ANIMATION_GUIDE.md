@@ -49,3 +49,12 @@ Shift 전환 때 조용히 걷기 시트가 밝아 보이는 차이를 줄이기
 내장 imagegen에 `survivor_walk.png`를 참조로 전달했다. 생성 후보에서 오른쪽을 바라보는 한 줄만 골랐다.
 
 > Game-ready pixel-art sprite sheet of this exact original Korean post-apocalyptic yellow ochre hood, teal visor gas mask, charcoal outfit, olive backpack and Korean sleeve patch. SAME color palette, shading, proportions, camera and pixel density as reference. Exactly THREE columns and FOUR rows, regular grid, generous transparent gutters for entire character and baseball bat. Each row has 3 distinct stages of the SAME two-handed wooden baseball bat swing: column 1 wind-up bat drawn back near shoulder, column 2 contact bat extended forward in facing direction with hips/shoulders turning and one foot planted, column 3 recovery bat lowered after follow-through. Bat firmly held in both gloved hands, no effects. Grounded foot at consistent floor level, no background/shadows, no lettering. Full body and entire bat visible in each cell. Rows top to bottom: DOWN facing viewer, LEFT profile, RIGHT profile, UP showing backpack.
+
+## 방망이 캐릭터 8방향 통합
+
+- 캐릭터 원본은 [오른쪽 방망이 대기 자세](survivor_bat_right_idle.png)다. 새 에셋은 황토색 후드, 청록색 방독면, 올리브색 배낭, 어두운 바지와 손에 쥔 둥근 나무 방망이를 원본 기준으로 맞춘다. 오른쪽 일반 대기 칸에는 원본을 그대로 넣었다.
+- 대기·일반 걷기·조용히 걷기와 줍기·공격은 각 77×58 픽셀 칸을 사용한다. 가로 네 칸과 세로 네 줄의 시트 여섯 장으로 구성하며, 각 칸의 발 기준점을 맞췄다. RGBA 픽셀 데이터 기준 약 1.64 MiB다.
+- 이동 시트는 대기 → 첫발 접지 → 두 발 교차 → 반대 발 접지 순으로 배치했다. 이동 루프는 2→3→4→3으로 재생하고, Shift 전환 시 현재 보행 단계를 유지한다. 왼쪽 위·아래 대각선의 접지 컷은 별도로 확인했다.
+- 동작 시트의 열은 줍기, 공격 준비, 타격, 회수 순이다. 좌측 공격은 대응 우측 컷을 좌우 반전해 사용하므로 일부 소매 패치도 반전된다.
+- 이미지 생성에는 오른쪽 방망이 대기 원본을 참조로 전달했다. 이동 자세는 ‘같은 손으로 방망이의 가는 손잡이를 잡고 끝을 낮추기’, 조용히 걷기는 ‘무릎을 굽혀 상체를 기울이기’, 왼쪽 대각선은 ‘앞발을 바꾸면서 가까운 쪽과 먼 쪽 다리의 겹침을 구분하기’를 요청했다. [Project Zomboid의 동작 전환 개발 글](https://projectzomboid.com/blog/news/2019/06/anim-transition-blog/)에서 체중 이동 표현을 참고했다.
+- 생성 결과는 방향, 손잡이 접촉, 앞발 교대, 방망이 끝 잘림을 확인한 뒤 사용한다. Pico2D에서 8방향 일반·Shift 입력, 멈춤 방향, 줍기와 공격 단계의 렌더링을 확인했다.

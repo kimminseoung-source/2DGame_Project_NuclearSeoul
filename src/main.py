@@ -8,7 +8,7 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
-from bat import BAT_DURATION, CRATE_POSITION, BatSwing, draw_carried_bat, draw_crate
+from bat import BAT_DURATION, CRATE_POSITION, BatSwing, draw_crate
 from item_ui import draw_filter_icon, draw_filter_slot
 from player import DIRECTION_VECTORS, Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
@@ -28,19 +28,14 @@ SPEED_STEP = 10
 
 class Exploration:
     def __init__(self):
-        self.player_image = pico2d.load_image(str(ASSETS / "survivor_walk.png"))
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter.png")))
-        self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup.png"))
-        self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak_walk.png"))
-        self.diagonal_images = tuple(
-            pico2d.load_image(str(ASSETS / name))
-            for name in ("survivor_diagonal_walk.png", "survivor_diagonal_sneak.png", "survivor_diagonal_pickup.png")
-        )
-        self.bat_right_image = pico2d.load_image(str(ASSETS / "survivor_bat_right.png"))
-        self.bat_right_idle_image = pico2d.load_image(str(ASSETS / "survivor_bat_right_idle.png"))
-        # Match the brighter sneak sheets to the cardinal walk palette.
-        sdl2.SDL_SetTextureColorMod(self.sneak_image.texture, 227, 230, 212)
-        sdl2.SDL_SetTextureColorMod(self.diagonal_images[1].texture, 226, 227, 192)
+        self.player_sprites = {
+            action: tuple(
+                pico2d.load_image(str(ASSETS / f"survivor_bat_{action}_{group}.png"))
+                for group in ("cardinal", "diagonal")
+            )
+            for action in ("walk", "sneak", "action")
+        }
         self.exploration_map = TileMap()
         self.settings_open = False
         self.speed_percent = DEFAULT_SPEED
@@ -118,21 +113,12 @@ def render_world(game, font):
 
 def draw_player(game):
     player = game.player
-    camera_x = game.camera_x
-    facing_right = DIRECTION_VECTORS[player.direction] == (1, 0)
-    if game.bat_swing is not None and facing_right:
-        game.bat_swing.draw_right_attack(player, camera_x, game.bat_right_image)
+    if game.bat_swing is not None:
+        player.draw_frame("action", game.bat_swing.frame, game.camera_x)
     elif game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
-        player.draw_pickup(camera_x)
-    elif facing_right and not player.walk_time and not player.sneaking and game.pickup_time is None:
-        image = game.bat_right_idle_image
-        image.draw(player.x - camera_x, player.y - 12 + image.h / 2)
+        player.draw_frame("action", 0, game.camera_x)
     else:
-        player.draw(camera_x)
-        if game.bat_swing is not None:
-            game.bat_swing.draw(player, camera_x)
-        elif facing_right and game.pickup_time is None:
-            draw_carried_bat(player, camera_x)
+        player.draw(game.camera_x)
 
 
 def enter_area(game, in_shelter):
@@ -152,10 +138,8 @@ def enter_area(game, in_shelter):
         game.supply, game.exit = SUPPLY, EXIT
         spawn = SPAWN
         game.message = "Outside: collect the spare filter and reach the next shelter."
-    game.player = Player(
-        *spawn, game.tile_map, game.player_image, game.pickup_image, game.sneak_image,
-        game.diagonal_images,
-    )
+    game.player = Player(*spawn, game.tile_map, game.player_sprites)
+
 
 
 def reset_world(game):
