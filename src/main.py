@@ -54,27 +54,27 @@ def interact(game):
     if not game.has_filter and near_player(game, game.supply):
         game.pickup_time = 0.0
         game.player.start_pickup()
-        game.message = "Picking up filter..."
+        game.message = "필터를 줍는 중…"
     elif near_player(game, game.exit):
         if not game.has_filter:
-            game.message = "Collect the filter before leaving."
+            game.message = "나가기 전에 필터를 챙기세요."
         elif game.in_shelter:
             enter_area(game, in_shelter=False)
         else:
             game.finished = True
-            game.message = "Shelter reached! Press R to retry."
+            game.message = "대피소 도착! R로 다시 시작"
     else:
-        game.message = "Move closer to the supply or exit."
+        game.message = "물자나 출구에 가까이 가세요."
 
 
 def draw_settings(game, font):
     left, bottom = WIDTH // 2 - 176, HEIGHT // 2 - 66
     pico2d.draw_rectangle(left, bottom, left + 352, bottom + 132, 15, 23, 31, filled=True)
     pico2d.draw_rectangle(left, bottom, left + 352, bottom + 132, 135, 170, 157)
-    font.draw(left + 22, bottom + 103, "SETTINGS", (181, 197, 209))
-    font.draw(left + 22, bottom + 70, f"Movement speed   < {game.speed_percent}% >", (252, 218, 143))
-    font.draw(left + 22, bottom + 42, "Left / Right: adjust   R: reset", (181, 197, 209))
-    font.draw(left + 22, bottom + 18, "F1 / Esc: resume", (181, 197, 209))
+    font.draw(left + 22, bottom + 103, "설정", (181, 197, 209))
+    font.draw(left + 22, bottom + 70, f"이동 속도   < {game.speed_percent}% >", (252, 218, 143))
+    font.draw(left + 22, bottom + 42, "좌우 방향키 조절   R 초기화", (181, 197, 209))
+    font.draw(left + 22, bottom + 18, "F1 / Esc 계속하기", (181, 197, 209))
 
 
 def render_world(game, font):
@@ -83,7 +83,7 @@ def render_world(game, font):
     finished, message = game.finished, game.message
     draw_ground_objects(game, font)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    font.draw(16, HEIGHT + 44, "WASD Move  Shift Sneak  E Use  Space Bat  Tab Bag  F1", (181, 197, 209))
+    font.draw(16, HEIGHT + 44, "WASD 이동  Shift 은신  E 상호작용  Space 공격  Tab 배낭  F1 설정", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
@@ -114,7 +114,7 @@ def draw_ground_objects(game, font):
         if not game.in_shelter:
             pico2d.draw_rectangle(ex - 16, ey - 12, ex + 16, ey + 40, 46, 105, 92, filled=True)
             pico2d.draw_rectangle(ex - 16, ey - 12, ex + 16, ey + 40, 97, 197, 156)
-        font.draw(ex - 16, ey + 48, "EXIT", (135, 231, 185))
+        font.draw(ex - 16, ey + 48, "출구", (135, 231, 185))
 
 
 def draw_supply(game, font):
@@ -124,9 +124,9 @@ def draw_supply(game, font):
         return
     draw_filter_icon(x, y, scale=2 / 3)
     if game.pickup_time is None and near_player(game, game.supply):
-        font.draw(x - 38, y + 30, "E  PICK UP", (252, 218, 143))
+        font.draw(x - 24, y + 46, "E 줍기", (252, 218, 143))
     else:
-        font.draw(x - 23, y - 25, "FILTER", (252, 218, 143))
+        font.draw(x - 15, y - 25, "필터", (252, 218, 143))
 
 
 def draw_player(game):
@@ -153,12 +153,12 @@ def enter_area(game, in_shelter):
         game.tile_map = game.shelter
         game.supply, game.exit = SHELTER_SUPPLY, SHELTER_EXIT
         spawn = SHELTER_SPAWN
-        game.message = "Bunker: collect a filter before heading out."
+        game.message = "방공호에서 예비 필터를 챙기세요."
     else:
         game.tile_map = game.exploration_map
         game.supply, game.exit = SUPPLY, EXIT
         spawn = SPAWN
-        game.message = "Outside: collect the spare filter and reach the next shelter."
+        game.message = "지상에서 필터를 챙겨 다음 대피소로 이동하세요."
     game.player = Player(*spawn, game.tile_map, game.player_sprites)
 
 
@@ -239,9 +239,9 @@ def update_world(game, frame_time):
         if previous_time < PICKUP_CONTACT <= game.pickup_time:
             if game.inventory.add(SPARE_FILTER):
                 game.has_filter = True
-                game.message = "Filter collected. Find the exit."
+                game.message = "필터를 주웠습니다. 출구로 이동하세요."
             else:
-                game.message = "Backpack full. The filter is still on the ground."
+                game.message = "배낭이 가득 찼습니다. 필터는 바닥에 남아 있습니다."
         if game.pickup_time >= PICKUP_DURATION:
             game.pickup_time = None
     elif game.bat_swing is not None:
@@ -252,7 +252,7 @@ def update_world(game, frame_time):
                 game.bat_hitstop = BAT_HITSTOP
                 game.bat_impact_time = BAT_IMPACT_TIME
                 game.bat_impact_sound.play()
-                game.message = "Crate broken."
+                game.message = "나무 상자를 부쉈습니다."
         if swing.elapsed >= BAT_DURATION:
             game.bat_swing = None
     elif not game.finished:

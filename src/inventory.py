@@ -39,9 +39,9 @@ class Inventory:
 
     def use_selected(self):
         if self.slots[self.selected] is None:
-            self.message = "This slot is empty."
+            self.message = "빈 슬롯입니다."
         else:
-            self.message = "Filter replacement is not available yet."
+            self.message = "아직 필터를 교체할 수 없습니다."
 
 
 def draw_inventory(inventory, font, width, height):
@@ -50,8 +50,8 @@ def draw_inventory(inventory, font, width, height):
     gold = (250, 219, 146)
     pico2d.draw_rectangle(x, y, x + 490, y + 302, 15, 23, 31, filled=True)
     pico2d.draw_rectangle(x, y, x + 490, y + 302, 100, 132, 132)
-    font.draw(x + 20, y + 277, "BACKPACK", pale)
-    font.draw(x + 292, y + 277, "Weapon: Baseball bat", pale)
+    font.draw(x + 20, y + 277, "배낭", pale)
+    font.draw(x + 292, y + 277, "장착 무기  야구 방망이", pale)
     for index, slot in enumerate(inventory.slots):
         row, col = divmod(index, COLUMNS)
         left = x + 20 + col * 114
@@ -62,13 +62,13 @@ def draw_inventory(inventory, font, width, height):
         if slot:
             item, count = slot
             draw_filter_icon(left + 23, bottom + 41)
-            font.draw(left + 64, bottom + 38, f"x{count}", gold)
-            font.draw(left + 6, bottom + 12, "Filter" if item == SPARE_FILTER else item, pale)
+            font.draw(left + 64, bottom + 38, f"{count}개", gold)
+            font.draw(left + 6, bottom + 12, "필터" if item == SPARE_FILTER else item, pale)
         else:
-            font.draw(left + 28, bottom + 26, "Empty", (130, 151, 163))
+            font.draw(left + 28, bottom + 26, "빈 슬롯", (130, 151, 163))
     if inventory.slots[inventory.selected]:
-        font.draw(x + 20, y + 81, "Spare filter for your gas mask.", pale)
+        font.draw(x + 20, y + 81, "방독면에 사용하는 예비 필터입니다.", pale)
     else:
-        font.draw(x + 20, y + 81, "No item in this slot.", pale)
+        font.draw(x + 20, y + 81, "이 슬롯에는 아이템이 없습니다.", pale)
     font.draw(x + 20, y + 54, inventory.message, gold)
-    font.draw(x + 20, y + 22, "Arrows Select   Enter Use   Tab / Esc Close", pale)
+    font.draw(x + 20, y + 22, "방향키 선택   Enter 사용   Tab / Esc 닫기", pale)
