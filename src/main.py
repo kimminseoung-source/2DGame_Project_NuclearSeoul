@@ -8,7 +8,7 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
-from bat import BAT_DURATION, CRATE_POSITION, BatSwing, draw_crate
+from bat import BAT_DURATION, CRATE_POSITION, BatSwing, draw_carried_bat, draw_crate
 from item_ui import draw_filter_icon, draw_filter_slot
 from player import DIRECTION_VECTORS, Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
@@ -36,6 +36,7 @@ class Exploration:
             pico2d.load_image(str(ASSETS / name))
             for name in ("survivor_diagonal_walk.png", "survivor_diagonal_sneak.png", "survivor_diagonal_pickup.png")
         )
+        self.bat_right_image = pico2d.load_image(str(ASSETS / "survivor_bat_right.png"))
         # Match the brighter sneak sheets to the cardinal walk palette.
         sdl2.SDL_SetTextureColorMod(self.sneak_image.texture, 227, 230, 212)
         sdl2.SDL_SetTextureColorMod(self.diagonal_images[1].texture, 226, 227, 192)
@@ -104,12 +105,7 @@ def render_world(game, font):
         else:
             font.draw(sx - 23, sy - 25, "FILTER", (252, 218, 143))
 
-    if game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
-        game.player.draw_pickup(game.camera_x)
-    else:
-        game.player.draw(game.camera_x)
-    if game.bat_swing is not None:
-        game.bat_swing.draw(game.player, game.camera_x)
+    draw_player(game)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     font.draw(16, HEIGHT + 44, "WASD Move  Shift Sneak  E Use  Space Bat  F1 Settings  Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
@@ -117,6 +113,22 @@ def render_world(game, font):
     if game.settings_open:
         draw_settings(game, font)
     pico2d.update_canvas()
+
+
+def draw_player(game):
+    player = game.player
+    camera_x = game.camera_x
+    facing_right = DIRECTION_VECTORS[player.direction] == (1, 0)
+    if game.bat_swing is not None and facing_right:
+        game.bat_swing.draw_right_attack(player, camera_x, game.bat_right_image)
+    elif game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
+        player.draw_pickup(camera_x)
+    else:
+        player.draw(camera_x)
+        if game.bat_swing is not None:
+            game.bat_swing.draw(player, camera_x)
+        elif facing_right and game.pickup_time is None:
+            draw_carried_bat(player, camera_x)
 
 
 def enter_area(game, in_shelter):

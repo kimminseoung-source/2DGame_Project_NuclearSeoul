@@ -37,3 +37,11 @@ Shift 전환 때 조용히 걷기 시트가 밝아 보이는 차이를 줄이기
 - `survivor_walk.png`를 참조한 **walk** 요청. FOUR columns and FOUR rows. Each row is the same direction. Columns 1 idle boots together, 2 left boot forward, 3 right boot forward, 4 feet passing. Normal upright walk.
 - `survivor_sneak_walk.png`를 참조한 **sneak** 요청. FOUR columns and FOUR rows. Each row is the same direction. Columns 1 cautious stationary pose, 2 left boot forward, 3 right boot forward, 4 feet passing. Knees flexed, torso leaning forward, elbows bent, cautious tiptoe walk.
 - `survivor_pickup.png`를 참조한 **pickup** 요청. ONE column and FOUR rows. Each row shows one lowered ground pickup pose, one knee on floor and one hand touching floor.
+
+## 오른쪽 야구 방망이 공격 시험
+
+[오른쪽 시험 시트](survivor_bat_right.png)는 준비·타격·회수 세 칸으로 구성한다. 칸은 실제 표시 크기인 77×58픽셀이고, 캐릭터 발 기준점을 기존 이동 자세와 맞춘다. Space를 누른 후 0.10초에 타격 자세로 전환하고 0.14초에 접촉을 판정한다. 0.22초부터 회수 자세를 표시하고 0.34초에 일반 자세로 돌아간다.
+
+내장 imagegen에 `survivor_walk.png`를 참조로 전달했다. 생성 후보에서 오른쪽을 바라보는 한 줄만 골랐다.
+
+> Game-ready pixel-art sprite sheet of this exact original Korean post-apocalyptic yellow ochre hood, teal visor gas mask, charcoal outfit, olive backpack and Korean sleeve patch. SAME color palette, shading, proportions, camera and pixel density as reference. Exactly THREE columns and FOUR rows, regular grid, generous transparent gutters for entire character and baseball bat. Each row has 3 distinct stages of the SAME two-handed wooden baseball bat swing: column 1 wind-up bat drawn back near shoulder, column 2 contact bat extended forward in facing direction with hips/shoulders turning and one foot planted, column 3 recovery bat lowered after follow-through. Bat firmly held in both gloved hands, no effects. Grounded foot at consistent floor level, no background/shadows, no lettering. Full body and entire bat visible in each cell. Rows top to bottom: DOWN facing viewer, LEFT profile, RIGHT profile, UP showing backpack.
