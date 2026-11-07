@@ -55,7 +55,7 @@ class Player:
         self.diagonal_walk, self.diagonal_sneak, self.diagonal_pickup = diagonal_images
         self.sneaking = False
         self.direction = 0
-        self.direction_release_time = 0.0
+        self.direction_release_time = None
         self.walk_time = 0.0
 
     def update(self, frame_time, speed_multiplier=1.0):
@@ -71,7 +71,7 @@ class Player:
         length = hypot(direction_x, direction_y)
         if length == 0:
             self.walk_time = 0.0
-            self.direction_release_time = 0.0
+            self.direction_release_time = None
             return
 
         direction = MOVEMENT_DIRECTIONS[(direction_x, direction_y)]
@@ -96,12 +96,15 @@ class Player:
             self.walk_time = 0.0
 
     def update_facing(self, direction, frame_time):
-        if self.direction >= 4 and direction in DIAGONAL_COMPONENTS[self.direction - 4]:
+        if (
+            self.direction_release_time is not None
+            and direction in DIAGONAL_COMPONENTS[self.direction - 4]
+        ):
             self.direction_release_time += frame_time
             if self.direction_release_time < DIAGONAL_RELEASE_GRACE:
                 return
         self.direction = direction
-        self.direction_release_time = 0.0
+        self.direction_release_time = 0.0 if direction >= 4 else None
 
     def start_pickup(self):
         self.walk_time = 0.0
