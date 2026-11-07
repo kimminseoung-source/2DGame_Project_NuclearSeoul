@@ -7,25 +7,27 @@ TILE_SIZE = 48
 
 # Map rows are written from top to bottom.
 MAP = (
-    "################",
-    "#......#.......#",
-    "#......#..###..#",
-    "#.........#....#",
-    "#..###....#....#",
-    "#..#......##...#",
-    "#..#...........#",
-    "#......###.....#",
-    "#..............#",
-    "################",
+    "################################",
+    "#......####...........####.....#",
+    "#..............................#",
+    "#......####.#########....###...#",
+    "#...........#########....###...#",
+    "#...........#########..........#",
+    "#......##...#########..........#",
+    "#..............................#",
+    "#......####...........####.....#",
+    "################################",
 )
-WIDTH = len(MAP[0]) * TILE_SIZE
+WIDTH = 16 * TILE_SIZE
 HEIGHT = len(MAP) * TILE_SIZE
-SPAWN = (TILE_SIZE * 2.5, TILE_SIZE * 1.5)
-SUPPLY = (TILE_SIZE * 5.5, TILE_SIZE * 3.5)
-EXIT = (TILE_SIZE * 13.5, TILE_SIZE * 8.5)
+SPAWN = (TILE_SIZE * 2.5, TILE_SIZE * 2.5)
+SUPPLY = (TILE_SIZE * 6.5, TILE_SIZE * 2.5)
+EXIT = (TILE_SIZE * 29.5, TILE_SIZE * 2.5)
 
 
 class TileMap:
+    width = len(MAP[0]) * TILE_SIZE
+
     def can_stand(self, x, y, half_size):
         left = int((x - half_size) // TILE_SIZE)
         right = int((x + half_size) // TILE_SIZE)
@@ -41,11 +43,14 @@ class TileMap:
             for col in range(left, right + 1)
         )
 
-    def draw(self):
+    def draw(self, camera_x=0):
+        first_col = camera_x // TILE_SIZE
+        last_col = (camera_x + WIDTH - 1) // TILE_SIZE
         for row, tiles in enumerate(reversed(MAP)):
             bottom = row * TILE_SIZE
-            for col, tile in enumerate(tiles):
-                left = col * TILE_SIZE
+            for col in range(first_col, last_col + 1):
+                tile = tiles[col]
+                left = col * TILE_SIZE - camera_x
                 if tile == "#":
                     color = (63, 73, 86)
                 else:

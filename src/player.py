@@ -111,19 +111,19 @@ class Player:
     def start_pickup(self):
         self.walk_time = 0.0
 
-    def draw_pickup(self):
+    def draw_pickup(self, camera_x=0):
         if self.direction >= 4:
-            self.draw_diagonal(self.diagonal_pickup, 0)
+            self.draw_diagonal(self.diagonal_pickup, 0, camera_x)
             return
         left, top, right, bottom = PICKUP_FRAMES[self.direction]
         height = 34
         width = round(height * (right - left) / (bottom - top))
         self.pickup_image.clip_draw(
             left, self.pickup_image.h - bottom, right - left, bottom - top,
-            self.x, self.y - 11 + height / 2, width, height,
+            self.x - camera_x, self.y - 11 + height / 2, width, height,
         )
 
-    def draw_sneak(self):
+    def draw_sneak(self, camera_x=0):
         frame = 0
         if self.walk_time:
             frame = SNEAK_STEPS[int(self.walk_time / SNEAK_FRAME_TIME) % len(SNEAK_STEPS)]
@@ -136,10 +136,10 @@ class Player:
         width = round(height * (right - left) / (bottom - top))
         self.sneak_image.clip_composite_draw(
             left, self.sneak_image.h - bottom, right - left, bottom - top,
-            0, flip, self.x, self.y - 12 + height / 2, width, height,
+            0, flip, self.x - camera_x, self.y - 12 + height / 2, width, height,
         )
 
-    def draw(self):
+    def draw(self, camera_x=0):
         if self.direction >= 4:
             image = self.diagonal_sneak if self.sneaking else self.diagonal_walk
             frame = 0
@@ -147,25 +147,25 @@ class Player:
                 frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
                 steps = SNEAK_STEPS if self.sneaking else WALK_FRAMES
                 frame = steps[int(self.walk_time / frame_time) % len(steps)]
-            self.draw_diagonal(image, frame)
+            self.draw_diagonal(image, frame, camera_x)
             return
         if self.sneaking:
-            self.draw_sneak()
+            self.draw_sneak(camera_x)
             return
         frame = 0
         if self.walk_time:
             frame = WALK_FRAMES[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_FRAMES)]
         if frame == 3 and self.direction in (0, 3):
-            self.draw_reverse_step()
+            self.draw_reverse_step(camera_x)
             return
         self.image.clip_draw(
             FRAME_CENTERS[frame] - FRAME_WIDTH // 2,
             self.image.h - ROW_BOTTOMS[self.direction],
             FRAME_WIDTH, FRAME_HEIGHT,
-            self.x, self.y + 13, 32, 50,
+            self.x - camera_x, self.y + 13, 32, 50,
         )
 
-    def draw_reverse_step(self):
+    def draw_reverse_step(self, camera_x=0):
         # Reuse the opposite leg pose while keeping the sleeves and patch in place.
         leg_height = 89
         leg_draw_height = 18
@@ -173,15 +173,15 @@ class Player:
         ground = self.y - 12
         self.image.clip_composite_draw(
             FRAME_CENTERS[1] - FRAME_WIDTH // 2, bottom, FRAME_WIDTH, leg_height,
-            0, "h", self.x, ground + leg_draw_height / 2, 32, leg_draw_height,
+            0, "h", self.x - camera_x, ground + leg_draw_height / 2, 32, leg_draw_height,
         )
         self.image.clip_draw(
             FRAME_CENTERS[3] - FRAME_WIDTH // 2, bottom + leg_height,
             FRAME_WIDTH, FRAME_HEIGHT - leg_height,
-            self.x, ground + leg_draw_height + 16, 32, 32,
+            self.x - camera_x, ground + leg_draw_height + 16, 32, 32,
         )
 
-    def draw_diagonal(self, image, frame):
+    def draw_diagonal(self, image, frame, camera_x=0):
         columns = 1 if image is self.diagonal_pickup else 4
         frame_width = image.w // columns
         draw_width = round(frame_width * 50 / FRAME_HEIGHT)
@@ -192,5 +192,5 @@ class Player:
         image.clip_draw(
             (frame % columns) * frame_width, image.h - (row + 1) * FRAME_HEIGHT,
             frame_width, FRAME_HEIGHT,
-            self.x, self.y + 13, draw_width, 50,
+            self.x - camera_x, self.y + 13, draw_width, 50,
         )

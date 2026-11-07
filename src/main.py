@@ -23,6 +23,8 @@ DEFAULT_SPEED = 100
 MIN_SPEED = 50
 MAX_SPEED = 150
 SPEED_STEP = 10
+CAMERA_LEFT_EDGE = WIDTH // 3
+CAMERA_RIGHT_EDGE = WIDTH - CAMERA_LEFT_EDGE
 
 
 class Exploration:
@@ -79,15 +81,21 @@ def draw_settings(game, font):
 
 def render_world(game, font):
     pico2d.clear_canvas()
-    game.tile_map.draw()
+    if game.in_shelter:
+        game.tile_map.draw()
+    else:
+        game.tile_map.draw(game.camera_x)
     has_filter, finished, message = game.has_filter, game.finished, game.message
     ex, ey = game.exit
-    if not game.in_shelter:
-        pico2d.draw_rectangle(ex - 17, ey - 19, ex + 17, ey + 19, 62, 169, 128, filled=True)
-        pico2d.draw_rectangle(ex - 12, ey - 15, ex + 12, ey + 13, 23, 66, 61, filled=True)
-    font.draw(ex - 16, ey - 30, "EXIT", (135, 231, 185))
-    if not has_filter:
-        sx, sy = game.supply
+    ex -= game.camera_x
+    if -40 < ex < WIDTH + 40:
+        if not game.in_shelter:
+            pico2d.draw_rectangle(ex - 17, ey - 19, ex + 17, ey + 19, 62, 169, 128, filled=True)
+            pico2d.draw_rectangle(ex - 12, ey - 15, ex + 12, ey + 13, 23, 66, 61, filled=True)
+        font.draw(ex - 16, ey - 30, "EXIT", (135, 231, 185))
+    sx, sy = game.supply
+    sx -= game.camera_x
+    if not has_filter and -40 < sx < WIDTH + 40:
         draw_filter_icon(sx, sy, scale=2 / 3)
         if game.pickup_time is None and near_player(game, game.supply):
             font.draw(sx - 38, sy + 30, "E  PICK UP", (252, 218, 143))
@@ -95,9 +103,9 @@ def render_world(game, font):
             font.draw(sx - 23, sy - 25, "FILTER", (252, 218, 143))
 
     if game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
-        game.player.draw_pickup()
+        game.player.draw_pickup(game.camera_x)
     else:
-        game.player.draw()
+        game.player.draw(game.camera_x)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     font.draw(16, HEIGHT + 44, "WASD Move   Shift Sneak   E Interact   F1 Settings   Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
@@ -111,6 +119,7 @@ def enter_area(game, in_shelter):
     game.in_shelter = in_shelter
     game.has_filter = False
     game.pickup_time = None
+    game.camera_x = 0
     if in_shelter:
         game.tile_map = game.shelter
         game.supply, game.exit = SHELTER_SUPPLY, SHELTER_EXIT
@@ -175,6 +184,14 @@ def update_world(game, frame_time):
             game.pickup_time = None
     elif not game.finished:
         game.player.update(frame_time, game.speed_percent / 100)
+        if not game.in_shelter:
+            update_camera(game)
+
+
+def update_camera(game):
+    player_x = round(game.player.x)
+    camera_x = max(player_x - CAMERA_RIGHT_EDGE, min(game.camera_x, player_x - CAMERA_LEFT_EDGE))
+    game.camera_x = max(0, min(camera_x, game.exploration_map.width - WIDTH))
 
 
 def enlarge_window():
