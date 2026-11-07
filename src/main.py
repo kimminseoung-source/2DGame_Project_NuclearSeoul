@@ -16,7 +16,8 @@ from inventory import COLUMNS, SPARE_FILTER, Inventory, draw_inventory
 from item_ui import draw_filter_icon, draw_filter_slot
 from player import Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
-from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, TileMap
+from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, WRECK_LEFT, WRECK_RIGHT, WRECK_Y, TileMap
+from zombie import Zombie
 
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
@@ -24,6 +25,7 @@ PICKUP_CROUCH = 0.12
 PICKUP_CONTACT = 0.28
 PICKUP_STAND = 0.46
 PICKUP_DURATION = 0.58
+MAX_HEALTH = 3
 DEFAULT_SPEED = 100
 MIN_SPEED = 50
 MAX_SPEED = 150
@@ -38,6 +40,8 @@ class Exploration:
             for action in ("walk", "sneak", "action")
         }
         self.exploration_map = TileMap(pico2d.load_image(str(ASSETS / "surface_side.png")))
+        self.zombie_image = pico2d.load_image(str(ASSETS / "zombie_charge.png"))
+        self.wreck_image = pico2d.load_image(str(ASSETS / "street_wreck.png"))
         self.bat_impact_sound = pico2d.load_wav(str(ASSETS / "bat_impact.wav"))
         self.bat_impact_sound.set_volume(65)
         self.settings_open = False
@@ -59,7 +63,7 @@ def interact(game):
         game.player.start_pickup()
         game.message = "필터를 줍는 중…"
     elif near_player(game, game.exit):
-        if not game.has_filter:
+        if game.in_shelter and not game.has_filter:
             game.message = "나가기 전에 필터를 챙기세요."
         elif game.in_shelter:
             enter_area(game, in_shelter=False)
@@ -88,6 +92,7 @@ def render_world(game, font):
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     font.draw(16, HEIGHT + 44, "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격  Space 대시  Tab 배낭  F1", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
+    font.draw(500, HEIGHT + 18, f"체력 {game.health}/{MAX_HEALTH}", (238, 169, 149))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
         draw_settings(game, font)
@@ -102,6 +107,10 @@ def draw_ground_objects(game, font):
         crate_x = CRATE_POSITION[0] - game.camera_x
         if -16 < crate_x < WIDTH + 16:
             objects.append((CRATE_POSITION[1], lambda: draw_crate(crate_x, CRATE_POSITION[1], game.crate_broken)))
+    if game.zombie is not None:
+        game.zombie.draw_warning(game.camera_x)
+        objects.append((WRECK_Y, lambda: draw_wreck(game)))
+        objects.append((game.zombie.y, lambda: game.zombie.draw(game.camera_x, font)))
     if not game.has_filter:
         objects.append((game.supply[1], lambda: draw_supply(game, font)))
     objects.sort(key=lambda obj: obj[0], reverse=True)
@@ -109,7 +118,8 @@ def draw_ground_objects(game, font):
         draw()
 
     if game.bat_impact_time:
-        draw_impact(CRATE_POSITION[0] - game.camera_x, CRATE_POSITION[1] + 5, game.bat_impact_time)
+        impact_x, impact_y = game.bat_impact_point
+        draw_impact(impact_x - game.camera_x, impact_y + 5, game.bat_impact_time)
 
     ex, ey = game.exit
     ex -= game.camera_x
@@ -118,6 +128,12 @@ def draw_ground_objects(game, font):
             pico2d.draw_rectangle(ex - 16, ey - 12, ex + 16, ey + 40, 46, 105, 92, filled=True)
             pico2d.draw_rectangle(ex - 16, ey - 12, ex + 16, ey + 40, 97, 197, 156)
         font.draw(ex - 16, ey + 48, "출구", (135, 231, 185))
+
+
+def draw_wreck(game):
+    x = (WRECK_LEFT + WRECK_RIGHT) / 2 - game.camera_x
+    image = game.wreck_image
+    image.draw(x, WRECK_Y - 12 + image.h / 2)
 
 
 def draw_supply(game, font):
@@ -129,7 +145,7 @@ def draw_supply(game, font):
     if game.pickup_time is None and near_player(game, game.supply):
         font.draw(x - 24, y + 46, "E 줍기", (252, 218, 143))
     else:
-        font.draw(x - 15, y - 25, "필터", (252, 218, 143))
+        font.draw(x - 15, y + 18 if game.zombie is not None else y - 25, "필터", (252, 218, 143))
 
 
 def draw_player(game):
@@ -151,6 +167,8 @@ def enter_area(game, in_shelter):
     game.crate_broken = False
     game.bat_hitstop = 0.0
     game.bat_impact_time = 0.0
+    game.bat_impact_point = CRATE_POSITION
+    game.zombie = None
     game.camera_x = 0
     if in_shelter:
         game.tile_map = game.shelter
@@ -159,15 +177,17 @@ def enter_area(game, in_shelter):
         game.message = "방공호에서 예비 필터를 챙기세요."
     else:
         game.tile_map = game.exploration_map
+        game.zombie = Zombie(game.zombie_image, game.tile_map)
         game.supply, game.exit = SUPPLY, EXIT
         spawn = SPAWN
-        game.message = "지상에서 필터를 챙겨 다음 대피소로 이동하세요."
+        game.message = "감염자의 돌진을 피해 다음 대피소로 이동하세요."
     game.player = Player(*spawn, game.tile_map, game.player_sprites)
 
 
 
 def reset_world(game):
     game.inventory = Inventory()
+    game.health = MAX_HEALTH
     game.inventory_open = False
     game.finished = False
     enter_area(game, in_shelter=True)
@@ -269,13 +289,8 @@ def update_world(game, frame_time):
             game.pickup_time = None
     elif game.bat_swing is not None:
         swing = game.bat_swing
-        if swing.update(min(frame_time, 0.05)) and not game.in_shelter and not game.crate_broken:
-            if swing.hits(game.player, CRATE_POSITION):
-                game.crate_broken = True
-                game.bat_hitstop = BAT_HITSTOP
-                game.bat_impact_time = BAT_IMPACT_TIME
-                game.bat_impact_sound.play()
-                game.message = "나무 상자를 부쉈습니다."
+        if swing.update(min(frame_time, 0.05)) and game.zombie is not None:
+            resolve_bat_contact(game, swing)
         if swing.elapsed >= BAT_DURATION:
             game.bat_swing = None
     elif not game.finished:
@@ -283,6 +298,46 @@ def update_world(game, frame_time):
         if not game.in_shelter:
             update_camera(game)
         face_cursor(game)
+
+    if game.zombie is not None and not game.finished and not game.bat_hitstop:
+        update_zombie(game, min(frame_time, 0.05))
+
+
+def resolve_bat_contact(game, swing):
+    zombie = game.zombie
+    position = zombie.x, zombie.y
+    if swing.hits(game.player, position):
+        if zombie.knock_back(swing.dx):
+            show_bat_impact(game, position)
+            game.message = "감염자를 밀어냈습니다."
+    elif not game.crate_broken and swing.hits(game.player, CRATE_POSITION):
+        game.crate_broken = True
+        show_bat_impact(game, CRATE_POSITION)
+        game.message = "나무 상자를 부쉈습니다."
+
+
+def show_bat_impact(game, position):
+    game.bat_hitstop = BAT_HITSTOP
+    game.bat_impact_time = BAT_IMPACT_TIME
+    game.bat_impact_point = position
+    game.bat_impact_sound.play()
+
+
+def update_zombie(game, frame_time):
+    outcome = game.zombie.update(frame_time, game.player)
+    if outcome == "wreck_hit":
+        game.bat_impact_point = game.zombie.x, game.zombie.y
+        game.bat_impact_time = BAT_IMPACT_TIME
+        game.message = "폐차에 충돌했습니다. 지금 지나가세요."
+    elif outcome == "player_hit":
+        game.health -= 1
+        game.player.dash_time = 0.0
+        game.pickup_time = None
+        game.bat_swing = None
+        game.message = "돌진에 맞았습니다. 다음에는 앞뒤로 피하세요."
+        if game.health == 0:
+            game.finished = True
+            game.message = "쓰러졌습니다. R로 다시 시작"
 
 
 def update_camera(game):

@@ -11,5 +11,6 @@ SHELTER_EXIT = (724, 103)
 
 class ShelterMap(TileMap):
     width = WIDTH
+    has_wreck = False
     left_edge = 25
     right_edge = 746
