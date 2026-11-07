@@ -42,7 +42,8 @@ MOVEMENT_DIRECTIONS = {
     (-1, -1): 4, (1, -1): 5, (-1, 1): 6, (1, 1): 7,
 }
 DIAGONAL_COMPONENTS = ((0, 1), (0, 2), (3, 1), (3, 2))
-DIAGONAL_RELEASE_GRACE = 0.2
+DIAGONAL_VECTORS = {direction: vector for vector, direction in MOVEMENT_DIRECTIONS.items() if direction >= 4}
+DIAGONAL_RELEASE_GRACE = 0.05
 
 
 class Player:
@@ -68,20 +69,21 @@ class Player:
             self.sneaking = sneaking
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
-        length = hypot(direction_x, direction_y)
-        if length == 0:
+        if direction_x == direction_y == 0:
             self.walk_time = 0.0
             self.direction_release_time = None
             return
 
         direction = MOVEMENT_DIRECTIONS[(direction_x, direction_y)]
         self.update_facing(direction, frame_time)
+        if self.direction != direction:
+            direction_x, direction_y = DIAGONAL_VECTORS[self.direction]
 
         step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
-        distance = speed * step_time * speed_multiplier
-        next_x = self.x + direction_x / length * distance
-        next_y = self.y + direction_y / length * distance
+        distance_per_axis = speed * step_time * speed_multiplier / hypot(direction_x, direction_y)
+        next_x = self.x + direction_x * distance_per_axis
+        next_y = self.y + direction_y * distance_per_axis
         old_position = self.x, self.y
 
         # Resolve each axis separately so the player can slide along walls.
