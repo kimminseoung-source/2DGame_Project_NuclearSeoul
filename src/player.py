@@ -32,15 +32,20 @@ SNEAK_FRAMES = (
 )
 SNEAK_STEPS = (1, 3, 2, 3)
 SNEAK_FRAME_TIME = 0.15
+MOVEMENT_DIRECTIONS = {
+    (0, -1): 0, (-1, 0): 1, (1, 0): 2, (0, 1): 3,
+    (-1, -1): 4, (1, -1): 5, (-1, 1): 6, (1, 1): 7,
+}
 
 
 class Player:
-    def __init__(self, x, y, tile_map, image, pickup_image, sneak_image):
+    def __init__(self, x, y, tile_map, image, pickup_image, sneak_image, diagonal_images):
         self.x, self.y = x, y
         self.tile_map = tile_map
         self.image = image
         self.pickup_image = pickup_image
         self.sneak_image = sneak_image
+        self.diagonal_walk, self.diagonal_sneak, self.diagonal_pickup = diagonal_images
         self.sneaking = False
         self.direction = 0
         self.walk_time = 0.0
@@ -60,10 +65,7 @@ class Player:
             self.walk_time = 0.0
             return
 
-        if direction_x:
-            self.direction = 2 if direction_x > 0 else 1
-        else:
-            self.direction = 3 if direction_y > 0 else 0
+        self.direction = MOVEMENT_DIRECTIONS[(direction_x, direction_y)]
 
         step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
@@ -87,6 +89,9 @@ class Player:
         self.walk_time = 0.0
 
     def draw_pickup(self):
+        if self.direction >= 4:
+            self.draw_diagonal(self.diagonal_pickup, 0)
+            return
         left, top, right, bottom = PICKUP_FRAMES[self.direction]
         height = 34
         width = round(height * (right - left) / (bottom - top))
@@ -112,6 +117,15 @@ class Player:
         )
 
     def draw(self):
+        if self.direction >= 4:
+            image = self.diagonal_sneak if self.sneaking else self.diagonal_walk
+            frame = 0
+            if self.walk_time:
+                frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
+                steps = SNEAK_STEPS if self.sneaking else WALK_FRAMES
+                frame = steps[int(self.walk_time / frame_time) % len(steps)]
+            self.draw_diagonal(image, frame)
+            return
         if self.sneaking:
             self.draw_sneak()
             return
@@ -123,4 +137,15 @@ class Player:
             self.image.h - ROW_BOTTOMS[self.direction],
             FRAME_WIDTH, FRAME_HEIGHT,
             self.x, self.y + 13, 32, 50,
+        )
+
+    def draw_diagonal(self, image, frame):
+        columns = 1 if image is self.diagonal_pickup else 4
+        frame_width = image.w // columns
+        draw_width = round(frame_width * 50 / FRAME_HEIGHT)
+        row = self.direction - 4
+        image.clip_draw(
+            (frame % columns) * frame_width, image.h - (row + 1) * FRAME_HEIGHT,
+            frame_width, FRAME_HEIGHT,
+            self.x, self.y + 13, draw_width, 50,
         )

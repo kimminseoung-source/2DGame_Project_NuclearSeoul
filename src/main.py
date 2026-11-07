@@ -31,6 +31,10 @@ class Exploration:
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter.png")))
         self.pickup_image = pico2d.load_image(str(ASSETS / "survivor_pickup.png"))
         self.sneak_image = pico2d.load_image(str(ASSETS / "survivor_sneak_walk.png"))
+        self.diagonal_images = tuple(
+            pico2d.load_image(str(ASSETS / name))
+            for name in ("survivor_diagonal_walk.png", "survivor_diagonal_sneak.png", "survivor_diagonal_pickup.png")
+        )
         self.exploration_map = TileMap()
         self.settings_open = False
         self.speed_percent = DEFAULT_SPEED
@@ -116,6 +120,7 @@ def enter_area(game, in_shelter):
         game.message = "Outside: collect the spare filter and reach the next shelter."
     game.player = Player(
         *spawn, game.tile_map, game.player_image, game.pickup_image, game.sneak_image,
+        game.diagonal_images,
     )
 
 
