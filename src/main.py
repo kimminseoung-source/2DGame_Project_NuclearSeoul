@@ -11,6 +11,7 @@ from pico2d import pico2d as canvas
 from bat import (
     BAT_DURATION, BAT_HITSTOP, BAT_IMPACT_TIME, CRATE_POSITION, BatSwing, draw_crate, draw_impact,
 )
+from inventory import COLUMNS, SPARE_FILTER, Inventory, draw_inventory
 from item_ui import draw_filter_icon, draw_filter_slot
 from player import Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
@@ -82,11 +83,13 @@ def render_world(game, font):
     finished, message = game.finished, game.message
     draw_ground_objects(game, font)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    font.draw(16, HEIGHT + 44, "A/D Move  W/S Depth  Shift Sneak  E Use  Space Bat  F1", (181, 197, 209))
+    font.draw(16, HEIGHT + 44, "WASD Move  Shift Sneak  E Use  Space Bat  Tab Bag  F1", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
-    draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.filter_count, font)
+    draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
         draw_settings(game, font)
+    elif game.inventory_open:
+        draw_inventory(game.inventory, font, WIDTH, HEIGHT)
     pico2d.update_canvas()
 
 
@@ -161,7 +164,8 @@ def enter_area(game, in_shelter):
 
 
 def reset_world(game):
-    game.filter_count = 0
+    game.inventory = Inventory()
+    game.inventory_open = False
     game.finished = False
     enter_area(game, in_shelter=True)
 
@@ -171,6 +175,9 @@ def handle_events(game):
         if event.type == sdl2.SDL_QUIT:
             return False
         if event.type != sdl2.SDL_KEYDOWN:
+            continue
+        if game.inventory_open:
+            handle_inventory_key(game, event.key)
             continue
         if event.key == sdl2.SDLK_F1:
             game.settings_open = not game.settings_open
@@ -185,6 +192,10 @@ def handle_events(game):
             elif event.key == sdl2.SDLK_r:
                 game.speed_percent = DEFAULT_SPEED
             continue
+        if event.key == sdl2.SDLK_TAB:
+            game.inventory_open = True
+            game.inventory.message = ""
+            continue
         if event.key == sdl2.SDLK_ESCAPE:
             return False
         if event.key == sdl2.SDLK_e and not game.finished:
@@ -198,8 +209,23 @@ def handle_events(game):
     return True
 
 
+def handle_inventory_key(game, key):
+    if key in (sdl2.SDLK_TAB, sdl2.SDLK_ESCAPE):
+        game.inventory_open = False
+    elif key == sdl2.SDLK_LEFT:
+        game.inventory.select(-1)
+    elif key == sdl2.SDLK_RIGHT:
+        game.inventory.select(1)
+    elif key == sdl2.SDLK_UP:
+        game.inventory.select(-COLUMNS)
+    elif key == sdl2.SDLK_DOWN:
+        game.inventory.select(COLUMNS)
+    elif key == sdl2.SDLK_RETURN:
+        game.inventory.use_selected()
+
+
 def update_world(game, frame_time):
-    if game.settings_open:
+    if game.settings_open or game.inventory_open:
         return
     game.bat_impact_time = max(0.0, game.bat_impact_time - frame_time)
     frozen_time = min(game.bat_hitstop, frame_time)
@@ -211,9 +237,11 @@ def update_world(game, frame_time):
         previous_time = game.pickup_time
         game.pickup_time += min(frame_time, 0.05)
         if previous_time < PICKUP_CONTACT <= game.pickup_time:
-            game.has_filter = True
-            game.filter_count += 1
-            game.message = "Filter collected. Find the exit."
+            if game.inventory.add(SPARE_FILTER):
+                game.has_filter = True
+                game.message = "Filter collected. Find the exit."
+            else:
+                game.message = "Backpack full. The filter is still on the ground."
         if game.pickup_time >= PICKUP_DURATION:
             game.pickup_time = None
     elif game.bat_swing is not None:
