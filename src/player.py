@@ -8,6 +8,7 @@ import sdl2
 PLAYER_HALF_SIZE = 11
 WALK_SPEED = 150
 SNEAK_SPEED = 85
+BASE_MOVEMENT_RATE = 0.7
 MAX_FRAME_TIME = 0.05
 FRAME_WIDTH = 160
 FRAME_HEIGHT = 248
@@ -81,7 +82,8 @@ class Player:
 
         step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
-        distance_per_axis = speed * step_time * speed_multiplier / hypot(direction_x, direction_y)
+        movement_time = step_time * BASE_MOVEMENT_RATE * speed_multiplier
+        distance_per_axis = speed * movement_time / hypot(direction_x, direction_y)
         next_x = self.x + direction_x * distance_per_axis
         next_y = self.y + direction_y * distance_per_axis
         old_position = self.x, self.y
@@ -93,7 +95,7 @@ class Player:
             self.y = next_y
 
         if (self.x, self.y) != old_position:
-            self.walk_time += step_time * speed_multiplier
+            self.walk_time += movement_time
         else:
             self.walk_time = 0.0
 

@@ -40,7 +40,11 @@ Shift 전환 때 조용히 걷기 시트가 밝아 보이는 차이를 줄이기
 
 ## 오른쪽 야구 방망이 공격 시험
 
-[오른쪽 시험 시트](survivor_bat_right.png)는 준비·타격·회수 세 칸으로 구성한다. 칸은 실제 표시 크기인 77×58픽셀이고, 캐릭터 발 기준점을 기존 이동 자세와 맞춘다. Space를 누른 후 0.10초에 타격 자세로 전환하고 0.14초에 접촉을 판정한다. 0.22초부터 회수 자세를 표시하고 0.34초에 일반 자세로 돌아간다.
+[오른쪽 시험 시트](survivor_bat_right.png)는 준비·타격·회수 세 칸으로 구성한다. 칸은 실제 표시 크기인 77×58픽셀이고, 캐릭터 발 기준점을 기존 이동 자세와 맞춘다. 공격은 초기 시제품의 70% 속도로 재생해 약 0.14초에 타격 자세로 전환하고, 약 0.20초에 접촉을 판정한다. 약 0.31초부터 회수 자세를 표시하고 약 0.49초에 공격을 마친다.
+
+[오른쪽 대기 자세](survivor_bat_right_idle.png)는 방망이 손잡이를 잡은 전용 도트다. 초기 걷기와 방망이 공격 시트를 내장 imagegen의 참조로 쓰고, 오른쪽을 보며 양발을 딛고 방망이를 아래로 늘어뜨린 자세를 요청했다. 공격 시트와 같은 칸 크기와 발 기준점으로 그린다.
+
+> Single full-body 2D pixel game sprite. Exact existing character from the right-facing third row of the reference, match muted ochre hood, teal respirator, small olive backpack, charcoal boots and Korean shoulder patch; same proportions, same outline, same neutral light. Pure right-facing profile. Standing still upright relaxed, both boots next to each other planted on the same line. Holds one wooden baseball bat down naturally at their right side: gloved near hand wrapped clearly around the narrow grip near thigh, barrel extends diagonally forward and down toward screen right, does not touch floor. Far arm relaxed. Keep entire body and bat visible. Centered transparent PNG with ample margins. No other poses, objects, grid, ground shadow, highlights or glow.
 
 내장 imagegen에 `survivor_walk.png`를 참조로 전달했다. 생성 후보에서 오른쪽을 바라보는 한 줄만 골랐다.
 

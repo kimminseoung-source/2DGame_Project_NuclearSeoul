@@ -7,6 +7,7 @@ import pico2d
 
 BAT_CONTACT = 0.14
 BAT_DURATION = 0.34
+BAT_PLAYBACK_RATE = 0.7
 BAT_REACH = 58
 BAT_ARC = pi / 4
 CRATE_POSITION = (432, 120)
@@ -21,7 +22,7 @@ class BatSwing:
 
     def update(self, frame_time):
         previous_time = self.elapsed
-        self.elapsed += frame_time
+        self.elapsed += frame_time * BAT_PLAYBACK_RATE
         return previous_time < BAT_CONTACT <= self.elapsed
 
     def hits(self, player, target):

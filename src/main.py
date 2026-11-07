@@ -37,6 +37,7 @@ class Exploration:
             for name in ("survivor_diagonal_walk.png", "survivor_diagonal_sneak.png", "survivor_diagonal_pickup.png")
         )
         self.bat_right_image = pico2d.load_image(str(ASSETS / "survivor_bat_right.png"))
+        self.bat_right_idle_image = pico2d.load_image(str(ASSETS / "survivor_bat_right_idle.png"))
         # Match the brighter sneak sheets to the cardinal walk palette.
         sdl2.SDL_SetTextureColorMod(self.sneak_image.texture, 227, 230, 212)
         sdl2.SDL_SetTextureColorMod(self.diagonal_images[1].texture, 226, 227, 192)
@@ -123,6 +124,9 @@ def draw_player(game):
         game.bat_swing.draw_right_attack(player, camera_x, game.bat_right_image)
     elif game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
         player.draw_pickup(camera_x)
+    elif facing_right and not player.walk_time and not player.sneaking and game.pickup_time is None:
+        image = game.bat_right_idle_image
+        image.draw(player.x - camera_x, player.y - 12 + image.h / 2)
     else:
         player.draw(camera_x)
         if game.bat_swing is not None:
