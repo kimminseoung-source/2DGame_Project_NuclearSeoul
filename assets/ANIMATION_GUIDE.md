@@ -70,3 +70,6 @@ Shift 전환 때 조용히 걷기 시트가 밝아 보이는 차이를 줄이기
 - 참고 자료. [Build 41 공식 트레일러 게시물](https://projectzomboid.com/blog/news/2021/12/project-zomboid-build-41-released/), [동작 전환](https://projectzomboid.com/blog/news/2019/06/anim-transition-blog/), [공격 회수와 후속 동작](https://projectzomboid.com/blog/news/2020/07/looks-different-somehow/)
 
 - 공격 스프라이트는 기존 공격 그림을 자세 참고로만 쓰고, 오른쪽 대기 원본의 후드, 방독면, 배낭과 직사각형 태극기 패치를 외형 기준으로 삼는다. 대기·걷기·Shift 걷기와 공격 네 단계를 양쪽 모두 Pico2D에서 캡처해 비교한다. 마지막 회수 칸은 같은 방향의 대기 원본을 사용한다.
+
+- 횡스크롤 오른쪽 대기는 현재 걷기 시트와 같은 생성 원본의 정지 자세를 사용한다. 공격 도트의 밝은 황토색은 걷기 프레임의 RGB 표본에 맞춘다. 마지막 회수는 같은 방향의 실제 대기 컷을 그대로 쓴다.
+- imagegen으로 방망이 손잡이 위치를 유지하고 나무 끝을 조금 늘린 뒤 걷기 원본과 명암을 맞췄다. 빨간 선은 그림에 굽지 않고 타격·후속 자세에서만 방망이 끝 위치를 기준으로 렌더링한다. 이 시각 효과는 기존 타격 판정 거리를 바꾸지 않는다.

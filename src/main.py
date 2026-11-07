@@ -130,6 +130,7 @@ def draw_player(game):
     player = game.player
     if game.bat_swing is not None:
         player.draw_frame("action", game.bat_swing.frame, game.camera_x)
+        game.bat_swing.draw_trail(player, game.camera_x)
     elif game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
         player.draw_frame("action", 0, game.camera_x)
     else:

@@ -16,6 +16,11 @@ BAT_REACH = 40
 BAT_DEPTH_REACH = 20
 BAT_ARC = pi / 4
 CRATE_POSITION = (432, 86)
+# Offsets from the player to the right-facing bat tip and its trail.
+SWING_TRAIL = {
+    2: ((27, 16), (31, 18), (32, 22), (30, 27)),
+    3: ((-20, 7), (-24, 8), (-26, 11), (-26, 15)),
+}
 
 
 class BatSwing:
@@ -51,6 +56,18 @@ class BatSwing:
         if self.elapsed < BAT_RECOVERY:
             return 3
         return 4
+
+    def draw_trail(self, player, camera_x):
+        trail = SWING_TRAIL.get(self.frame)
+        if trail is None:
+            return
+        x = player.x - camera_x
+        y = player.y
+        for index, ((x1, y1), (x2, y2)) in enumerate(zip(trail, trail[1:])):
+            start_x, end_x = x + self.dx * x1, x + self.dx * x2
+            pico2d.draw_line(start_x, y + y1, end_x, y + y2, 248 - 42 * index, 48, 50)
+            if index < 2:
+                pico2d.draw_line(start_x, y + y1 - 1, end_x, y + y2 - 1, 150, 29, 37)
 
 
 def draw_crate(x, y, broken):
