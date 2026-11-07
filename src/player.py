@@ -10,18 +10,12 @@ WALK_SPEED = 150
 SNEAK_SPEED = 85
 BASE_MOVEMENT_RATE = 0.7
 MAX_FRAME_TIME = 0.05
-FRAME_WIDTH = 77
+MOVEMENT_FRAME_WIDTH = 77
+ACTION_FRAME_WIDTH = 96
 FRAME_HEIGHT = 58
 WALK_FRAME_TIME = 0.12
 SNEAK_FRAME_TIME = 0.15
 WALK_CYCLE = (1, 2, 3, 2)
-MOVEMENT_DIRECTIONS = {
-    (0, -1): 0, (-1, 0): 1, (1, 0): 2, (0, 1): 3,
-    (-1, -1): 4, (1, -1): 5, (-1, 1): 6, (1, 1): 7,
-}
-DIAGONAL_COMPONENTS = ((0, 1), (0, 2), (3, 1), (3, 2))
-DIRECTION_VECTORS = {direction: vector for vector, direction in MOVEMENT_DIRECTIONS.items()}
-DIAGONAL_RELEASE_GRACE = 0.05
 
 
 class Player:
@@ -30,8 +24,7 @@ class Player:
         self.tile_map = tile_map
         self.sprites = sprites
         self.sneaking = False
-        self.direction = 0
-        self.direction_release_time = None
+        self.direction = 1
         self.walk_time = 0.0
 
     def update(self, frame_time, speed_multiplier=1.0):
@@ -44,15 +37,11 @@ class Player:
             self.sneaking = sneaking
         direction_x = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         direction_y = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
+        if direction_x:
+            self.direction = direction_x
         if direction_x == direction_y == 0:
             self.walk_time = 0.0
-            self.direction_release_time = None
             return
-
-        direction = MOVEMENT_DIRECTIONS[(direction_x, direction_y)]
-        self.update_facing(direction, frame_time)
-        if self.direction != direction:
-            direction_x, direction_y = DIRECTION_VECTORS[self.direction]
 
         step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
@@ -73,17 +62,6 @@ class Player:
         else:
             self.walk_time = 0.0
 
-    def update_facing(self, direction, frame_time):
-        if (
-            self.direction_release_time is not None
-            and direction in DIAGONAL_COMPONENTS[self.direction - 4]
-        ):
-            self.direction_release_time += frame_time
-            if self.direction_release_time < DIAGONAL_RELEASE_GRACE:
-                return
-        self.direction = direction
-        self.direction_release_time = 0.0 if direction >= 4 else None
-
     def start_pickup(self):
         self.walk_time = 0.0
 
@@ -96,10 +74,11 @@ class Player:
         self.draw_frame(action, frame, camera_x)
 
     def draw_frame(self, action, frame, camera_x):
-        group, row = divmod(self.direction, 4)
-        image = self.sprites[action][group]
+        row = int(self.direction > 0)
+        image = self.sprites[action]
+        width = ACTION_FRAME_WIDTH if action == "action" else MOVEMENT_FRAME_WIDTH
         image.clip_draw(
-            frame * FRAME_WIDTH, image.h - (row + 1) * FRAME_HEIGHT,
-            FRAME_WIDTH, FRAME_HEIGHT,
+            frame * width, image.h - (row + 1) * FRAME_HEIGHT,
+            width, FRAME_HEIGHT,
             self.x - camera_x, self.y - 12 + FRAME_HEIGHT / 2,
         )

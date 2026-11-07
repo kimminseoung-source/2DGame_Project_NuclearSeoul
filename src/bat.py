@@ -6,11 +6,16 @@ import pico2d
 
 
 BAT_CONTACT = 0.14
+BAT_FOLLOW_THROUGH = 0.20
+BAT_RECOVERY = 0.27
 BAT_DURATION = 0.34
+BAT_HITSTOP = 0.075
+BAT_IMPACT_TIME = 0.18
 BAT_PLAYBACK_RATE = 0.7
-BAT_REACH = 58
+BAT_REACH = 40
+BAT_DEPTH_REACH = 20
 BAT_ARC = pi / 4
-CRATE_POSITION = (432, 120)
+CRATE_POSITION = (432, 86)
 
 
 class BatSwing:
@@ -26,7 +31,7 @@ class BatSwing:
     def hits(self, player, target):
         dx, dy = target[0] - player.x, target[1] - player.y
         distance = hypot(dx, dy)
-        if distance > BAT_REACH:
+        if distance > BAT_REACH or abs(dy) > BAT_DEPTH_REACH:
             return False
         if distance and (dx * self.dx + dy * self.dy) / hypot(self.dx, self.dy) < distance * cos(BAT_ARC):
             return False
@@ -39,11 +44,13 @@ class BatSwing:
 
     @property
     def frame(self):
-        if self.elapsed < 0.10:
+        if self.elapsed < BAT_CONTACT:
             return 1
-        if self.elapsed < 0.22:
+        if self.elapsed < BAT_FOLLOW_THROUGH:
             return 2
-        return 3
+        if self.elapsed < BAT_RECOVERY:
+            return 3
+        return 4
 
 
 def draw_crate(x, y, broken):
@@ -54,3 +61,16 @@ def draw_crate(x, y, broken):
     pico2d.draw_rectangle(x - 12, y - 10, x + 12, y + 10, 112, 73, 44, filled=True)
     pico2d.draw_rectangle(x - 11, y - 9, x + 11, y + 9, 208, 155, 95)
     pico2d.draw_line(x - 10, y - 8, x + 10, y + 8, 173, 120, 69)
+
+
+def draw_impact(x, y, time_left):
+    progress = 1 - time_left / BAT_IMPACT_TIME
+    inner = 0.18 + progress * 0.65
+    outer = inner + (1 - progress) * 0.52
+    for dx, dy in ((-25, 8), (-15, 21), (4, 25), (22, 15), (26, -4), (12, -13)):
+        pico2d.draw_line(
+            x + dx * inner, y + dy * inner,
+            x + dx * outer, y + dy * outer, 255, 214, 127,
+        )
+    if progress < 0.3:
+        pico2d.draw_circle(x, y, 4, 255, 237, 191, filled=True)
