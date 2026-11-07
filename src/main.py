@@ -1,5 +1,6 @@
 """Exploration entry point and game loop."""
 
+from ctypes import byref, c_int
 from math import hypot
 from pathlib import Path
 from time import perf_counter
@@ -40,6 +41,7 @@ class Exploration:
         self.bat_impact_sound = pico2d.load_wav(str(ASSETS / "bat_impact.wav"))
         self.bat_impact_sound.set_volume(65)
         self.settings_open = False
+        self.aim_x = None
         self.speed_percent = DEFAULT_SPEED
         reset_world(self)
 
@@ -49,9 +51,10 @@ def near_player(game, point):
 
 
 def interact(game):
-    if game.pickup_time is not None or game.bat_swing is not None:
+    if action_in_progress(game):
         return
     if not game.has_filter and near_player(game, game.supply):
+        face_cursor(game)
         game.pickup_time = 0.0
         game.player.start_pickup()
         game.message = "필터를 줍는 중…"
@@ -83,7 +86,7 @@ def render_world(game, font):
     finished, message = game.finished, game.message
     draw_ground_objects(game, font)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    font.draw(16, HEIGHT + 44, "WASD 이동  Shift 은신  E 상호작용  Space 공격  Tab 배낭  F1 설정", (181, 197, 209))
+    font.draw(16, HEIGHT + 44, "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격  Space 대시  Tab 배낭  F1", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
@@ -170,10 +173,30 @@ def reset_world(game):
     enter_area(game, in_shelter=True)
 
 
+def action_in_progress(game):
+    return game.pickup_time is not None or game.bat_swing is not None or game.player.dash_time > 0
+
+
+def face_cursor(game):
+    if game.aim_x is None:
+        return
+    offset = game.aim_x - (game.player.x - game.camera_x)
+    if abs(offset) > 2:
+        game.player.direction = 1 if offset > 0 else -1
+
+
 def handle_events(game):
     for event in pico2d.get_events():
         if event.type == sdl2.SDL_QUIT:
             return False
+        if event.type == sdl2.SDL_MOUSEMOTION:
+            game.aim_x = event.x
+        if event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
+            game.aim_x = event.x
+            if not (game.inventory_open or game.settings_open or game.finished or action_in_progress(game)):
+                face_cursor(game)
+                game.player.walk_time = 0.0
+                game.bat_swing = BatSwing((game.player.direction, 0))
         if event.type != sdl2.SDL_KEYDOWN:
             continue
         if game.inventory_open:
@@ -200,10 +223,9 @@ def handle_events(game):
             return False
         if event.key == sdl2.SDLK_e and not game.finished:
             interact(game)
-        if event.key == sdl2.SDLK_SPACE and not game.finished:
-            if game.pickup_time is None and game.bat_swing is None:
-                game.player.walk_time = 0.0
-                game.bat_swing = BatSwing((game.player.direction, 0))
+        if event.key == sdl2.SDLK_SPACE and not game.finished and not action_in_progress(game):
+            face_cursor(game)
+            game.player.start_dash()
         if event.key == sdl2.SDLK_r and game.finished:
             reset_world(game)
     return True
@@ -233,6 +255,7 @@ def update_world(game, frame_time):
     frame_time -= frozen_time
     if frame_time <= 0:
         return
+    game.player.dash_cooldown = max(0.0, game.player.dash_cooldown - frame_time)
     if game.pickup_time is not None:
         previous_time = game.pickup_time
         game.pickup_time += min(frame_time, 0.05)
@@ -259,6 +282,7 @@ def update_world(game, frame_time):
         game.player.update(frame_time, game.speed_percent / 100)
         if not game.in_shelter:
             update_camera(game)
+        face_cursor(game)
 
 
 def update_camera(game):
@@ -294,6 +318,11 @@ def main():
     try:
         enlarge_window()
         game = Exploration()
+        mouse_x, window_width = c_int(), c_int()
+        sdl2.SDL_GetMouseState(byref(mouse_x), None)
+        sdl2.SDL_GetWindowSize(canvas.window, byref(window_width), None)
+        game.aim_x = mouse_x.value * WIDTH / window_width.value
+        face_cursor(game)
         font_path = Path(pico2d.__file__).parent / "data" / "ConsolaMalgun.ttf"
         font = pico2d.load_font(str(font_path), 16)
         previous_time = perf_counter()
