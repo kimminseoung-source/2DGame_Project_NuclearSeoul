@@ -8,8 +8,9 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
+from bat import BAT_DURATION, CRATE_POSITION, BatSwing, draw_crate
 from item_ui import draw_filter_icon, draw_filter_slot
-from player import Player
+from player import DIRECTION_VECTORS, Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
 from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, TileMap
 
@@ -51,7 +52,7 @@ def near_player(game, point):
 
 
 def interact(game):
-    if game.pickup_time is not None:
+    if game.pickup_time is not None or game.bat_swing is not None:
         return
     if not game.has_filter and near_player(game, game.supply):
         game.pickup_time = 0.0
@@ -85,6 +86,9 @@ def render_world(game, font):
         game.tile_map.draw()
     else:
         game.tile_map.draw(game.camera_x)
+        crate_x = CRATE_POSITION[0] - game.camera_x
+        if -16 < crate_x < WIDTH + 16:
+            draw_crate(crate_x, CRATE_POSITION[1], game.crate_broken)
     has_filter, finished, message = game.has_filter, game.finished, game.message
     ex, ey = game.exit
     ex -= game.camera_x
@@ -106,8 +110,10 @@ def render_world(game, font):
         game.player.draw_pickup(game.camera_x)
     else:
         game.player.draw(game.camera_x)
+    if game.bat_swing is not None:
+        game.bat_swing.draw(game.player, game.camera_x)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    font.draw(16, HEIGHT + 44, "WASD Move   Shift Sneak   E Interact   F1 Settings   Esc Quit", (181, 197, 209))
+    font.draw(16, HEIGHT + 44, "WASD Move  Shift Sneak  E Use  Space Bat  F1 Settings  Esc Quit", (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.filter_count, font)
     if game.settings_open:
@@ -119,6 +125,8 @@ def enter_area(game, in_shelter):
     game.in_shelter = in_shelter
     game.has_filter = False
     game.pickup_time = None
+    game.bat_swing = None
+    game.crate_broken = False
     game.camera_x = 0
     if in_shelter:
         game.tile_map = game.shelter
@@ -165,6 +173,11 @@ def handle_events(game):
             return False
         if event.key == sdl2.SDLK_e and not game.finished:
             interact(game)
+        if event.key == sdl2.SDLK_SPACE and not game.finished:
+            if game.pickup_time is None and game.bat_swing is None:
+                game.player.walk_time = 0.0
+                game.player.direction_release_time = None
+                game.bat_swing = BatSwing(DIRECTION_VECTORS[game.player.direction])
         if event.key == sdl2.SDLK_r and game.finished:
             reset_world(game)
     return True
@@ -182,6 +195,14 @@ def update_world(game, frame_time):
             game.message = "Filter collected. Find the exit."
         if game.pickup_time >= PICKUP_DURATION:
             game.pickup_time = None
+    elif game.bat_swing is not None:
+        swing = game.bat_swing
+        if swing.update(frame_time) and not game.in_shelter and not game.crate_broken:
+            if swing.hits(game.player, CRATE_POSITION):
+                game.crate_broken = True
+                game.message = "Crate broken."
+        if swing.elapsed >= BAT_DURATION:
+            game.bat_swing = None
     elif not game.finished:
         game.player.update(frame_time, game.speed_percent / 100)
         if not game.in_shelter:

@@ -42,7 +42,7 @@ MOVEMENT_DIRECTIONS = {
     (-1, -1): 4, (1, -1): 5, (-1, 1): 6, (1, 1): 7,
 }
 DIAGONAL_COMPONENTS = ((0, 1), (0, 2), (3, 1), (3, 2))
-DIAGONAL_VECTORS = {direction: vector for vector, direction in MOVEMENT_DIRECTIONS.items() if direction >= 4}
+DIRECTION_VECTORS = {direction: vector for vector, direction in MOVEMENT_DIRECTIONS.items()}
 DIAGONAL_RELEASE_GRACE = 0.05
 
 
@@ -77,7 +77,7 @@ class Player:
         direction = MOVEMENT_DIRECTIONS[(direction_x, direction_y)]
         self.update_facing(direction, frame_time)
         if self.direction != direction:
-            direction_x, direction_y = DIAGONAL_VECTORS[self.direction]
+            direction_x, direction_y = DIRECTION_VECTORS[self.direction]
 
         step_time = min(frame_time, MAX_FRAME_TIME)
         speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
