@@ -32,6 +32,11 @@ SNEAK_FRAMES = (
 )
 SNEAK_STEPS = (1, 3, 2, 3)
 SNEAK_FRAME_TIME = 0.15
+# Match diagonal colors to the cardinal sheet, including the redrawn contacts.
+DIAGONAL_WALK_TINT = (242, 241, 227)
+DIAGONAL_CONTACT_TINTS = (
+    (222, 232, 255), (226, 234, 245), (237, 237, 218), (219, 224, 250),
+)
 MOVEMENT_DIRECTIONS = {
     (0, -1): 0, (-1, 0): 1, (1, 0): 2, (0, 1): 3,
     (-1, -1): 4, (1, -1): 5, (-1, 1): 6, (1, 1): 7,
@@ -163,6 +168,9 @@ class Player:
         frame_width = image.w // columns
         draw_width = round(frame_width * 50 / FRAME_HEIGHT)
         row = self.direction - 4
+        if image is self.diagonal_walk:
+            tint = DIAGONAL_CONTACT_TINTS[row] if frame == 3 else DIAGONAL_WALK_TINT
+            sdl2.SDL_SetTextureColorMod(image.texture, *tint)
         image.clip_draw(
             (frame % columns) * frame_width, image.h - (row + 1) * FRAME_HEIGHT,
             frame_width, FRAME_HEIGHT,
