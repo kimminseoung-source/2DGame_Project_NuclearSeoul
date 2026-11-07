@@ -24,8 +24,6 @@ DEFAULT_SPEED = 100
 MIN_SPEED = 50
 MAX_SPEED = 150
 SPEED_STEP = 10
-CAMERA_LEFT_EDGE = WIDTH // 3
-CAMERA_RIGHT_EDGE = WIDTH - CAMERA_LEFT_EDGE
 
 
 class Exploration:
@@ -210,8 +208,7 @@ def update_world(game, frame_time):
 
 
 def update_camera(game):
-    player_x = round(game.player.x)
-    camera_x = max(player_x - CAMERA_RIGHT_EDGE, min(game.camera_x, player_x - CAMERA_LEFT_EDGE))
+    camera_x = round(game.player.x) - WIDTH // 2
     game.camera_x = max(0, min(camera_x, game.exploration_map.width - WIDTH))
 
 
