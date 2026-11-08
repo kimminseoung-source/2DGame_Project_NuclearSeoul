@@ -126,6 +126,11 @@ class Player:
                 start_y - dy * length * strength, shade, shade - 10, shade - 22,
             )
 
+    def portrait_clip(self):
+        """Source rectangle of the right-facing idle frame, cropped to head and torso."""
+        image = self.sprites["walk"]
+        return image, 16, image.h - 2 * FRAME_HEIGHT + 20, 46, 38
+
     def draw_frame(self, action, frame, camera_x):
         row = int(self.direction > 0)
         image = self.sprites[action]

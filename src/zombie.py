@@ -142,6 +142,10 @@ class Zombie:
             self.transition("chase")
         return None
 
+    def portrait_clip(self):
+        """Source rectangle of the idle frame, cropped to head and torso."""
+        return self.image, 20, 20, 46, 38
+
     def draw(self, camera_x, font):
         x = self.x - camera_x
         if self.state == "windup":

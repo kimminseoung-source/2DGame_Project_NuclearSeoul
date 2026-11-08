@@ -2,9 +2,11 @@
 
 import random
 from collections import deque
-from math import cos, floor, radians, sin
+from math import floor
 
 import pico2d
+
+import ui
 
 from bat import BAT_DURATION, BatSwing
 from tile_map import FLOOR_BOTTOM, FLOOR_TOP, HEIGHT, WIDTH
@@ -33,19 +35,25 @@ BADGE_TIME = 1.5
 DICE_ROLL_TIME = 0.45
 DICE_HOLD_TIME = 0.4
 BADGE_FLICKER = 0.06
-BUTTON_WIDTH = 112
-BUTTON_HEIGHT = 46
-BUTTON_GAP = 10
-# Above the heads of fighters standing on the back row.
-BAR_BOTTOM = FLOOR_TOP + 74
+# The combat hotbar replaces the exploration HUD strip at the top of the window.
+HUD_BOTTOM = HEIGHT
+HUD_TOP = HEIGHT + 64
+SLOT_SIZE = 50
+SLOT_GAP = 8
+SLOTS_LEFT = 352
+END_TURN_RECT = (650, HUD_BOTTOM + 7, 760, HUD_TOP - 7)
+CARD_WIDTH = 122
+CARD_HEIGHT = 52
+CARD_GAP = 8
+CARDS_TOP = HEIGHT - 8
 
 GRID_COLOR = (74, 92, 104)
-REACH_COLOR = (112, 168, 214)
-HOVER_COLOR = (252, 218, 143)
-PARTY_COLOR = (97, 197, 156)
-ENEMY_COLOR = (214, 92, 76)
-TARGET_COLOR = (255, 140, 92)
-TEXT_COLOR = (230, 230, 220)
+REACH_COLOR = ui.MOVE
+HOVER_COLOR = ui.ACCENT
+PARTY_COLOR = ui.PARTY
+ENEMY_COLOR = ui.ENEMY
+TARGET_COLOR = ui.DANGER
+TEXT_COLOR = ui.TEXT
 NEIGHBOURS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy]
 
 
@@ -158,20 +166,10 @@ def badge_label(result):
 
 def badge_color(result):
     if result["critical"]:
-        return (255, 214, 127)
+        return ui.CRITICAL
     if result["fumble"]:
-        return (150, 150, 150)
-    return (255, 160, 130) if result["hit"] else (181, 197, 209)
-
-
-def draw_d20(x, y, radius, face, color, font):
-    """A flat d20: hexagon outline, inner triangle and the face value."""
-    hexagon = [(x + radius * cos(radians(90 + 60 * i)), y + radius * sin(radians(90 + 60 * i)))
-               for i in range(6)]
-    for (x1, y1), (x2, y2) in zip(hexagon, hexagon[1:] + hexagon[:1]):
-        pico2d.draw_line(x1, y1, x2, y2, *color)
-    label = str(face)
-    font.draw(x - 4.5 * len(label), y, label, color)
+        return ui.DIM
+    return ui.DANGER if result["hit"] else ui.MISS
 
 
 def draw_cell(points, color, inset_x=0.06, inset_y=0.12):
@@ -238,6 +236,7 @@ class Combat:
         self.round = 1
         self.turn_index = 0
         self.hover = None
+        self.hover_screen = None
         self.moving = None
         self.attack = None
         self.wait_time = 0.0
@@ -342,27 +341,33 @@ class Combat:
         ]
 
     def button_rects(self):
-        if self.selected is None:
+        """Clickable hotbar slots in the top HUD strip, plus the end-turn button."""
+        if not self.is_player_turn():
             return []
-        entries = self.actions()
-        left = WIDTH // 2 - (len(entries) * (BUTTON_WIDTH + BUTTON_GAP) - BUTTON_GAP) / 2
-        return [
-            (entry, (left + i * (BUTTON_WIDTH + BUTTON_GAP), BAR_BOTTOM,
-                     left + i * (BUTTON_WIDTH + BUTTON_GAP) + BUTTON_WIDTH, BAR_BOTTOM + BUTTON_HEIGHT))
-            for i, entry in enumerate(entries)
-        ]
+        rects = []
+        if self.selected is not None:
+            for index, entry in enumerate(e for e in self.actions() if e[0] != "end"):
+                left = SLOTS_LEFT + index * (SLOT_SIZE + SLOT_GAP)
+                rects.append((entry, (left, HUD_BOTTOM + 7, left + SLOT_SIZE, HUD_BOTTOM + 7 + SLOT_SIZE)))
+        end_entry = next(e for e in self.actions() if e[0] == "end") if self.selected else ("end", "턴 종료", "Space", True)
+        rects.append((end_entry, END_TURN_RECT))
+        return rects
 
     def attack_targets(self, fighter):
         return [f for f in self.living("enemy" if fighter.team == "party" else "party")
                 if chebyshev(f.cell, fighter.cell) <= 1]
 
     def choose_action(self, kind):
-        if not self.is_player_turn() or self.selected is None:
+        if not self.is_player_turn():
             return
-        entry = next(e for e in self.actions() if e[0] == kind)
         if kind == "end":
             self.end_turn()
-        elif not entry[3]:
+            return
+        if self.selected is None:
+            self.log = "먼저 내 캐릭터를 클릭해 선택하세요."
+            return
+        entry = next(e for e in self.actions() if e[0] == kind)
+        if not entry[3]:
             if kind == "move":
                 self.log = "남은 이동 칸이 없습니다."
             elif not self.selected.action:
@@ -662,42 +667,30 @@ class Combat:
             return self.attack.get("swing")
         return None
 
-    def draw_badges(self, font):
-        """Small d20 badges over attackers: rolling during the wind-up, then the result."""
+    def draw_badges(self):
+        """Small d20 badges over attackers: rolling first, then the landed result."""
         attack = self.attack
-        if attack is not None and attack["phase"] == "dice" and not attack["landed"]:
+        if attack is not None and attack.get("phase") == "dice" and not attack["landed"]:
             tick = int(attack["dice_time"] / BADGE_FLICKER)
             if attack.get("tick") != tick:
                 attack["tick"] = tick
                 attack["face"] = self.dice_visual.randint(1, 20)
             target = attack["target"]
-            self.draw_badge(font, attack["attacker"].unit, attack["face"],
-                            f"+{attack['attacker'].attack_bonus} vs {target.armor_class}", TEXT_COLOR)
+            self.draw_badge(attack["attacker"].unit, attack["face"],
+                            f"+{attack['attacker'].attack_bonus} vs 방어 {target.armor_class}", ui.TEXT)
         for badge in self.badges:
-            self.draw_badge(font, badge["unit"], badge["face"], badge["text"], badge["color"])
+            self.draw_badge(badge["unit"], badge["face"], badge["text"], badge["color"])
 
-    def draw_badge(self, font, unit, face, text, color):
+    def draw_badge(self, unit, face, text, color):
         x = unit.x - self.grid.camera_x
-        y = unit.y + 74
-        text_width = sum(15 if ord(ch) > 127 else 8.5 for ch in text)
+        y = unit.y + 76
         icon = 30 if face is not None else 0
-        width = icon + text_width + 14
+        width = icon + ui.text_width(text, 14) + 16
         left, right = x - width / 2, x + width / 2
-        pico2d.draw_rectangle(left, y - 15, right, y + 15, 15, 23, 31, filled=True)
-        pico2d.draw_rectangle(left, y - 15, right, y + 15, *color)
+        ui.panel(left, y - 15, right, y + 15, color)
         if face is not None:
-            draw_d20(left + 18, y, 13, face, color, font)
-        font.draw(left + icon + 7, y, text, color)
-
-    def status_text(self):
-        fighter = self.current
-        if fighter.team != "party" or self.outcome is not None:
-            return self.log
-        action = "행동 1" if fighter.action else "행동 0"
-        bonus = "보조 1" if fighter.bonus_action else "보조 0"
-        reaction = "반응 1" if fighter.reaction else "반응 0"
-        return (f"{self.round}R · 이동 {fighter.moves_left}/{fighter.move_cells} · {action} · {bonus}"
-                f" · {reaction} · Space 턴 종료")
+            ui.d20_icon(left + 17, y, 12, face, color, 14)
+        ui.text(left + icon + 8, y, text, color, 14)
 
     def hovered_target(self):
         target = self.fighter_at(self.hover)
@@ -709,7 +702,9 @@ class Combat:
         corners = self.grid.corners(*cell)
         draw_cell([(x - self.grid.camera_x, y) for x, y in corners], color, 0.0, 0.0)
 
-    def draw(self, font):
+    # Board layer (under the units) ----------------------------------------
+
+    def draw(self):
         highlights = {}
         player_turn = self.is_player_turn()
         if player_turn and self.mode == "move":
@@ -729,89 +724,179 @@ class Combat:
                 self.outline(self.selected.cell, HOVER_COLOR)
             elif self.hover == self.current.cell:
                 self.outline(self.current.cell, (200, 230, 210))
-        self.draw_turn_order(font)
-        if self.banner_time:
-            text = "기습! 전투 시작" if self.surprise else "발각! 전투 시작"
-            font.draw(WIDTH // 2 - 60, FLOOR_TOP + 150, text, (252, 218, 143))
+            if self.mode == "move":
+                self.draw_move_path()
 
-    def draw_overlay(self, font):
-        """Health bars, attack preview and roll popups drawn above the units."""
+    def draw_move_path(self):
+        path = self.reachable(self.current).get(self.hover)
+        if not path:
+            return
+        danger = self.path_provokes(self.current, path)
+        color = ui.DANGER if danger else ui.ACCENT
+        points = [self.grid.cell_center(*cell) for cell in [self.current.cell] + path]
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            pico2d.draw_line(x1 - self.grid.camera_x, y1, x2 - self.grid.camera_x, y2, *color)
+        for x, y in points[1:-1]:
+            pico2d.draw_circle(x - self.grid.camera_x, y, 2, *color, filled=True)
+
+    # Overlay layer (above the units) --------------------------------------
+
+    def draw_overlay(self):
         for fighter in self.fighters:
             if fighter.alive:
-                self.draw_health(fighter, font)
+                self.draw_health(fighter)
+        self.draw_turn_order()
         if self.is_player_turn():
-            if self.selected is not None:
-                self.draw_action_bar(font)
             target = self.hovered_target()
             if target is not None:
-                self.draw_attack_preview(self.current, target, font)
+                self.draw_target_panel(self.current, target)
             elif self.mode == "move":
-                path = self.reachable(self.current).get(self.hover)
-                if path and self.path_provokes(self.current, path):
-                    x, y = self.grid.cell_center(*self.hover)
-                    font.draw(x - self.grid.camera_x - 52, y + 30, "기회 공격 위험!", (255, 160, 130))
+                self.draw_move_label()
         for text, x, y, time_left, color in self.popups:
             rise = (POPUP_TIME - time_left) * 22
-            font.draw(x - self.grid.camera_x - 40, y + rise, text, color)
-        self.draw_badges(font)
+            ui.text_center(x - self.grid.camera_x, y + rise, text, color)
+        self.draw_badges()
+        if self.log:
+            y = CARDS_TOP - CARD_HEIGHT - 24
+            width = ui.text_width(self.log, 14) + 20
+            ui.panel(WIDTH / 2 - width / 2, y - 11, WIDTH / 2 + width / 2, y + 11, ui.BORDER, ui.PANEL, 170)
+            ui.text_center(WIDTH / 2, y, self.log, ui.TEXT, 14)
+        if self.banner_time:
+            label = "기습! 전투 시작" if self.surprise else "발각! 전투 시작"
+            width = ui.text_width(label, 20) + 48
+            ui.panel(WIDTH / 2 - width / 2, 300, WIDTH / 2 + width / 2, 340, ui.ACCENT)
+            ui.text_center(WIDTH / 2, 320, label, ui.ACCENT, 20)
 
-    def draw_action_bar(self, font):
-        for (kind, label, cost, enabled), (left, bottom, right, top) in self.button_rects():
-            chosen = kind == self.mode
-            fill = (52, 70, 82) if chosen else (15, 23, 31)
-            border = HOVER_COLOR if chosen else ((135, 170, 157) if enabled else (70, 78, 84))
-            text = TEXT_COLOR if enabled else (110, 116, 120)
-            pico2d.draw_rectangle(left, bottom, right, top, *fill, filled=True)
-            pico2d.draw_rectangle(left, bottom, right, top, *border)
-            number = {"move": "1", "attack": "2", "end": ""}[kind]
-            font.draw(left + 8, bottom + 32, f"{number} {label}".strip(), text)
-            font.draw(left + 8, bottom + 12, cost, (150, 165, 175) if enabled else (90, 96, 100))
+    def draw_move_label(self):
+        path = self.reachable(self.current).get(self.hover)
+        if not path:
+            return
+        x, y = self.grid.cell_center(*self.hover)
+        x -= self.grid.camera_x
+        danger = self.path_provokes(self.current, path)
+        label = f"{len(path)}칸" + (" · 기회 공격 위험" if danger else "")
+        color = ui.DANGER if danger else ui.ACCENT
+        width = ui.text_width(label, 14) + 14
+        ui.panel(x - width / 2, y + 22, x + width / 2, y + 42, color)
+        ui.text_center(x, y + 32, label, color, 14)
 
-    def draw_health(self, fighter, font):
+    def draw_health(self, fighter):
         x = fighter.unit.x - self.grid.camera_x
         y = fighter.unit.y + 52
-        width = 36
-        ratio = fighter.hp / fighter.max_hp
         color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
-        pico2d.draw_rectangle(x - width / 2, y, x + width / 2, y + 4, 15, 23, 31, filled=True)
-        if ratio:
-            pico2d.draw_rectangle(x - width / 2, y, x - width / 2 + width * ratio, y + 4, *color, filled=True)
+        ui.bar(x - 18, y, 36, 4, fighter.hp / fighter.max_hp, color)
 
-    def draw_attack_preview(self, attacker, target, font):
+    def draw_target_panel(self, attacker, target):
+        """BG3-style target card: name, health, armour and the attack preview."""
         x = target.unit.x - self.grid.camera_x
-        y = target.unit.y + 72
-        lines = [f"{target.name} 체력 {target.hp}/{target.max_hp}"]
+        width, height = 200, 92
+        left = max(8, min(WIDTH - width - 8, x - width / 2))
+        bottom = target.unit.y + 92
+        ui.panel(left, bottom, left + width, bottom + height, ENEMY_COLOR)
+        ui.text(left + 10, bottom + height - 14, target.name, ENEMY_COLOR)
+        ui.text(left + width - 62, bottom + height - 14, f"방어 {target.armor_class}", ui.MUTED, 14)
+        ui.bar(left + 10, bottom + height - 34, width - 20, 8, target.hp / target.max_hp, ENEMY_COLOR)
+        ui.text(left + 10, bottom + height - 46, f"체력 {target.hp}/{target.max_hp}", ui.MUTED, 14)
         if self.mode != "attack":
-            lines.append("공격하려면 행동 막대에서 2 공격")
+            ui.text(left + 10, bottom + 16, "2 공격을 고르면 명중 확률 표시", ui.DIM, 14)
         elif not attacker.action:
-            lines.append("행동을 이미 썼습니다")
+            ui.text(left + 10, bottom + 16, "이번 턴 행동을 이미 썼습니다", ui.DIM, 14)
         elif chebyshev(attacker.cell, target.cell) > 1:
-            lines.append("근접 공격 · 너무 멂")
+            ui.text(left + 10, bottom + 16, "근접 공격 · 너무 멉니다", ui.DIM, 14)
         else:
             chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
-            lines += [f"공격 명중 {chance}%", f"피해 {attacker.damage_text()} · 방어 {target.armor_class}"]
-        width = 236
-        height = 18 * len(lines) + 8
-        pico2d.draw_rectangle(x - width / 2, y, x + width / 2, y + height, 15, 23, 31, filled=True)
-        pico2d.draw_rectangle(x - width / 2, y, x + width / 2, y + height, *TARGET_COLOR)
-        for index, line in enumerate(lines):
-            font.draw(x - width / 2 + 8, y + height - 13 - 18 * index, line, TEXT_COLOR)
+            ui.action_icon(left + 18, bottom + 18, 6, True)
+            ui.text(left + 30, bottom + 18, f"명중 {chance}%", ui.ACCENT, 20)
+            ui.text(left + 120, bottom + 18, attacker.damage_text(), ui.TEXT, 14)
 
-    def draw_turn_order(self, font):
-        width, height, gap = 132, 30, 8
-        left = WIDTH // 2 - (len(self.order) * (width + gap) - gap) // 2
-        top = HEIGHT - 12
+    def draw_turn_order(self):
+        count = len(self.order)
+        total = count * CARD_WIDTH + (count - 1) * CARD_GAP
+        left = WIDTH / 2 - total / 2
+        ui.text(left - 44, CARDS_TOP - CARD_HEIGHT / 2, f"{self.round}R", ui.MUTED, 20)
         for index, fighter in enumerate(self.order):
-            x = left + index * (width + gap)
-            current = index == self.turn_index
-            fill = (38, 52, 62) if current else (15, 23, 31)
-            border = HOVER_COLOR if current else (PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR)
-            pico2d.draw_rectangle(x, top - height, x + width, top, *fill, filled=True)
-            pico2d.draw_rectangle(x, top - height, x + width, top, *border)
-            label = f"{fighter.name} {fighter.initiative}"
+            current = index == self.turn_index and self.outcome is None
+            x = left + index * (CARD_WIDTH + CARD_GAP)
+            top = CARDS_TOP + (4 if current else 0)
+            bottom = top - CARD_HEIGHT
+            team_color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
+            border = ui.ACCENT if current else (team_color if fighter.alive else ui.DIM)
+            ui.panel(x, bottom, x + CARD_WIDTH, top, border, ui.PANEL_RAISED if current else ui.PANEL)
+            self.draw_portrait(fighter, x + 4, bottom + 4, 40, CARD_HEIGHT - 8, team_color)
+            name_color = ui.TEXT if fighter.alive else ui.DIM
+            ui.text(x + 50, top - 13, fighter.name, name_color, 14)
             if not fighter.alive:
-                label += " 쓰러짐"
+                status, status_color = "쓰러짐", ui.DIM
             elif fighter.surprised:
-                label += " 기습"
-            font.draw(x + 8, top - height / 2, label, TEXT_COLOR if fighter.alive else (120, 120, 120))
-        font.draw(left, top - height - 16, f"{self.round}라운드 · 선공 1d4 + 민첩", (181, 197, 209))
+                status, status_color = "기습당함", ui.DANGER
+            else:
+                status, status_color = f"선공 {fighter.initiative}", ui.MUTED
+            ui.text(x + 50, top - 29, status, status_color, 13)
+            ui.bar(x + 50, bottom + 7, CARD_WIDTH - 58, 5, fighter.hp / fighter.max_hp, team_color)
+
+    def draw_portrait(self, fighter, left, bottom, width, height, color):
+        pico2d.draw_rectangle(left, bottom, left + width, bottom + height, 24, 32, 40, filled=True)
+        pico2d.draw_rectangle(left, bottom, left + width, bottom + height, *color)
+        clip = getattr(fighter.unit, "portrait_clip", None)
+        if clip is None:
+            return
+        image, sx, sy, sw, sh = clip()
+        scale = min((width - 4) / sw, (height - 4) / sh)
+        image.clip_draw(sx, sy, sw, sh, left + width / 2, bottom + height / 2, sw * scale, sh * scale)
+        if not fighter.alive:
+            pico2d.draw_rectangle(left, bottom, left + width, bottom + height, 0, 0, 0, 150, filled=True)
+
+    # Top HUD strip ----------------------------------------------------------
+
+    def draw_hud(self):
+        ui.panel(0, HUD_BOTTOM, WIDTH - 1, HUD_TOP - 1, ui.BORDER, ui.PANEL, 255)
+        fighter = self.current
+        team_color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
+        self.draw_portrait(fighter, 8, HUD_BOTTOM + 7, 44, 50, team_color)
+        ui.text(60, HUD_TOP - 15, f"{fighter.name}의 턴", team_color)
+        ui.bar(60, HUD_BOTTOM + 26, 130, 7, fighter.hp / fighter.max_hp, team_color)
+        ui.text(60, HUD_BOTTOM + 13, f"체력 {fighter.hp}/{fighter.max_hp}", ui.MUTED, 13)
+        self.draw_resources(fighter, 206)
+        if fighter.team != "party" or self.outcome is not None:
+            ui.text(SLOTS_LEFT, HUD_BOTTOM + 32, self.log, ui.MUTED, 14)
+            return
+        if self.selected is None and self.is_player_turn():
+            ui.text(SLOTS_LEFT, HUD_BOTTOM + 32, "캐릭터를 클릭해 선택하세요", ui.ACCENT, 14)
+        self.draw_hotbar()
+
+    def draw_resources(self, fighter, left):
+        y = HUD_BOTTOM + 42
+        ui.action_icon(left + 10, y, 8, bool(fighter.action))
+        ui.bonus_icon(left + 36, y, 10, bool(fighter.bonus_action))
+        ui.reaction_icon(left + 62, y, 10, bool(fighter.reaction))
+        ui.text(left, HUD_BOTTOM + 22, f"이동 {fighter.moves_left}/{fighter.move_cells}칸", ui.MUTED, 13)
+        ui.bar(left, HUD_BOTTOM + 8, 120, 5, fighter.moves_left / max(1, fighter.move_cells), ui.MOVE)
+
+    def draw_hotbar(self):
+        mouse = self.hover_screen
+        for (kind, label, cost, enabled), (left, bottom, right, top) in self.button_rects():
+            chosen = kind == self.mode
+            hovered = mouse is not None and left <= mouse[0] <= right and bottom <= mouse[1] <= top
+            if kind == "end":
+                border = ui.ACCENT if hovered else ui.BORDER_LIGHT
+                ui.panel(left, bottom, right, top, border, ui.PANEL_RAISED, 255)
+                ui.text_center((left + right) / 2, top - 17, "턴 종료", ui.TEXT)
+                ui.text_center((left + right) / 2, bottom + 11, "Space", ui.MUTED, 13)
+                continue
+            if chosen:
+                border, fill = ui.ACCENT, (52, 70, 82)
+            elif enabled:
+                border, fill = (ui.ACCENT if hovered else ui.BORDER_LIGHT), ui.PANEL_RAISED
+            else:
+                border, fill = ui.DIM, ui.PANEL
+            ui.panel(left, bottom, right, top, border, fill, 255)
+            color = ui.TEXT if enabled else ui.DIM
+            number = {"move": "1", "attack": "2"}[kind]
+            ui.text(left + 4, top - 9, number, ui.MUTED if enabled else ui.DIM, 12)
+            ui.text_center((left + right) / 2, bottom + 22, label, color)
+            if kind == "move":
+                ui.bar(left + 8, bottom + 6, SLOT_SIZE - 16, 4,
+                       self.selected.moves_left / max(1, self.selected.move_cells),
+                       ui.MOVE if enabled else ui.DIM)
+            else:
+                ui.action_icon(right - 9, top - 9, 5, enabled)

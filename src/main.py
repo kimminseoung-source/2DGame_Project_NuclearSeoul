@@ -12,6 +12,7 @@ from pico2d import pico2d as canvas
 from bat import (
     BAT_DURATION, BAT_HITSTOP, BAT_IMPACT_TIME, CRATE_POSITION, BatSwing, draw_crate, draw_impact,
 )
+import ui
 from combat import Combat, Fighter
 from inventory import COLUMNS, SPARE_FILTER, Inventory, draw_inventory
 from item_ui import draw_filter_icon, draw_filter_slot
@@ -102,19 +103,15 @@ def render_world(game, font):
     finished, message = game.finished, game.message
     draw_ground_objects(game, font)
     if game.combat is not None:
-        game.combat.draw_overlay(font)
+        game.combat.draw_overlay()
+        game.combat.draw_hud()
+        pico2d.update_canvas()
+        return
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    if game.combat is not None:
-        hint = game.combat.status_text()
-        message = game.combat.log if game.combat.current.team == "party" else ""
-    else:
-        hint = "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격·기습  Space 대시  Tab 배낭  F1"
+    hint = "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격·기습  Space 대시  Tab 배낭  F1"
     font.draw(16, HEIGHT + 44, hint, (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
-    health = game.health
-    if game.combat is not None:
-        health = next(f.hp for f in game.combat.fighters if f.unit is game.player)
-    font.draw(500, HEIGHT + 18, f"체력 {health}/{MAX_HEALTH}", (238, 169, 149))
+    font.draw(500, HEIGHT + 18, f"체력 {game.health}/{MAX_HEALTH}", (238, 169, 149))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
         draw_settings(game, font)
@@ -125,7 +122,7 @@ def render_world(game, font):
 
 def draw_ground_objects(game, font):
     if game.combat is not None:
-        game.combat.draw(font)
+        game.combat.draw()
     objects = [(game.player.y, lambda: draw_player(game))]
     if not game.in_shelter:
         crate_x = CRATE_POSITION[0] - game.camera_x
@@ -241,6 +238,7 @@ def handle_events(game):
             game.aim_x = event.x
             if game.combat is not None:
                 game.combat.hover = game.combat.grid.cell_at(event.x, SCREEN_HEIGHT - 1 - event.y)
+                game.combat.hover_screen = event.x, SCREEN_HEIGHT - 1 - event.y
         if (event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT
                 and game.combat is not None):
             game.combat.right_click()
@@ -482,6 +480,7 @@ def enlarge_window():
 def main():
     pico2d.open_canvas(WIDTH, HEIGHT + 64, sync=True)
     try:
+        ui.enable_blending()
         enlarge_window()
         game = Exploration()
         mouse_x, window_width = c_int(), c_int()
