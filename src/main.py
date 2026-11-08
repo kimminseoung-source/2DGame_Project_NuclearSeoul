@@ -151,8 +151,11 @@ def draw_ground_objects(game, font):
     if game.combat is not None:
         game.combat.draw()
     objects = [(game.player.y, lambda: draw_player(game))]
-    if game.zombie is not None:
+    # The wreck belongs to the map (it also blocks movement), not to the infected,
+    # so it must stay visible after the infected is defeated.
+    if game.tile_map.has_wreck:
         objects.append((WRECK_Y, lambda: draw_wreck(game)))
+    if game.zombie is not None:
         objects.append((game.zombie.y, lambda: game.zombie.draw(game.camera_x, font)))
     if not game.has_filter:
         objects.append((game.supply[1], lambda: draw_supply(game, font)))
