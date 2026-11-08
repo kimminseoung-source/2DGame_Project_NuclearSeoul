@@ -10,7 +10,7 @@ import sdl2
 from pico2d import pico2d as canvas
 
 from bat import (
-    BAT_DURATION, BAT_HITSTOP, BAT_IMPACT_TIME, CRATE_POSITION, BatSwing, draw_crate, draw_impact,
+    BAT_DURATION, BAT_HITSTOP, BAT_IMPACT_TIME, BatSwing, draw_impact,
 )
 import ui
 from combat import Combat, Fighter
@@ -151,10 +151,6 @@ def draw_ground_objects(game, font):
     if game.combat is not None:
         game.combat.draw()
     objects = [(game.player.y, lambda: draw_player(game))]
-    if not game.in_shelter:
-        crate_x = CRATE_POSITION[0] - game.camera_x
-        if -16 < crate_x < WIDTH + 16:
-            objects.append((CRATE_POSITION[1], lambda: draw_crate(crate_x, CRATE_POSITION[1], game.crate_broken)))
     if game.zombie is not None:
         objects.append((WRECK_Y, lambda: draw_wreck(game)))
         objects.append((game.zombie.y, lambda: game.zombie.draw(game.camera_x, font)))
@@ -215,10 +211,9 @@ def enter_area(game, in_shelter):
     game.has_filter = False
     game.pickup_time = None
     game.bat_swing = None
-    game.crate_broken = False
     game.bat_hitstop = 0.0
     game.bat_impact_time = 0.0
-    game.bat_impact_point = CRATE_POSITION
+    game.bat_impact_point = (0, 0)
     game.zombie = None
     game.combat = None
     game.camera_x = 0
@@ -450,10 +445,6 @@ def resolve_bat_contact(game, swing):
         if zombie.knock_back(swing.dx):
             show_bat_impact(game, position)
             game.message = "감염자를 밀어냈습니다."
-    elif not game.crate_broken and swing.hits(game.player, CRATE_POSITION):
-        game.crate_broken = True
-        show_bat_impact(game, CRATE_POSITION)
-        game.message = "나무 상자를 부쉈습니다."
 
 
 def show_bat_impact(game, position):

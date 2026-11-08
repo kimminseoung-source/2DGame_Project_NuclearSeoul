@@ -1,4 +1,4 @@
-"""Baseball bat timing, hit detection and test crate rendering."""
+"""Baseball bat timing, hit detection and impact effect."""
 
 from math import cos, hypot, pi
 
@@ -15,7 +15,6 @@ BAT_PLAYBACK_RATE = 0.7
 BAT_REACH = 40
 BAT_DEPTH_REACH = 20
 BAT_ARC = pi / 4
-CRATE_POSITION = (432, 86)
 # Offsets from the player to the right-facing bat tip and its trail.
 SWING_TRAIL = {
     2: ((27, 16), (31, 18), (32, 22), (30, 27)),
@@ -68,16 +67,6 @@ class BatSwing:
             pico2d.draw_line(start_x, y + y1, end_x, y + y2, 248 - 42 * index, 48, 50)
             if index < 2:
                 pico2d.draw_line(start_x, y + y1 - 1, end_x, y + y2 - 1, 150, 29, 37)
-
-
-def draw_crate(x, y, broken):
-    if broken:
-        pico2d.draw_line(x - 12, y - 4, x - 3, y + 4, 153, 103, 57)
-        pico2d.draw_line(x + 1, y - 6, x + 12, y + 1, 153, 103, 57)
-        return
-    pico2d.draw_rectangle(x - 12, y - 10, x + 12, y + 10, 112, 73, 44, filled=True)
-    pico2d.draw_rectangle(x - 11, y - 9, x + 11, y + 9, 208, 155, 95)
-    pico2d.draw_line(x - 10, y - 8, x + 10, y + 8, 173, 120, 69)
 
 
 def draw_impact(x, y, time_left):
