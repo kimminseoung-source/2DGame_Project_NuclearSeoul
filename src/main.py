@@ -26,7 +26,7 @@ PICKUP_CROUCH = 0.12
 PICKUP_CONTACT = 0.28
 PICKUP_STAND = 0.46
 PICKUP_DURATION = 0.58
-MAX_HEALTH = 3
+MAX_HEALTH = 12
 DEFAULT_SPEED = 100
 MIN_SPEED = 50
 MAX_SPEED = 150
@@ -34,10 +34,14 @@ SPEED_STEP = 10
 SURPRISE_RANGE = 96
 SCREEN_HEIGHT = HEIGHT + 64
 # Draft combat stats until characters get full stat sheets.
-PLAYER_DEXTERITY = 2
-PLAYER_MOVE_CELLS = 5
-ZOMBIE_DEXTERITY = 0
-ZOMBIE_MOVE_CELLS = 4
+PLAYER_STATS = dict(
+    dexterity=2, move_cells=5, max_hp=MAX_HEALTH, armor_class=12,
+    attack_bonus=4, damage_dice=(1, 6), damage_bonus=2,
+)
+ZOMBIE_STATS = dict(
+    dexterity=0, move_cells=4, max_hp=9, armor_class=10,
+    attack_bonus=3, damage_dice=(1, 6), damage_bonus=0,
+)
 
 
 class Exploration:
@@ -97,6 +101,8 @@ def render_world(game, font):
     game.tile_map.draw(game.camera_x)
     finished, message = game.finished, game.message
     draw_ground_objects(game, font)
+    if game.combat is not None:
+        game.combat.draw_overlay(font)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     if game.combat is not None:
         hint = game.combat.status_text()
@@ -105,7 +111,10 @@ def render_world(game, font):
         hint = "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격·기습  Space 대시  Tab 배낭  F1"
     font.draw(16, HEIGHT + 44, hint, (181, 197, 209))
     font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
-    font.draw(500, HEIGHT + 18, f"체력 {game.health}/{MAX_HEALTH}", (238, 169, 149))
+    health = game.health
+    if game.combat is not None:
+        health = next(f.hp for f in game.combat.fighters if f.unit is game.player)
+    font.draw(500, HEIGHT + 18, f"체력 {health}/{MAX_HEALTH}", (238, 169, 149))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
         draw_settings(game, font)
@@ -164,7 +173,11 @@ def draw_supply(game, font):
 
 def draw_player(game):
     player = game.player
-    if game.bat_swing is not None:
+    combat_swing = game.combat.swing_for(player) if game.combat is not None else None
+    if combat_swing is not None:
+        player.draw_frame("action", combat_swing.frame, game.camera_x)
+        combat_swing.draw_trail(player, game.camera_x)
+    elif game.bat_swing is not None:
         player.draw_frame("action", game.bat_swing.frame, game.camera_x)
         game.bat_swing.draw_trail(player, game.camera_x)
     elif game.pickup_time is not None and PICKUP_CROUCH <= game.pickup_time < PICKUP_STAND:
@@ -245,9 +258,7 @@ def handle_events(game):
         if game.combat is not None:
             if event.key == sdl2.SDLK_ESCAPE:
                 return False
-            if event.key == sdl2.SDLK_RETURN:
-                end_combat(game)
-            elif event.key == sdl2.SDLK_SPACE and game.combat.is_player_turn():
+            if event.key == sdl2.SDLK_SPACE and game.combat.is_player_turn():
                 game.combat.end_turn()
             continue
         if game.inventory_open:
@@ -316,8 +327,8 @@ def start_combat(game, surprise):
     zombie.transition("idle")
     zombie.walk_time = 0.0
     fighters = [
-        Fighter(player, "주인공", "party", PLAYER_DEXTERITY, PLAYER_MOVE_CELLS),
-        Fighter(zombie, "피폭체", "enemy", ZOMBIE_DEXTERITY, ZOMBIE_MOVE_CELLS),
+        Fighter(player, "주인공", "party", hp=game.health, **PLAYER_STATS),
+        Fighter(zombie, "피폭체", "enemy", **ZOMBIE_STATS),
     ]
     player.direction = 1 if zombie.x > player.x else -1
     zombie.direction = -player.direction
@@ -326,17 +337,38 @@ def start_combat(game, surprise):
 
 
 def end_combat(game):
-    # Temporary until turns and win conditions exist: treat the fight as won.
+    combat = game.combat
+    player_fighter = next(f for f in combat.fighters if f.unit is game.player)
+    game.health = player_fighter.hp
     game.combat = None
-    game.zombie = None
-    game.message = "전투가 끝났습니다. 출구로 이동하세요."
+    game.player.walk_time = 0.0
+    if combat.outcome == "defeat":
+        game.finished = True
+        game.message = "쓰러졌습니다. R로 다시 시작"
+    else:
+        game.zombie = None
+        game.message = "전투에서 이겼습니다. 출구로 이동하세요."
+
+
+def update_combat(game, frame_time):
+    combat = game.combat
+    combat.update(min(frame_time, 0.05))
+    for kind, x, y in combat.effects:
+        if kind == "impact":
+            game.bat_impact_time = BAT_IMPACT_TIME
+            game.bat_impact_point = x, y
+            game.bat_impact_sound.play()
+    combat.effects.clear()
+    if combat.finished():
+        end_combat(game)
 
 
 def update_world(game, frame_time):
     if game.settings_open or game.inventory_open:
         return
     if game.combat is not None:
-        game.combat.update(frame_time)
+        game.bat_impact_time = max(0.0, game.bat_impact_time - frame_time)
+        update_combat(game, frame_time)
         return
     game.bat_impact_time = max(0.0, game.bat_impact_time - frame_time)
     frozen_time = min(game.bat_hitstop, frame_time)
