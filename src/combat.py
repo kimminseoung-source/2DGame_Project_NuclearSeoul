@@ -49,10 +49,6 @@ SLOTS_LEFT = 176
 SLOTS_BOTTOM = 8
 END_TURN_CENTER = (708, 52)
 END_TURN_RADIUS = 40
-CARD_WIDTH = 122
-CARD_HEIGHT = 52
-CARD_GAP = 8
-CARDS_TOP = HEIGHT - 8
 
 GRID_COLOR = (74, 92, 104)
 REACH_COLOR = ui.MOVE
@@ -782,11 +778,15 @@ class Combat:
         for fighter in self.fighters:
             if fighter.alive:
                 self.draw_health(fighter)
-        self.draw_turn_order()
+        self.draw_party_column()
+        target = self.hovered_target() if self.is_player_turn() else None
+        if target is None and self.attack is not None:
+            target = self.attack["target"]
+        if target is not None:
+            self.draw_target_header(target)
         if self.is_player_turn():
-            target = self.hovered_target()
-            if target is not None:
-                self.draw_target_panel(self.current, target)
+            if target is not None and self.hovered_target() is not None:
+                self.draw_hit_chip(self.current, target)
             elif self.mode == "move":
                 self.draw_move_label()
         for text, x, y, time_left, color in self.popups:
@@ -821,54 +821,68 @@ class Combat:
         color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
         ui.bar(x - 18, y, 36, 4, fighter.hp / fighter.max_hp, color)
 
-    def draw_target_panel(self, attacker, target):
-        """BG3-style target card: name, health, armour and the attack preview."""
-        x = target.unit.x - self.grid.camera_x
-        width, height = 200, 92
-        left = max(8, min(WIDTH - width - 8, x - width / 2))
-        bottom = target.unit.y + 92
-        ui.panel(left, bottom, left + width, bottom + height, ENEMY_COLOR)
-        ui.text(left + 10, bottom + height - 14, target.name, ENEMY_COLOR)
-        ui.text(left + width - 62, bottom + height - 14, f"방어 {target.armor_class}", ui.MUTED, 14)
-        ui.bar(left + 10, bottom + height - 34, width - 20, 8, target.hp / target.max_hp, ENEMY_COLOR)
-        ui.text(left + 10, bottom + height - 46, f"체력 {target.hp}/{target.max_hp}", ui.MUTED, 14)
+    def draw_target_header(self, target):
+        """BG3-style target readout under the turn order: name, big health bar, status."""
+        color = ENEMY_COLOR if target.team == "enemy" else PARTY_COLOR
+        center, top = WIDTH / 2, HUD_BOTTOM - 10
+        ui.panel(center - 170, top - 74, center + 170, top + 6, (120, 98, 60), ui.PANEL, 200)
+        ui.text_center(center, top - 8, target.name, color, 18)
+        ui.text_center(center, top - 26, f"방어 {target.armor_class}", ui.MUTED, 13)
+        width = 300
+        left = center - width / 2
+        ui.panel(left - 2, top - 48, left + width + 2, top - 34, (120, 98, 60), ui.PANEL, 230)
+        ui.bar(left, top - 46, width, 10, target.hp / target.max_hp, color, (40, 26, 28))
+        ui.text_center(center, top - 41, f"{target.hp}/{target.max_hp}", ui.TEXT, 12)
+        statuses = []
+        if target.surprised:
+            statuses.append(("기습당함", ui.DANGER))
+        if target.team == "enemy" and target.alive:
+            statuses.append(("적대적", ENEMY_COLOR))
+        if not target.alive:
+            statuses.append(("쓰러짐", ui.DIM))
+        x = center - sum(ui.text_width(s, 13) + 26 for s, _ in statuses) / 2
+        for label, chip_color in statuses:
+            chip = ui.text_width(label, 13) + 18
+            pico2d.draw_circle(x + 6, top - 62, 5, *chip_color, filled=True)
+            ui.text(x + 15, top - 62, label, ui.MUTED, 13)
+            x += chip + 8
+
+    def draw_hit_chip(self, attacker, target):
+        """Hit chance next to the hovered enemy, like BG3's cursor readout."""
+        x = target.unit.x - self.grid.camera_x + 26
+        y = target.unit.y + 34
         if self.mode != "attack":
-            ui.text(left + 10, bottom + 16, "2 공격을 고르면 명중 확률 표시", ui.DIM, 14)
+            lines = [("2 공격을 고르면 명중 확률 표시", ui.MUTED)]
         elif not attacker.action:
-            ui.text(left + 10, bottom + 16, "이번 턴 행동을 이미 썼습니다", ui.DIM, 14)
+            lines = [("자원이 충분하지 않음: 행동", ui.DANGER)]
         elif chebyshev(attacker.cell, target.cell) > 1:
-            ui.text(left + 10, bottom + 16, "근접 공격 · 너무 멉니다", ui.DIM, 14)
+            lines = [("너무 멂 · 옆 칸으로 다가가세요", ui.DANGER)]
         else:
             chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
-            ui.action_icon(left + 18, bottom + 18, 6, True)
-            ui.text(left + 30, bottom + 18, f"명중 {chance}%", ui.ACCENT, 20)
             low, high = attacker.damage_range()
-            ui.text(left + 120, bottom + 18, f"피해 {low}~{high}", ui.TEXT, 14)
+            lines = [(f"명중 {chance}%", ui.ACCENT), (f"피해 {low}~{high}", ui.TEXT)]
+        width = max(ui.text_width(t, 14) for t, _ in lines) + 16
+        height = 18 * len(lines) + 8
+        x = min(x, WIDTH - width - 4)
+        ui.panel(x, y, x + width, y + height, ui.BORDER_LIGHT, ui.PANEL, 235)
+        for index, (line, color) in enumerate(lines):
+            ui.text(x + 8, y + height - 13 - 18 * index, line, color, 14)
 
-    def draw_turn_order(self):
-        count = len(self.order)
-        total = count * CARD_WIDTH + (count - 1) * CARD_GAP
-        left = WIDTH / 2 - total / 2
-        ui.text(left - 44, CARDS_TOP - CARD_HEIGHT / 2, f"{self.round}R", ui.MUTED, 20)
-        for index, fighter in enumerate(self.order):
-            current = index == self.turn_index and self.outcome is None
-            x = left + index * (CARD_WIDTH + CARD_GAP)
-            top = CARDS_TOP + (4 if current else 0)
-            bottom = top - CARD_HEIGHT
-            team_color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
-            border = ui.ACCENT if current else (team_color if fighter.alive else ui.DIM)
-            ui.panel(x, bottom, x + CARD_WIDTH, top, border, ui.PANEL_RAISED if current else ui.PANEL)
-            self.draw_portrait(fighter, x + 4, bottom + 4, 40, CARD_HEIGHT - 8, team_color)
-            name_color = ui.TEXT if fighter.alive else ui.DIM
-            ui.text(x + 50, top - 13, fighter.name, name_color, 14)
-            if not fighter.alive:
-                status, status_color = "쓰러짐", ui.DIM
-            elif fighter.surprised:
-                status, status_color = "기습당함", ui.DANGER
-            else:
-                status, status_color = f"선공 {fighter.initiative}", ui.MUTED
-            ui.text(x + 50, top - 29, status, status_color, 13)
-            ui.bar(x + 50, bottom + 7, CARD_WIDTH - 58, 5, fighter.hp / fighter.max_hp, team_color)
+    def draw_party_column(self):
+        """Party portraits down the left edge with health, as in BG3."""
+        top = HUD_BOTTOM - 14
+        for fighter in self.fighters:
+            if fighter.team != "party":
+                continue
+            active = fighter is self.current and self.outcome is None
+            border = ui.ACCENT if active else (PARTY_COLOR if fighter.alive else ui.DIM)
+            left, bottom = 8, top - 66
+            pico2d.draw_rectangle(left - 2, bottom - 2, left + 54, top + 2, *ui.PANEL, 220, filled=True)
+            self.draw_portrait(fighter, left, bottom, 52, 66, border)
+            label = f"{fighter.hp}/{fighter.max_hp}"
+            ui.panel(left + 4, bottom + 2, left + 48, bottom + 18, border, ui.PANEL, 230)
+            ui.text_center(left + 26, bottom + 10, label, ui.TEXT, 12)
+            top = bottom - 10
 
     def draw_portrait(self, fighter, left, bottom, width, height, color):
         pico2d.draw_rectangle(left, bottom, left + width, bottom + height, 24, 32, 40, filled=True)
@@ -882,13 +896,31 @@ class Combat:
         if not fighter.alive:
             pico2d.draw_rectangle(left, bottom, left + width, bottom + height, 0, 0, 0, 150, filled=True)
 
-    # Top HUD strip ----------------------------------------------------------
+    # Top HUD strip: turn order portraits ----------------------------------
 
     def draw_hud(self):
         ui.panel(0, HUD_BOTTOM, WIDTH - 1, HUD_TOP - 1, ui.BORDER, ui.PANEL, 255)
-        ui.text(16, HUD_BOTTOM + 32, f"{self.round}라운드", ui.MUTED)
+        pico2d.draw_line(0, HUD_BOTTOM + 1, WIDTH, HUD_BOTTOM + 1, 120, 98, 60)
+        ui.text(14, HUD_BOTTOM + 40, f"{self.round}라운드", ui.ACCENT, 16)
+        ui.text(14, HUD_BOTTOM + 18, "선공 1d4 + 민첩", ui.DIM, 12)
+        size, gap = 46, 6
+        count = len(self.order)
+        left = WIDTH / 2 - (count * size + (count - 1) * gap) / 2
+        for index, fighter in enumerate(self.order):
+            x = left + index * (size + gap)
+            current = index == self.turn_index and self.outcome is None
+            team_color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
+            border = ui.ACCENT if current else (team_color if fighter.alive else ui.DIM)
+            bottom = HUD_BOTTOM + 8
+            self.draw_portrait(fighter, x, bottom, size, 50, border)
+            if current:
+                pico2d.draw_rectangle(x - 2, bottom - 2, x + size + 2, bottom + 52, *ui.ACCENT)
+            ui.bar(x + 3, bottom + 3, size - 6, 4, fighter.hp / fighter.max_hp, team_color)
+            ui.text(x + size - 12, bottom + 42, str(fighter.initiative), ui.MUTED, 11)
+            if fighter.surprised:
+                ui.text_center(x + size / 2, bottom + 25, "기습", ui.DANGER, 12)
         if self.log:
-            ui.text_center(WIDTH / 2, HUD_BOTTOM + 32, self.log, ui.TEXT, 14)
+            ui.text(left + count * (size + gap) + 20, HUD_BOTTOM + 32, self.log, ui.MUTED, 13)
 
     # Bottom hotbar ----------------------------------------------------------
 
