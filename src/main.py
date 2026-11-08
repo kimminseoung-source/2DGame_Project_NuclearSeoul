@@ -241,6 +241,9 @@ def handle_events(game):
             game.aim_x = event.x
             if game.combat is not None:
                 game.combat.hover = game.combat.grid.cell_at(event.x, SCREEN_HEIGHT - 1 - event.y)
+        if (event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT
+                and game.combat is not None):
+            game.combat.right_click()
         if event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
             game.aim_x = event.x
             busy = game.inventory_open or game.settings_open or game.finished or action_in_progress(game)
@@ -260,6 +263,10 @@ def handle_events(game):
                 return False
             if event.key == sdl2.SDLK_SPACE and game.combat.is_player_turn():
                 game.combat.end_turn()
+            elif event.key == sdl2.SDLK_1:
+                game.combat.choose_action("move")
+            elif event.key == sdl2.SDLK_2:
+                game.combat.choose_action("attack")
             continue
         if game.inventory_open:
             handle_inventory_key(game, event.key)

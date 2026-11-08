@@ -2,7 +2,7 @@
 
 import random
 from collections import deque
-from math import floor
+from math import cos, floor, radians, sin
 
 import pico2d
 
@@ -27,6 +27,17 @@ ENEMY_PAUSE = 0.45
 SKIP_PAUSE = 0.9
 POPUP_TIME = 1.3
 VICTORY_PAUSE = 1.2
+INITIATIVE_DIE = 4
+BADGE_TIME = 1.5
+# The badge rolls, lands on the result, holds briefly, and only then the swing starts.
+DICE_ROLL_TIME = 0.45
+DICE_HOLD_TIME = 0.4
+BADGE_FLICKER = 0.06
+BUTTON_WIDTH = 112
+BUTTON_HEIGHT = 46
+BUTTON_GAP = 10
+# Above the heads of fighters standing on the back row.
+BAR_BOTTOM = FLOOR_TOP + 74
 
 GRID_COLOR = (74, 92, 104)
 REACH_COLOR = (112, 168, 214)
@@ -137,6 +148,32 @@ class CombatGrid:
                 draw_cell(points, highlights.get((column, row), GRID_COLOR))
 
 
+def badge_label(result):
+    if result["critical"]:
+        return "치명타!"
+    if result["fumble"]:
+        return "대실패"
+    return "명중" if result["hit"] else "빗나감"
+
+
+def badge_color(result):
+    if result["critical"]:
+        return (255, 214, 127)
+    if result["fumble"]:
+        return (150, 150, 150)
+    return (255, 160, 130) if result["hit"] else (181, 197, 209)
+
+
+def draw_d20(x, y, radius, face, color, font):
+    """A flat d20: hexagon outline, inner triangle and the face value."""
+    hexagon = [(x + radius * cos(radians(90 + 60 * i)), y + radius * sin(radians(90 + 60 * i)))
+               for i in range(6)]
+    for (x1, y1), (x2, y2) in zip(hexagon, hexagon[1:] + hexagon[:1]):
+        pico2d.draw_line(x1, y1, x2, y2, *color)
+    label = str(face)
+    font.draw(x - 4.5 * len(label), y, label, color)
+
+
 def draw_cell(points, color, inset_x=0.06, inset_y=0.12):
     # Inset each cell slightly so neighbouring outlines do not merge.
     cx = sum(x for x, _ in points) / 4
@@ -208,7 +245,17 @@ class Combat:
         self.popups = []
         self.effects = []
         self.outcome = None
+        self.selected = None
+        self.mode = None
+        self.dice_visual = random.Random()
+        # Small result badges over each fighter, starting with the initiative roll.
+        self.badges = [
+            {"unit": f.unit, "time": BADGE_TIME + 0.6, "face": None, "color": (181, 197, 209),
+             "text": f"선공 {f.initiative_roll}+{f.dexterity}={f.initiative}"}
+            for f in self.fighters
+        ]
         self.start_turn()
+
 
     # Turn order -----------------------------------------------------------
 
@@ -216,8 +263,9 @@ class Combat:
         return self.rng.randint(1, sides)
 
     def roll_initiative(self):
+        # Like BG3: 1d4 + dexterity, so dexterity matters more than luck.
         for fighter in self.fighters:
-            fighter.initiative_roll = self.roll()
+            fighter.initiative_roll = self.roll(INITIATIVE_DIE)
             fighter.initiative = fighter.initiative_roll + fighter.dexterity
         # Higher total first; dexterity breaks ties, then the party acts first.
         self.order = sorted(
@@ -245,6 +293,8 @@ class Combat:
         fighter.action = 1
         fighter.bonus_action = 1
         fighter.reaction = 1
+        self.selected = None
+        self.mode = None
         if fighter.surprised:
             self.log = f"{fighter.name}: 기습당해 이번 라운드에 행동하지 못합니다."
             self.wait_time = SKIP_PAUSE
@@ -253,7 +303,7 @@ class Combat:
             self.log = f"{fighter.name}의 턴"
             self.enemy_approach(fighter)
         else:
-            self.log = f"{fighter.name}의 턴 · 칸 클릭 이동 · 옆의 적 클릭 공격"
+            self.log = f"{fighter.name}의 턴 · 캐릭터를 클릭해 선택하세요"
 
     def end_turn(self):
         if self.moving is not None or self.attack is not None or self.outcome is not None:
@@ -280,24 +330,92 @@ class Combat:
     def fighter_at(self, cell):
         return next((f for f in self.fighters if f.cell == cell and f.alive), None)
 
+    # Selection and action bar ---------------------------------------------
+
+    def actions(self):
+        """Action bar entries for the selected fighter: (key, label, cost, enabled)."""
+        fighter = self.selected
+        return [
+            ("move", "이동", f"{fighter.moves_left}칸", fighter.moves_left > 0),
+            ("attack", "공격", "행동", bool(fighter.action) and bool(self.attack_targets(fighter))),
+            ("end", "턴 종료", "Space", True),
+        ]
+
+    def button_rects(self):
+        if self.selected is None:
+            return []
+        entries = self.actions()
+        left = WIDTH // 2 - (len(entries) * (BUTTON_WIDTH + BUTTON_GAP) - BUTTON_GAP) / 2
+        return [
+            (entry, (left + i * (BUTTON_WIDTH + BUTTON_GAP), BAR_BOTTOM,
+                     left + i * (BUTTON_WIDTH + BUTTON_GAP) + BUTTON_WIDTH, BAR_BOTTOM + BUTTON_HEIGHT))
+            for i, entry in enumerate(entries)
+        ]
+
+    def attack_targets(self, fighter):
+        return [f for f in self.living("enemy" if fighter.team == "party" else "party")
+                if chebyshev(f.cell, fighter.cell) <= 1]
+
+    def choose_action(self, kind):
+        if not self.is_player_turn() or self.selected is None:
+            return
+        entry = next(e for e in self.actions() if e[0] == kind)
+        if kind == "end":
+            self.end_turn()
+        elif not entry[3]:
+            if kind == "move":
+                self.log = "남은 이동 칸이 없습니다."
+            elif not self.selected.action:
+                self.log = "이번 턴의 행동을 이미 썼습니다."
+            else:
+                self.log = "옆 칸에 공격할 적이 없습니다. 먼저 다가가세요."
+        else:
+            self.mode = kind
+            self.log = "이동할 칸을 클릭하세요 · 우클릭 취소" if kind == "move" else "공격할 적을 클릭하세요 · 우클릭 취소"
+
+    def right_click(self):
+        if not self.is_player_turn():
+            return
+        if self.mode is not None:
+            self.mode = None
+            self.log = "행동을 고르세요"
+        elif self.selected is not None:
+            self.selected = None
+            self.log = f"{self.current.name}의 턴 · 캐릭터를 클릭해 선택하세요"
+
     def click(self, screen_x, y):
         if not self.is_player_turn():
             return
+        for (kind, *_), (left, bottom, right, top) in self.button_rects():
+            if left <= screen_x <= right and bottom <= y <= top:
+                self.choose_action(kind)
+                return
         cell = self.grid.cell_at(screen_x, y)
-        target = self.fighter_at(cell)
+        clicked = self.fighter_at(cell)
         fighter = self.current
-        if target is not None and target.team != fighter.team:
-            if not fighter.action:
-                self.log = "이번 턴의 행동을 이미 썼습니다."
-            elif chebyshev(fighter.cell, target.cell) > 1:
-                self.log = "너무 멉니다. 옆 칸으로 다가가세요."
-            else:
-                self.start_attack(fighter, target)
+        if clicked is fighter:
+            self.selected = fighter
+            self.mode = None
+            self.log = "행동을 고르세요 · 1 이동  2 공격  Space 턴 종료"
             return
-        path = self.reachable(fighter).get(cell)
-        if path:
-            fighter.moves_left -= len(path)
-            self.start_moving(fighter, path)
+        if self.selected is None:
+            self.log = "먼저 내 캐릭터를 클릭해 선택하세요."
+            return
+        if self.mode == "attack":
+            if clicked is not None and clicked in self.attack_targets(fighter):
+                self.mode = None
+                self.start_attack(fighter, clicked)
+            else:
+                self.log = "옆 칸의 적을 클릭하세요 · 우클릭 취소"
+        elif self.mode == "move":
+            path = self.reachable(fighter).get(cell)
+            if path:
+                fighter.moves_left -= len(path)
+                self.mode = None
+                self.log = "행동을 고르세요"
+                self.start_moving(fighter, path)
+        else:
+            self.log = "아래 행동 막대에서 행동을 고르세요."
 
     def start_moving(self, fighter, path):
         self.moving = {"fighter": fighter, "path": list(path), "from": fighter.cell}
@@ -393,33 +511,53 @@ class Combat:
         dx = target.unit.x - fighter.unit.x
         if abs(dx) > 1:
             fighter.unit.direction = 1 if dx > 0 else -1
-        attack = {"attacker": fighter, "target": target, "resolved": False, "time": 0.0,
-                  "reaction": reaction}
+        self.log = f"{fighter.name}의 공격 · 주사위를 굴립니다"
+        # Roll up front: show the dice result first, then swing and apply it on contact.
+        self.attack = {"attacker": fighter, "target": target, "resolved": False, "time": 0.0,
+                       "reaction": reaction, "result": self.roll_attack(fighter, target),
+                       "phase": "dice", "dice_time": 0.0, "landed": False}
+
+    def roll_attack(self, attacker, target):
+        roll = self.roll()
+        total = roll + attacker.attack_bonus
+        hit = roll == 20 or (roll != 1 and total >= target.armor_class)
+        count, sides = attacker.damage_dice
+        critical = roll == 20
+        if critical:
+            count *= 2
+        damage_rolls = [self.roll(sides) for _ in range(count)] if hit else []
+        return {
+            "roll": roll, "total": total, "hit": hit, "critical": critical, "fumble": roll == 1,
+            "damage_rolls": damage_rolls, "damage": sum(damage_rolls) + attacker.damage_bonus if hit else 0,
+        }
+
+    def start_swing(self, attack):
+        fighter = attack["attacker"]
         if fighter.team == "party":
             attack["swing"] = BatSwing((fighter.unit.direction, 0))
         else:
             fighter.unit.transition("windup", WINDUP_TIME)
-        self.attack = attack
 
     def resolve_attack(self, attacker, target):
-        roll = self.roll()
-        total = roll + attacker.attack_bonus
+        self.attack["resolved"] = True
+        result = self.attack["result"]
         x, y = target.unit.x, target.unit.y + 62
-        if roll == 1 or (roll != 20 and total < target.armor_class):
-            self.popup(f"{roll}+{attacker.attack_bonus}={total} 빗나감", x, y, (181, 197, 209))
-            self.log = f"{attacker.name}의 공격이 빗나갔습니다. (주사위 {roll}+{attacker.attack_bonus} < 방어 {target.armor_class})"
+        kind = "기회 공격" if self.attack["reaction"] else "공격"
+        if not result["hit"]:
+            label = "대실패" if result["fumble"] else "빗나감"
+            self.popup(label, x, y, (181, 197, 209))
+            self.log = f"{attacker.name}의 {kind}이 빗나갔습니다."
             return
-        count, sides = attacker.damage_dice
-        if roll == 20:
-            count *= 2
-        rolls = [self.roll(sides) for _ in range(count)]
-        damage = sum(rolls) + attacker.damage_bonus
+        damage = result["damage"]
         target.hp = max(0, target.hp - damage)
-        critical = roll == 20
-        label = "치명타!" if critical else "명중"
-        self.popup(f"{roll}+{attacker.attack_bonus}={total} {label} -{damage}", x, y,
-                   (255, 214, 127) if critical else (255, 160, 130))
-        self.log = f"{attacker.name} {label}: {target.name}에게 피해 {damage} ({'+'.join(map(str, rolls))}+{attacker.damage_bonus})"
+        label = "치명타!" if result["critical"] else "명중"
+        color = (255, 214, 127) if result["critical"] else (255, 160, 130)
+        self.popup(f"{label} -{damage}", x, y, color)
+        rolls = "+".join(map(str, result["damage_rolls"]))
+        count, sides = attacker.damage_dice
+        if result["critical"]:
+            count *= 2
+        self.log = f"{attacker.name} {label}: {target.name}에게 피해 {damage}"
         self.effects.append(("impact", target.unit.x, target.unit.y))
         if not target.alive:
             self.defeat(target)
@@ -440,6 +578,20 @@ class Combat:
     def update_attack(self, frame_time):
         attack = self.attack
         attacker, target = attack["attacker"], attack["target"]
+        if attack["phase"] == "dice":
+            attack["dice_time"] += frame_time
+            if not attack["landed"] and attack["dice_time"] >= DICE_ROLL_TIME:
+                attack["landed"] = True
+                result = attack["result"]
+                self.badges.append({
+                    "unit": attacker.unit, "time": BADGE_TIME, "face": result["roll"],
+                    "text": f"{result['total']} vs {target.armor_class} {badge_label(result)}",
+                    "color": badge_color(result),
+                })
+            if attack["dice_time"] >= DICE_ROLL_TIME + DICE_HOLD_TIME:
+                attack["phase"] = "swing"
+                self.start_swing(attack)
+            return
         attack["time"] += frame_time
         if attacker.team == "party":
             swing = attack["swing"]
@@ -486,6 +638,9 @@ class Combat:
         self.banner_time = max(0.0, self.banner_time - frame_time)
         for popup in self.popups:
             popup[3] -= frame_time
+        for badge in self.badges:
+            badge["time"] -= frame_time
+        self.badges = [b for b in self.badges if b["time"] > 0]
         self.popups = [p for p in self.popups if p[3] > 0]
         # An opportunity attack pauses the move it interrupted, so attacks go first.
         if self.attack is not None:
@@ -507,6 +662,33 @@ class Combat:
             return self.attack.get("swing")
         return None
 
+    def draw_badges(self, font):
+        """Small d20 badges over attackers: rolling during the wind-up, then the result."""
+        attack = self.attack
+        if attack is not None and attack["phase"] == "dice" and not attack["landed"]:
+            tick = int(attack["dice_time"] / BADGE_FLICKER)
+            if attack.get("tick") != tick:
+                attack["tick"] = tick
+                attack["face"] = self.dice_visual.randint(1, 20)
+            target = attack["target"]
+            self.draw_badge(font, attack["attacker"].unit, attack["face"],
+                            f"+{attack['attacker'].attack_bonus} vs {target.armor_class}", TEXT_COLOR)
+        for badge in self.badges:
+            self.draw_badge(font, badge["unit"], badge["face"], badge["text"], badge["color"])
+
+    def draw_badge(self, font, unit, face, text, color):
+        x = unit.x - self.grid.camera_x
+        y = unit.y + 74
+        text_width = sum(15 if ord(ch) > 127 else 8.5 for ch in text)
+        icon = 30 if face is not None else 0
+        width = icon + text_width + 14
+        left, right = x - width / 2, x + width / 2
+        pico2d.draw_rectangle(left, y - 15, right, y + 15, 15, 23, 31, filled=True)
+        pico2d.draw_rectangle(left, y - 15, right, y + 15, *color)
+        if face is not None:
+            draw_d20(left + 18, y, 13, face, color, font)
+        font.draw(left + icon + 7, y, text, color)
+
     def status_text(self):
         fighter = self.current
         if fighter.team != "party" or self.outcome is not None:
@@ -523,25 +705,30 @@ class Combat:
             return None
         return target
 
+    def outline(self, cell, color):
+        corners = self.grid.corners(*cell)
+        draw_cell([(x - self.grid.camera_x, y) for x, y in corners], color, 0.0, 0.0)
+
     def draw(self, font):
         highlights = {}
-        target = None
-        if self.is_player_turn():
+        player_turn = self.is_player_turn()
+        if player_turn and self.mode == "move":
             for cell in self.reachable(self.current):
                 highlights[cell] = REACH_COLOR
             if self.hover in highlights:
                 highlights[self.hover] = HOVER_COLOR
-            target = self.hovered_target()
         for fighter in self.fighters:
             if fighter.alive:
                 highlights[fighter.cell] = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
         self.grid.draw(highlights)
-        if not self.busy() and self.outcome is None:
-            active = self.grid.corners(*self.current.cell)
-            draw_cell([(x - self.grid.camera_x, y) for x, y in active], HOVER_COLOR, 0.0, 0.0)
-        if target is not None:
-            corners = self.grid.corners(*target.cell)
-            draw_cell([(x - self.grid.camera_x, y) for x, y in corners], TARGET_COLOR, 0.0, 0.0)
+        if player_turn:
+            if self.mode == "attack":
+                for enemy in self.attack_targets(self.current):
+                    self.outline(enemy.cell, TARGET_COLOR)
+            if self.selected is not None:
+                self.outline(self.selected.cell, HOVER_COLOR)
+            elif self.hover == self.current.cell:
+                self.outline(self.current.cell, (200, 230, 210))
         self.draw_turn_order(font)
         if self.banner_time:
             text = "기습! 전투 시작" if self.surprise else "발각! 전투 시작"
@@ -553,10 +740,12 @@ class Combat:
             if fighter.alive:
                 self.draw_health(fighter, font)
         if self.is_player_turn():
+            if self.selected is not None:
+                self.draw_action_bar(font)
             target = self.hovered_target()
             if target is not None:
                 self.draw_attack_preview(self.current, target, font)
-            else:
+            elif self.mode == "move":
                 path = self.reachable(self.current).get(self.hover)
                 if path and self.path_provokes(self.current, path):
                     x, y = self.grid.cell_center(*self.hover)
@@ -564,6 +753,19 @@ class Combat:
         for text, x, y, time_left, color in self.popups:
             rise = (POPUP_TIME - time_left) * 22
             font.draw(x - self.grid.camera_x - 40, y + rise, text, color)
+        self.draw_badges(font)
+
+    def draw_action_bar(self, font):
+        for (kind, label, cost, enabled), (left, bottom, right, top) in self.button_rects():
+            chosen = kind == self.mode
+            fill = (52, 70, 82) if chosen else (15, 23, 31)
+            border = HOVER_COLOR if chosen else ((135, 170, 157) if enabled else (70, 78, 84))
+            text = TEXT_COLOR if enabled else (110, 116, 120)
+            pico2d.draw_rectangle(left, bottom, right, top, *fill, filled=True)
+            pico2d.draw_rectangle(left, bottom, right, top, *border)
+            number = {"move": "1", "attack": "2", "end": ""}[kind]
+            font.draw(left + 8, bottom + 32, f"{number} {label}".strip(), text)
+            font.draw(left + 8, bottom + 12, cost, (150, 165, 175) if enabled else (90, 96, 100))
 
     def draw_health(self, fighter, font):
         x = fighter.unit.x - self.grid.camera_x
@@ -579,14 +781,16 @@ class Combat:
         x = target.unit.x - self.grid.camera_x
         y = target.unit.y + 72
         lines = [f"{target.name} 체력 {target.hp}/{target.max_hp}"]
-        if not attacker.action:
+        if self.mode != "attack":
+            lines.append("공격하려면 행동 막대에서 2 공격")
+        elif not attacker.action:
             lines.append("행동을 이미 썼습니다")
         elif chebyshev(attacker.cell, target.cell) > 1:
             lines.append("근접 공격 · 너무 멂")
         else:
             chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
             lines += [f"공격 명중 {chance}%", f"피해 {attacker.damage_text()} · 방어 {target.armor_class}"]
-        width = 176
+        width = 236
         height = 18 * len(lines) + 8
         pico2d.draw_rectangle(x - width / 2, y, x + width / 2, y + height, 15, 23, 31, filled=True)
         pico2d.draw_rectangle(x - width / 2, y, x + width / 2, y + height, *TARGET_COLOR)
@@ -610,4 +814,4 @@ class Combat:
             elif fighter.surprised:
                 label += " 기습"
             font.draw(x + 8, top - height / 2, label, TEXT_COLOR if fighter.alive else (120, 120, 120))
-        font.draw(left, top - height - 16, f"{self.round}라운드 · 선공 = 주사위 + 민첩", (181, 197, 209))
+        font.draw(left, top - height - 16, f"{self.round}라운드 · 선공 1d4 + 민첩", (181, 197, 209))
