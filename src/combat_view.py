@@ -5,19 +5,21 @@ update()/draw(), registered in a game_world layer by create_views() — the same
 pattern as the course's Boy/Grass/Ball objects.
 """
 
+import math
+
 import pico2d
 
 import game_clock
 import game_world
 import ui
 from combat import (
-    BADGE_FLICKER, BADGE_TIME, DICE_ROLL_TIME, END_TURN_CENTER, END_TURN_RADIUS, ENEMY_COLOR, FOOT_RX, FOOT_RY,
+    BADGE_TIME, END_TURN_CENTER, END_TURN_RADIUS, ENEMY_COLOR, FOOT_RX, FOOT_RY,
     HUD_BOTTOM, HUD_TOP, LOG_LINE, LOG_LINES, LOG_WIDTH, PARTY_COLOR, POPUP_TIME, PORTRAIT_CENTER,
-    PORTRAIT_RADIUS, REACH_M, SLOT_COLUMNS, SLOT_GAP, SLOT_SIZE, SLOTS_LEFT, TEXT_COLOR, fmt_m,
+    HIT_GAUGE_TIME, PORTRAIT_RADIUS, REACH_M, SLOT_COLUMNS, SLOT_GAP, SLOT_SIZE, SLOTS_LEFT, TEXT_COLOR, fmt_m,
     hit_chance,
 )
 from nav import NODE_X, NODE_Y, PX_PER_M_X, PX_PER_M_Y, metres, path_length
-from tile_map import WIDTH
+from tile_map import HEIGHT, WIDTH
 
 WEAPON_RECT = (112, 30, 160, 78)   # the equipped-weapon slot beside the portrait
 
@@ -309,62 +311,163 @@ class InitiativeBadges(CombatView):
             ui.text(left + 9, y - 9, badge["detail"], ui.MUTED, 13)
 
 
-class DiceGauge(CombatView):
-    """Hit roll as a gauge: where the total lands against the 'needed' line.
+def needed_face(attacker, target):
+    """Lowest d20 face that hits (a 1 always misses, a 20 always hits)."""
+    return max(2, min(20, target.armor_class - attacker.attack_bonus))
 
-    While rolling: the d20 face flickers and the gauge shows only the needed line.
-    After landing: a marker shows the total, and the verdict is written in large type.
+
+def ease_out(u, power):
+    return 1 - (1 - u) ** power
+
+
+class ReelMotion:
+    """Where the hit reel stands at a given moment of its spin.
+
+    Faces count up past the centre line: fast at first, slowing until the last cells
+    tick over one by one. Results close to the hit line get extra drama: a near miss
+    spins on until the first green face half shows, hangs there, and drops back; a
+    near hit hangs on the last red face, then tips over the line.
     """
 
-    WIDTH, HEIGHT = 240, 74
+    TRAVEL = 26          # cells passed during one spin
+    TEASE_SHARE = 0.75   # share of the spin spent before the hang
+    HANG = 0.35          # share of the remaining time spent hanging still
+    PEEK = 0.45          # how much of the cell across the line shows while hanging
+
+    def __init__(self, face, need, duration):
+        self.final = face - 1 + 2 * 20          # index of the result cell (faces repeat every 20)
+        self.start = self.final - self.TRAVEL
+        self.duration = duration
+        self.lean = 0.0                         # where it hangs, relative to the result
+        if face != 1 and need - 2 <= face < need:
+            self.lean = (need - 1 - face) + self.PEEK            # just past the line
+        elif face != 20 and need <= face <= need + 1:
+            self.lean = -(face - need) - (1 - self.PEEK)       # just short of the line
+
+    def position(self, elapsed):
+        u = max(0.0, min(1.0, elapsed / self.duration))
+        if not self.lean:
+            return self.start + self.TRAVEL * ease_out(u, 3)
+        if u < self.TEASE_SHARE:
+            return self.start + (self.TRAVEL + self.lean) * ease_out(u / self.TEASE_SHARE, 3)
+        rest = (u - self.TEASE_SHARE) / (1 - self.TEASE_SHARE)
+        settle = 0.0 if rest < self.HANG else ease_out((rest - self.HANG) / (1 - self.HANG), 2)
+        return self.final + self.lean * (1 - settle)
+
+
+class Spotlight(CombatView):
+    """While the hit reel spins, everything but the two fighters and the reel dims."""
+
+    MAX_ALPHA = 120
+    FADE_IN = 0.3
+
+    def draw(self):
+        attack = self.combat.attack
+        if attack is None or attack.get("phase") != "dice":
+            return
+        alpha = int(self.MAX_ALPHA * min(1.0, attack["dice_time"] / self.FADE_IN))
+        a, t = attack["attacker"].unit, attack["target"].unit
+        left = max(0, self.sx(min(a.x, t.x)) - 70)
+        right = min(WIDTH, self.sx(max(a.x, t.x)) + 70)
+        bottom = max(0, min(a.y, t.y) - 34)
+        top = min(HEIGHT, max(a.y, t.y) + HitReel.OFFSET_Y + HitReel.HEIGHT + 34)
+        shade = (6, 8, 12, alpha)
+        pico2d.draw_rectangle(0, 0, WIDTH, bottom, *shade, filled=True)
+        pico2d.draw_rectangle(0, top, WIDTH, HEIGHT, *shade, filled=True)
+        pico2d.draw_rectangle(0, bottom, left, top, *shade, filled=True)
+        pico2d.draw_rectangle(right, bottom, WIDTH, top, *shade, filled=True)
+
+
+class HitReel(CombatView):
+    """Hit roll as a vertical slot-machine reel over the attacker's head.
+
+    Green faces hit, red faces miss, and a bright line marks where hitting starts, so
+    the player watches the reel slow down towards (or short of) that line. It stops
+    on the rolled face and the verdict appears above it.
+    """
+
+    CELL_W, CELL_H = 40, 22
+    VISIBLE = 5
+    WIDTH = CELL_W + 16
+    HEIGHT = CELL_H * VISIBLE + 8
+    OFFSET_Y = 64          # above the attacker's feet
+    PULSE_FROM = 0.6       # share of the spin after which the frame starts to pulse
+    FLASH_TIME = 0.15
+    HIT_COLOR = (60, 130, 80)
+    MISS_COLOR = (130, 56, 48)
+    FUMBLE_COLOR = (90, 30, 30)
+    HIT_TEXT = (120, 220, 140)
 
     def draw(self):
         c = self.combat
         attack = c.attack
         if attack is not None and attack.get("phase") == "dice" and not attack["landed"]:
-            tick = int(attack["dice_time"] / BADGE_FLICKER)
-            if attack.get("tick") != tick:
-                attack["tick"] = tick
-                attack["face"] = c.dice_visual.randint(1, 20)
-            self.draw_gauge(attack["attacker"], attack["target"], attack["face"], None)
+            motion = attack.get("reel")
+            if motion is None:
+                need = needed_face(attack["attacker"], attack["target"])
+                motion = attack["reel"] = ReelMotion(attack["result"]["roll"], need, attack["roll_time"])
+            spin = attack["dice_time"] / attack["roll_time"]
+            self.draw_reel(attack["attacker"], attack["target"], motion.position(attack["dice_time"]), None, spin)
         for record in c.hit_rolls:
-            self.draw_gauge(record["attacker"], record["target"], record["result"]["roll"], record["result"])
+            flash = record["time"] > HIT_GAUGE_TIME - self.FLASH_TIME
+            self.draw_reel(record["attacker"], record["target"], record["result"]["roll"] - 1.0,
+                           record["result"], 1.0, flash)
 
-    def draw_gauge(self, attacker, target, face, result):
-        width, height = self.WIDTH, self.HEIGHT
-        x = self.sx(attacker.unit.x)
-        y = attacker.unit.y + 70
-        left = max(4, min(WIDTH - 4 - width, x - width / 2))
-        bonus, need = attacker.attack_bonus, target.armor_class
+    def face_color(self, face, need):
+        if face == 20:
+            return ui.CRITICAL
+        if face == 1:
+            return self.FUMBLE_COLOR
+        return self.HIT_COLOR if face >= need else self.MISS_COLOR
+
+    def verdict(self, result):
+        if result["critical"]:
+            return "치명타!", ui.CRITICAL
+        if result["fumble"]:
+            return "대실패", ui.DIM
+        return ("명중!", self.HIT_TEXT) if result["hit"] else ("빗나감", ui.MISS)
+
+    def draw_reel(self, attacker, target, position, result, spin, flash=False):
+        need = needed_face(attacker, target)
+        cx = max(self.WIDTH / 2 + 12, min(WIDTH - self.WIDTH / 2 - 12, self.sx(attacker.unit.x)))
+        bottom = attacker.unit.y + self.OFFSET_Y
+        left = cx - self.WIDTH / 2
         if result is None:
-            chance = round(hit_chance(bonus, need) * 100)
-            title, color = f"명중 판정  {chance}%", ui.TEXT
+            title, color = f"명중 {round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)}%", ui.TEXT
+            if spin > self.PULSE_FROM:
+                # The frame throbs faster as the reel slows down.
+                beat = abs(math.sin((spin - self.PULSE_FROM) * 28))
+                color = tuple(int(v * (0.55 + 0.45 * beat)) for v in ui.ACCENT)
         else:
-            title, color = roll_outcome(result)
-        ui.panel(left, y, left + width, y + height, color)
-        ui.d20_icon(left + 20, y + height - 19, 13, face, color, 14)
-        ui.text(left + 40, y + height - 19, title, color, 18)
-        hint = f"d20 + {bonus}"
-        ui.text(left + width - ui.text_width(hint, 12) - 10, y + height - 19, hint, ui.MUTED, 12)
-
-        # Gauge: every possible total from 1+bonus to 20+bonus, split at the needed value.
-        low, high = 1 + bonus, 20 + bonus
-        bar_left, bar_width, bar_y = left + 14, width - 28, y + 22
-
-        def at(value):
-            return bar_left + bar_width * max(0.0, min(1.0, (value - low) / (high - low)))
-
-        need_x = at(need)
-        pico2d.draw_rectangle(bar_left, bar_y - 4, need_x, bar_y + 4, 64, 72, 80, filled=True)
-        pico2d.draw_rectangle(need_x, bar_y - 4, bar_left + bar_width, bar_y + 4, 140, 66, 50, filled=True)
-        pico2d.draw_line(need_x, bar_y - 8, need_x, bar_y + 8, *ui.TEXT)
-        ui.text(min(need_x + 4, left + width - 52), bar_y - 13, f"필요 {need}", ui.MUTED, 11)
-        if result is None:
-            return
-        mark_x = at(result["total"])
-        for dx in range(-5, 6):
-            pico2d.draw_line(mark_x + dx, bar_y + 9, mark_x, bar_y + 2, *color)
-        ui.text_center(mark_x, bar_y + 16, str(result["total"]), color, 13)
+            title, color = self.verdict(result)
+        fill = (60, 70, 60) if flash and result["hit"] else ui.PANEL
+        ui.panel(left, bottom, left + self.WIDTH, bottom + self.HEIGHT, color, fill, 245)
+        mid = bottom + self.HEIGHT / 2
+        half = self.CELL_H * self.VISIBLE / 2
+        first = math.floor(position) - 3
+        for k in range(first, first + 8):
+            y = mid + (k - position) * self.CELL_H
+            if abs(y - mid) > half - self.CELL_H / 2 + 0.5:
+                continue
+            face = k % 20 + 1
+            r, g, b = self.face_color(face, need)
+            fade = 1 - abs(y - mid) / half * 0.7
+            pico2d.draw_rectangle(cx - self.CELL_W / 2, y - self.CELL_H / 2 + 1, cx + self.CELL_W / 2,
+                                  y + self.CELL_H / 2 - 1, r, g, b, int(255 * fade), filled=True)
+            ui.text_center(cx, y, str(face), (20, 20, 20) if face == 20 else (235, 235, 235), 15)
+            if face == need:
+                # The hit line: the bottom edge of the first green face.
+                edge = y - self.CELL_H / 2
+                if abs(edge - mid) <= half:
+                    pico2d.draw_rectangle(left + 2, edge - 1, left + self.WIDTH - 2, edge + 1, *ui.ACCENT, filled=True)
+        window = color if result is not None else ui.TEXT
+        pico2d.draw_rectangle(cx - self.CELL_W / 2 - 2, mid - self.CELL_H / 2 - 1,
+                              cx + self.CELL_W / 2 + 2, mid + self.CELL_H / 2 + 1, *window)
+        for dy in range(-5, 6):
+            pico2d.draw_line(left - 7, mid + dy, left - 1, mid, *window)
+            pico2d.draw_line(left + self.WIDTH + 7, mid + dy, left + self.WIDTH + 1, mid, *window)
+        size = 18 if result is not None else 15
+        DamageRoll.outlined(cx, bottom + self.HEIGHT + 13, title, color, size)
 
 
 class DamageRoll(CombatView):
@@ -649,8 +752,8 @@ class Hotbar(CombatView):
 
 def create_views(combat):
     """Every screen object of a fight with the layer it belongs to."""
-    overlay = [HealthBars, PartyColumn, TargetHeader, PointerInfo, Popups, InitiativeBadges,
-               DiceGauge, DamageRoll, ResourceRow, SlotTooltip, CombatLog, StartBanner]
+    overlay = [Spotlight, HealthBars, PartyColumn, TargetHeader, PointerInfo, Popups, InitiativeBadges,
+               HitReel, DamageRoll, ResourceRow, SlotTooltip, CombatLog, StartBanner]
     views = [(CombatBoard(combat), game_world.BOARD)]
     views += [(view(combat), game_world.OVERLAY) for view in overlay]
     views += [(TurnOrderBar(combat), game_world.HUD), (Hotbar(combat), game_world.BOTTOM)]

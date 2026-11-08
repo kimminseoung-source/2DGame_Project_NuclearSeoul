@@ -19,9 +19,11 @@ POPUP_TIME = 1.3
 VICTORY_PAUSE = 1.2
 INITIATIVE_DIE = 4
 BADGE_TIME = 1.5
-# The badge rolls, lands on the result, holds briefly, and only then the swing starts.
-DICE_ROLL_TIME = 0.45
-DICE_HOLD_TIME = 0.6
+# The hit reel spins, slows down and stops on the result, holds briefly, and only then
+# the swing starts. The player's own rolls spin longer: that wait is where the tension is.
+DICE_ROLL_TIME = 1.3
+ENEMY_ROLL_TIME = 0.8
+DICE_HOLD_TIME = 0.55
 # The landed hit gauge stays until the swing connects; then the damage roll shows.
 HIT_GAUGE_TIME = DICE_HOLD_TIME + 0.2
 BADGE_FLICKER = 0.06
@@ -572,7 +574,8 @@ class Combat:
         # Roll up front: show the dice result first, then swing and apply it on contact.
         self.attack = {"attacker": fighter, "target": target, "resolved": False, "time": 0.0,
                        "reaction": reaction, "result": self.roll_attack(fighter, target),
-                       "phase": "dice", "dice_time": 0.0, "landed": False}
+                       "phase": "dice", "dice_time": 0.0, "landed": False,
+                       "roll_time": DICE_ROLL_TIME if fighter.team == "party" else ENEMY_ROLL_TIME}
 
     def roll_attack(self, attacker, target):
         roll = self.roll()
@@ -644,13 +647,13 @@ class Combat:
         attacker, target = attack["attacker"], attack["target"]
         if attack["phase"] == "dice":
             attack["dice_time"] += frame_time
-            if not attack["landed"] and attack["dice_time"] >= DICE_ROLL_TIME:
+            if not attack["landed"] and attack["dice_time"] >= attack["roll_time"]:
                 attack["landed"] = True
                 result = attack["result"]
                 self.hit_rolls.append({
                     "attacker": attacker, "target": target, "result": result, "time": HIT_GAUGE_TIME,
                 })
-            if attack["dice_time"] >= DICE_ROLL_TIME + DICE_HOLD_TIME:
+            if attack["dice_time"] >= attack["roll_time"] + DICE_HOLD_TIME:
                 attack["phase"] = "swing"
                 self.start_swing(attack)
             return
