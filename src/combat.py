@@ -464,7 +464,6 @@ class Combat:
         elif self.mode == "move":
             path = self.reachable(fighter).get(cell)
             if path:
-                fighter.moves_left -= len(path)
                 self.mode = None
                 self.log = "행동을 고르세요"
                 self.start_moving(fighter, path)
@@ -522,7 +521,6 @@ class Combat:
             self.wait_time = ENEMY_PAUSE
             return
         path = min(goals, key=len)[:fighter.move_cells]
-        fighter.moves_left -= len(path)
         self.start_moving(fighter, path)
 
     def enemy_act(self, fighter):
@@ -548,6 +546,7 @@ class Combat:
             return
         unit.x, unit.y = target_x, target_y
         self.moving["from"] = path.pop(0)
+        fighter.moves_left = max(0, fighter.moves_left - 1)
         if path:
             self.check_provoke()
             return
@@ -816,8 +815,9 @@ class Combat:
             rise = (POPUP_TIME - time_left) * 22
             ui.text_center(x - self.grid.camera_x, y + rise, text, color)
         self.draw_badges()
-        if self.is_player_turn():
+        if self.current.team == "party" and self.outcome is None:
             self.draw_resource_row()
+        if self.is_player_turn():
             self.draw_slot_tooltip()
         if self.banner_time:
             label = "기습! 전투 시작" if self.surprise else "발각! 전투 시작"
@@ -1043,8 +1043,20 @@ class Combat:
         ui.action_icon(x, y, 6, bool(fighter.action))
         ui.bonus_icon(x + 20, y, 7, bool(fighter.bonus_action))
         ui.reaction_icon(x + 40, y, 7, bool(fighter.reaction))
-        ui.bar(x + 58, y - 3, 60, 6, fighter.moves_left / max(1, fighter.move_cells), ui.MOVE)
-        ui.text(x + 124, y, f"이동 {fighter.moves_left}/{fighter.move_cells}", ui.MUTED, 12)
+        total = max(1, fighter.move_cells)
+        cost = 0
+        if self.is_player_turn() and self.mode == "move":
+            path = self.reachable(fighter).get(self.hover)
+            cost = len(path) if path else 0
+        left_after = fighter.moves_left - cost
+        ui.bar(x + 58, y - 3, 60, 6, left_after / total, ui.MOVE)
+        if cost:
+            # The part this move would spend, shown in gold like BG3's preview.
+            start = x + 58 + 60 * left_after / total
+            pico2d.draw_rectangle(start, y - 3, start + 60 * cost / total, y + 3, *ui.ACCENT, filled=True)
+            ui.text(x + 124, y, f"이동 {cost}칸 사용 · 남음 {left_after}", ui.ACCENT, 12)
+        else:
+            ui.text(x + 124, y, f"이동 {fighter.moves_left}/{fighter.move_cells}", ui.MUTED, 12)
 
     def draw_slot_tooltip(self):
         """Tooltip above a hovered hotbar slot, drawn in world coordinates."""
