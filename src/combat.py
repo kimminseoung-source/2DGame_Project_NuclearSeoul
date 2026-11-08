@@ -48,10 +48,17 @@ ENEMY_COLOR = ui.ENEMY
 TEXT_COLOR = ui.TEXT
 
 
-def hit_chance(attack_bonus, armor_class):
-    """Chance that d20 + bonus meets the armour class; 1 misses, 20 hits."""
-    hits = sum(1 for roll in range(2, 20) if roll + attack_bonus >= armor_class) + 1
-    return hits / 20
+def hit_chance(attack_bonus, armor_class, advantage=0):
+    """Chance that d20 + bonus meets the armour class; 1 always misses, 20 always hits.
+
+    advantage > 0 rolls two dice and keeps the higher, < 0 keeps the lower (BG3 rules).
+    """
+    single = (sum(1 for roll in range(2, 20) if roll + attack_bonus >= armor_class) + 1) / 20
+    if advantage > 0:
+        return 1 - (1 - single) ** 2
+    if advantage < 0:
+        return single ** 2
+    return single
 
 
 def badge_label(result):
@@ -149,6 +156,7 @@ class Combat:
         self._search_cache = None
         self._plan_cache = None
         self._area_cache = None
+        self._approach_cache = None
         # Small result badges over each fighter, starting with the initiative roll.
         self.badges = [
             {"unit": f.unit, "time": BADGE_TIME + 0.6, "face": None, "color": (181, 197, 209),
@@ -288,8 +296,24 @@ class Combat:
                 points = exact
         return points if path_length(points) <= fighter.moves_left + 1e-6 else truncate(points, fighter.moves_left)
 
-    def start_moving(self, fighter, points):
-        self.moving = {"fighter": fighter, "points": list(points[1:])}
+    def plan_approach(self, fighter, target):
+        """Path that ends inside melee reach of the target within the movement left, or None."""
+        key = ("approach", id(fighter), fighter.pos, round(fighter.moves_left, 3), target.pos)
+        if self._approach_cache is not None and self._approach_cache[0] == key:
+            return self._approach_cache[1]
+        costs = self.search(fighter)
+        goals = [n for n in costs if metres(self.nav.position(n), target.pos) <= REACH_M - 0.15]
+        points = None
+        if goals:
+            goal = min(goals, key=lambda n: costs[n][0])
+            points = self.nav.route(fighter.pos, goal, costs, self.blockers(fighter))
+            if path_length(points) > fighter.moves_left + 1e-6:
+                points = None
+        self._approach_cache = (key, points)
+        return points
+
+    def start_moving(self, fighter, points, then_attack=None):
+        self.moving = {"fighter": fighter, "points": list(points[1:]), "then_attack": then_attack}
         if fighter.team == "enemy":
             fighter.unit.transition("chase")
 
@@ -340,11 +364,15 @@ class Combat:
             points.pop(0)
         if points and fighter.moves_left > 1e-3:
             return
+        then_attack = self.moving.get("then_attack")
         self.moving = None
         unit.walk_time = 0.0
         if fighter.team == "enemy":
             unit.transition("idle")
             self.enemy_act(fighter)
+        elif then_attack is not None and then_attack.alive and fighter.action \
+                and self.in_reach(fighter.pos, then_attack.pos):
+            self.start_attack(fighter, then_attack)
 
     # Enemy turn -----------------------------------------------------------
 
@@ -466,12 +494,11 @@ class Combat:
             self.selected = fighter
             self.log = "행동을 고르세요 · 1 이동  2 공격  Space 턴 종료"
             return
+        if clicked is not None and clicked.team != fighter.team and self.mode != "move":
+            self.attack_or_approach(fighter, clicked)
+            return
         if self.mode == "attack":
-            if clicked is not None and clicked in self.attack_targets(fighter):
-                self.mode = None
-                self.start_attack(fighter, clicked)
-            else:
-                self.log = "근접 거리 안의 적을 클릭하세요 · 우클릭 취소"
+            self.log = "공격할 적을 클릭하세요 · 우클릭 취소"
         elif self.mode == "move":
             points = self.plan_move(fighter, (screen_x, y))
             if points:
@@ -482,6 +509,22 @@ class Combat:
                 self.log = "갈 수 없는 곳입니다 · 파란 영역 안을 클릭하세요"
         else:
             self.log = "아래 행동 막대에서 행동을 고르세요."
+
+    def attack_or_approach(self, fighter, target):
+        if not fighter.action:
+            self.log = "자원이 충분하지 않음: 행동"
+            return
+        if self.in_reach(fighter.pos, target.pos):
+            self.mode = None
+            self.start_attack(fighter, target)
+            return
+        points = self.plan_approach(fighter, target)
+        if points is None:
+            self.log = "너무 멉니다 · 이번 턴에는 닿을 수 없습니다"
+            return
+        self.mode = None
+        self.log = f"{target.name}에게 다가가 공격합니다"
+        self.start_moving(fighter, points, then_attack=target)
 
     # Attacks --------------------------------------------------------------
 
@@ -648,7 +691,8 @@ class Combat:
                 attack["tick"] = tick
                 attack["face"] = self.dice_visual.randint(1, 20)
             target = attack["target"]
-            self.draw_badge(attack["attacker"].unit, attack["face"], "명중 판정",
+            chance = round(hit_chance(attack["attacker"].attack_bonus, target.armor_class) * 100)
+            self.draw_badge(attack["attacker"].unit, attack["face"], f"명중 판정 {chance}%",
                             f"{target.armor_class} 이상이면 명중", ui.TEXT)
         for badge in self.badges:
             self.draw_badge(badge["unit"], badge["face"], badge["title"], badge["detail"], badge["color"])
@@ -704,6 +748,13 @@ class Combat:
                 self.foot_ring(hovered, ui.DANGER, 1.2)
             if self.mode == "move":
                 self.draw_move_path()
+            elif hovered is not None and self.current.action and not self.in_reach(self.current.pos, hovered.pos):
+                points = self.plan_approach(self.current, hovered)
+                if points:
+                    screen = [(px - self.camera_x, py) for px, py in points]
+                    for (x1, y1), (x2, y2) in zip(screen, screen[1:]):
+                        pico2d.draw_line(x1, y1, x2, y2, *ui.ACCENT)
+                    ui.ellipse(screen[-1][0], screen[-1][1] - 10, FOOT_RX, FOOT_RY, ui.ACCENT, dashed=True)
 
     def draw_reach_area(self):
         """BG3-like movement area: a soft fill with a brighter rim."""
@@ -827,26 +878,38 @@ class Combat:
             x += chip + 8
 
     def draw_hit_chip(self, attacker, target):
-        """Hit chance next to the hovered enemy, like BG3's cursor readout."""
-        x = target.unit.x - self.camera_x + 26
-        y = target.unit.y + 34
-        distance = metres(attacker.pos, target.pos)
-        if self.mode != "attack":
-            lines = [("2 공격을 고르면 명중 확률 표시", ui.MUTED), (f"거리 {fmt_m(distance)}", ui.MUTED)]
-        elif not attacker.action:
-            lines = [("자원이 충분하지 않음: 행동", ui.DANGER)]
-        elif not self.in_reach(attacker.pos, target.pos):
-            lines = [(f"너무 멂 · 거리 {fmt_m(distance)}", ui.DANGER), (f"{fmt_m(REACH_M)} 안으로 다가가세요", ui.MUTED)]
+        """BG3-style hover readout: the chance to hit in large type, then damage and range."""
+        x = target.unit.x - self.camera_x + 24
+        y = target.unit.y + 30
+        chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
+        low, high = attacker.damage_range()
+        approach = None
+        if not attacker.action:
+            note, note_color = "자원이 충분하지 않음: 행동", ui.DANGER
+        elif self.in_reach(attacker.pos, target.pos):
+            note, note_color = "클릭하면 공격", ui.MUTED
         else:
-            chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
-            low, high = attacker.damage_range()
-            lines = [(f"명중 {chance}%", ui.ACCENT), (f"피해 {low}~{high}", ui.TEXT)]
-        width = max(ui.text_width(t, 14) for t, _ in lines) + 16
-        height = 18 * len(lines) + 8
+            approach = self.plan_approach(attacker, target)
+            if approach:
+                note, note_color = f"{fmt_m(path_length(approach))} 이동 후 공격", ui.ACCENT
+            else:
+                note, note_color = f"닿지 않음 · 거리 {fmt_m(metres(attacker.pos, target.pos))}", ui.DANGER
+        usable = bool(attacker.action) and (self.in_reach(attacker.pos, target.pos) or approach)
+        big = f"{chance}%"
+        detail = f"피해 {low}~{high} · 방어 {target.armor_class}"
+        width = max(32 + ui.text_width(big, 24) + 6 + ui.text_width("명중 확률", 13),
+                    ui.text_width(detail, 13), ui.text_width(note, 13)) + 20
+        height = 70
         x = min(x, WIDTH - width - 4)
-        ui.panel(x, y, x + width, y + height, ui.BORDER_LIGHT, ui.PANEL, 235)
-        for index, (line, color) in enumerate(lines):
-            ui.text(x + 8, y + height - 13 - 18 * index, line, color, 14)
+        border = ui.ACCENT if usable else ui.DIM
+        ui.panel(x, y, x + width, y + height, border, ui.PANEL, 235)
+        # Weapon glyph and the percentage, like BG3's cursor tooltip.
+        for offset in (-1, 0, 1):
+            pico2d.draw_line(x + 10 + offset, y + height - 30, x + 24 + offset, y + height - 12, 196, 160, 110)
+        ui.text(x + 32, y + height - 20, big, ui.ACCENT if usable else ui.DIM, 24)
+        ui.text(x + 32 + ui.text_width(big, 24) + 6, y + height - 24, "명중 확률", ui.MUTED, 13)
+        ui.text(x + 10, y + 26, detail, ui.TEXT, 13)
+        ui.text(x + 10, y + 10, note, note_color, 13)
 
     def draw_party_column(self):
         """Party portraits down the left edge with health, as in BG3."""
