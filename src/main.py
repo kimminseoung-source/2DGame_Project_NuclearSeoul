@@ -12,7 +12,7 @@ from pico2d import pico2d as canvas
 from bat import (
     BAT_DURATION, BAT_HITSTOP, BAT_IMPACT_TIME, CRATE_POSITION, BatSwing, draw_crate, draw_impact,
 )
-from combat import Combat
+from combat import Combat, Fighter
 from inventory import COLUMNS, SPARE_FILTER, Inventory, draw_inventory
 from item_ui import draw_filter_icon, draw_filter_slot
 from player import Player
@@ -32,6 +32,12 @@ MIN_SPEED = 50
 MAX_SPEED = 150
 SPEED_STEP = 10
 SURPRISE_RANGE = 96
+SCREEN_HEIGHT = HEIGHT + 64
+# Draft combat stats until characters get full stat sheets.
+PLAYER_DEXTERITY = 2
+PLAYER_MOVE_CELLS = 5
+ZOMBIE_DEXTERITY = 0
+ZOMBIE_MOVE_CELLS = 4
 
 
 class Exploration:
@@ -93,7 +99,8 @@ def render_world(game, font):
     draw_ground_objects(game, font)
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
     if game.combat is not None:
-        hint = "전투 중 · 턴 진행은 다음 단계에서 구현 · Enter 전투 종료(임시)"
+        hint = game.combat.status_text()
+        message = game.combat.log if game.combat.current.team == "party" else ""
     else:
         hint = "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격·기습  Space 대시  Tab 배낭  F1"
     font.draw(16, HEIGHT + 44, hint, (181, 197, 209))
@@ -109,7 +116,7 @@ def render_world(game, font):
 
 def draw_ground_objects(game, font):
     if game.combat is not None:
-        game.combat.draw(font, game.player)
+        game.combat.draw(font)
     objects = [(game.player.y, lambda: draw_player(game))]
     if not game.in_shelter:
         crate_x = CRATE_POSITION[0] - game.camera_x
@@ -219,10 +226,14 @@ def handle_events(game):
             return False
         if event.type == sdl2.SDL_MOUSEMOTION:
             game.aim_x = event.x
+            if game.combat is not None:
+                game.combat.hover = game.combat.grid.cell_at(event.x, SCREEN_HEIGHT - 1 - event.y)
         if event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
             game.aim_x = event.x
             busy = game.inventory_open or game.settings_open or game.finished or action_in_progress(game)
-            if game.combat is None and not busy:
+            if game.combat is not None:
+                game.combat.click(event.x, SCREEN_HEIGHT - 1 - event.y)
+            elif not busy:
                 face_cursor(game)
                 if can_surprise(game):
                     start_combat(game, surprise=True)
@@ -236,6 +247,8 @@ def handle_events(game):
                 return False
             if event.key == sdl2.SDLK_RETURN:
                 end_combat(game)
+            elif event.key == sdl2.SDLK_SPACE and game.combat.is_player_turn():
+                game.combat.end_turn()
             continue
         if game.inventory_open:
             handle_inventory_key(game, event.key)
@@ -301,9 +314,14 @@ def start_combat(game, surprise):
     zombie.alerted = True
     zombie.detour = None
     zombie.transition("idle")
-    game.combat = Combat(game.camera_x, game.tile_map, [player, zombie], surprise)
+    zombie.walk_time = 0.0
+    fighters = [
+        Fighter(player, "주인공", "party", PLAYER_DEXTERITY, PLAYER_MOVE_CELLS),
+        Fighter(zombie, "피폭체", "enemy", ZOMBIE_DEXTERITY, ZOMBIE_MOVE_CELLS),
+    ]
     player.direction = 1 if zombie.x > player.x else -1
     zombie.direction = -player.direction
+    game.combat = Combat(game.camera_x, game.tile_map, fighters, surprise)
     game.message = "피폭체를 기습했습니다." if surprise else "피폭체에게 발각됐습니다."
 
 
