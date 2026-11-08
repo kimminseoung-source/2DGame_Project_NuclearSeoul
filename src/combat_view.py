@@ -320,23 +320,23 @@ def ease_out(u, power):
     return 1 - (1 - u) ** power
 
 
-class ReelMotion:
-    """Where the hit reel stands at a given moment of its spin.
+class SpinMotion:
+    """Where the hit wheel's needle points at a given moment of its spin.
 
-    Faces count up past the centre line: fast at first, slowing until the last cells
-    tick over one by one. Results close to the hit line get extra drama: a near miss
-    spins on until the first green face half shows, hangs there, and drops back; a
-    near hit hangs on the last red face, then tips over the line.
+    Positions count d20 slices clockwise from 12 o'clock (slice k shows face k % 20 + 1).
+    The needle whirls round a few times, slows until it ticks over slice by slice, and
+    stops on the rolled face. Results close to the hit line get extra drama: a near
+    miss swings on until it is just over the line into green, hangs there and falls
+    back; a near hit hangs on the last red slice, then tips over the line.
     """
 
-    TRAVEL = 26          # cells passed during one spin
+    TURNS = 3            # full turns before the result slice
     TEASE_SHARE = 0.75   # share of the spin spent before the hang
     HANG = 0.35          # share of the remaining time spent hanging still
-    PEEK = 0.45          # how much of the cell across the line shows while hanging
+    PEEK = 0.45          # how far (in slices) over the line the needle hangs
 
     def __init__(self, face, need, duration):
-        self.final = face - 1 + 2 * 20          # index of the result cell (faces repeat every 20)
-        self.start = self.final - self.TRAVEL
+        self.final = face - 1 + 20 * self.TURNS
         self.duration = duration
         self.lean = 0.0                         # where it hangs, relative to the result
         if face != 1 and need - 2 <= face < need:
@@ -347,28 +347,26 @@ class ReelMotion:
     def position(self, elapsed):
         u = max(0.0, min(1.0, elapsed / self.duration))
         if not self.lean:
-            return self.start + self.TRAVEL * ease_out(u, 3)
+            return self.final * ease_out(u, 3)
         if u < self.TEASE_SHARE:
-            return self.start + (self.TRAVEL + self.lean) * ease_out(u / self.TEASE_SHARE, 3)
+            return (self.final + self.lean) * ease_out(u / self.TEASE_SHARE, 3)
         rest = (u - self.TEASE_SHARE) / (1 - self.TEASE_SHARE)
         settle = 0.0 if rest < self.HANG else ease_out((rest - self.HANG) / (1 - self.HANG), 2)
         return self.final + self.lean * (1 - settle)
 
 
-class HitReel(CombatView):
-    """Hit roll as a vertical slot-machine reel over the attacker's head.
+class HitWheel(CombatView):
+    """Hit roll as a spinning wheel over the attacker's head.
 
-    Green faces hit, red faces miss, and a bright line marks where hitting starts, so
-    the player watches the reel slow down towards (or short of) that line. It stops
-    on the rolled face and the verdict appears above it.
+    The wheel has the twenty d20 faces as slices: green slices hit, red ones miss, so
+    the share of green is the hit chance. A needle whirls round and stops on the
+    rolled face; the slice under the needle lights up and its face shows in the hub.
     """
 
-    CELL_W, CELL_H = 40, 22
-    VISIBLE = 5
-    WIDTH = CELL_W + 16
-    HEIGHT = CELL_H * VISIBLE + 8
-    OFFSET_Y = 64          # above the attacker's feet
-    PULSE_FROM = 0.6       # share of the spin after which the frame starts to pulse
+    RADIUS = 34
+    SLICE = 360 / 20
+    OFFSET_Y = 64 + 34 + 4   # wheel centre above the attacker's feet
+    PULSE_FROM = 0.6         # share of the spin after which the rim starts to pulse
     FLASH_TIME = 0.15
     HIT_COLOR = (60, 130, 80)
     MISS_COLOR = (130, 56, 48)
@@ -379,16 +377,16 @@ class HitReel(CombatView):
         c = self.combat
         attack = c.attack
         if attack is not None and attack.get("phase") == "dice" and not attack["landed"]:
-            motion = attack.get("reel")
+            motion = attack.get("spin")
             if motion is None:
                 need = needed_face(attack["attacker"], attack["target"])
-                motion = attack["reel"] = ReelMotion(attack["result"]["roll"], need, attack["roll_time"])
+                motion = attack["spin"] = SpinMotion(attack["result"]["roll"], need, attack["roll_time"])
             spin = attack["dice_time"] / attack["roll_time"]
-            self.draw_reel(attack["attacker"], attack["target"], motion.position(attack["dice_time"]), None, spin)
+            self.draw_wheel(attack["attacker"], attack["target"], motion.position(attack["dice_time"]), None, spin)
         for record in c.hit_rolls:
             flash = record["time"] > HIT_GAUGE_TIME - self.FLASH_TIME
-            self.draw_reel(record["attacker"], record["target"], record["result"]["roll"] - 1.0,
-                           record["result"], 1.0, flash)
+            self.draw_wheel(record["attacker"], record["target"], record["result"]["roll"] - 1.0,
+                            record["result"], 1.0, flash)
 
     def face_color(self, face, need):
         if face == 20:
@@ -404,47 +402,52 @@ class HitReel(CombatView):
             return "대실패", ui.DIM
         return ("명중!", self.HIT_TEXT) if result["hit"] else ("빗나감", ui.MISS)
 
-    def draw_reel(self, attacker, target, position, result, spin, flash=False):
+    def draw_wheel(self, attacker, target, position, result, spin, flash=False):
         need = needed_face(attacker, target)
-        cx = max(self.WIDTH / 2 + 12, min(WIDTH - self.WIDTH / 2 - 12, self.sx(attacker.unit.x)))
-        bottom = attacker.unit.y + self.OFFSET_Y
-        left = cx - self.WIDTH / 2
+        radius = self.RADIUS
+        cx = max(radius + 14, min(WIDTH - radius - 14, self.sx(attacker.unit.x)))
+        cy = attacker.unit.y + self.OFFSET_Y
         if result is None:
-            title, color = f"명중 {round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)}%", ui.TEXT
+            title, rim = f"명중 {round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)}%", ui.TEXT
             if spin > self.PULSE_FROM:
-                # The frame throbs faster as the reel slows down.
+                # The rim throbs faster as the needle slows down.
                 beat = abs(math.sin((spin - self.PULSE_FROM) * 28))
-                color = tuple(int(v * (0.55 + 0.45 * beat)) for v in ui.ACCENT)
+                rim = tuple(int(v * (0.55 + 0.45 * beat)) for v in ui.ACCENT)
         else:
-            title, color = self.verdict(result)
-        fill = (60, 70, 60) if flash and result["hit"] else ui.PANEL
-        ui.panel(left, bottom, left + self.WIDTH, bottom + self.HEIGHT, color, fill, 245)
-        mid = bottom + self.HEIGHT / 2
-        half = self.CELL_H * self.VISIBLE / 2
-        first = math.floor(position) - 3
-        for k in range(first, first + 8):
-            y = mid + (k - position) * self.CELL_H
-            if abs(y - mid) > half - self.CELL_H / 2 + 0.5:
-                continue
-            face = k % 20 + 1
-            r, g, b = self.face_color(face, need)
-            fade = 1 - abs(y - mid) / half * 0.7
-            pico2d.draw_rectangle(cx - self.CELL_W / 2, y - self.CELL_H / 2 + 1, cx + self.CELL_W / 2,
-                                  y + self.CELL_H / 2 - 1, r, g, b, int(255 * fade), filled=True)
-            ui.text_center(cx, y, str(face), (20, 20, 20) if face == 20 else (235, 235, 235), 15)
-            if face == need:
-                # The hit line: the bottom edge of the first green face.
-                edge = y - self.CELL_H / 2
-                if abs(edge - mid) <= half:
-                    pico2d.draw_rectangle(left + 2, edge - 1, left + self.WIDTH - 2, edge + 1, *ui.ACCENT, filled=True)
-        window = color if result is not None else ui.TEXT
-        pico2d.draw_rectangle(cx - self.CELL_W / 2 - 2, mid - self.CELL_H / 2 - 1,
-                              cx + self.CELL_W / 2 + 2, mid + self.CELL_H / 2 + 1, *window)
-        for dy in range(-5, 6):
-            pico2d.draw_line(left - 7, mid + dy, left - 1, mid, *window)
-            pico2d.draw_line(left + self.WIDTH + 7, mid + dy, left + self.WIDTH + 1, mid, *window)
+            title, rim = self.verdict(result)
+
+        pico2d.draw_circle(cx, cy, radius + 5, *ui.PANEL, filled=True)
+        current = int(math.floor(position + 0.5)) % 20 + 1     # face under the needle
+        for face in range(1, 21):
+            start = (face - 1) * self.SLICE
+            color = self.face_color(face, need)
+            if face == current:
+                # The slice under the needle lights up, so each tick over reads as a step.
+                color = tuple(min(255, v + 70) for v in color)
+            ui.wedge(cx, cy, radius, start, start + self.SLICE, color)
+        for face in range(1, 21):
+            pico2d.draw_line(cx, cy, *ui.dial_point(cx, cy, radius, (face - 1) * self.SLICE), *ui.PANEL)
+        # The hit line: where green begins.
+        edge = (need - 1) * self.SLICE
+        for offset in (-0.8, 0, 0.8):
+            pico2d.draw_line(cx, cy, *ui.dial_point(cx, cy, radius + 4, edge + offset), *ui.ACCENT)
+        ui.ring(cx, cy, radius + 5, rim, 3)
+        if flash and result["hit"]:
+            ui.ring(cx, cy, radius + 9, rim, 2)
+
+        # Needle from the hub to the rim: white with a dark outline so it reads on any slice.
+        angle = (position + 0.5) * self.SLICE
+        tip = ui.dial_point(cx, cy, radius - 3, angle)
+        outline = (14, 18, 22)
+        for side, color in ((-2.5, outline), (2.5, outline), (-1.2, ui.TEXT), (0, ui.TEXT), (1.2, ui.TEXT)):
+            base = ui.dial_point(cx, cy, side, angle + 90)
+            pico2d.draw_line(*base, *tip, *color)
+        hub = self.face_color(current, need)
+        pico2d.draw_circle(cx, cy, 12, *hub, filled=True)
+        ui.ring(cx, cy, 12, ui.TEXT, 2)
+        ui.text_center(cx, cy, str(current), (20, 20, 20) if current == 20 else ui.TEXT, 14)
         size = 18 if result is not None else 15
-        DamageRoll.outlined(cx, bottom + self.HEIGHT + 13, title, color, size)
+        DamageRoll.outlined(cx, cy + radius + 18, title, rim, size)
 
 
 class DamageRoll(CombatView):
@@ -730,7 +733,7 @@ class Hotbar(CombatView):
 def create_views(combat):
     """Every screen object of a fight with the layer it belongs to."""
     overlay = [HealthBars, PartyColumn, TargetHeader, PointerInfo, Popups, InitiativeBadges,
-               HitReel, DamageRoll, ResourceRow, SlotTooltip, CombatLog, StartBanner]
+               HitWheel, DamageRoll, ResourceRow, SlotTooltip, CombatLog, StartBanner]
     views = [(CombatBoard(combat), game_world.BOARD)]
     views += [(view(combat), game_world.OVERLAY) for view in overlay]
     views += [(TurnOrderBar(combat), game_world.HUD), (Hotbar(combat), game_world.BOTTOM)]

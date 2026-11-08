@@ -155,6 +155,21 @@ def ring(x, y, radius, color, thickness=3):
     for offset in range(thickness):
         pico2d.draw_circle(x, y, radius - offset, *color)
 
+def dial_point(x, y, radius, degrees):
+    """Point on a dial; 0 degrees is 12 o'clock and angles run clockwise."""
+    angle = radians(degrees)
+    return x + radius * sin(angle), y + radius * cos(angle)
+
+
+def wedge(x, y, radius, start, end, color, step=0.6):
+    """Filled pie slice between two dial angles (clockwise from 12 o'clock)."""
+    degrees = start
+    while degrees < end:
+        pico2d.draw_line(x, y, *dial_point(x, y, radius, degrees), *color)
+        degrees += step
+    pico2d.draw_line(x, y, *dial_point(x, y, radius, end), *color)
+
+
 def ellipse(x, y, rx, ry, color, segments=28, dashed=False):
     points = [(x + rx * cos(2 * pi * i / segments), y + ry * sin(2 * pi * i / segments))
               for i in range(segments)]
