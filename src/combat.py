@@ -211,10 +211,9 @@ class Fighter:
     def alive(self):
         return self.hp > 0
 
-    def damage_text(self):
+    def damage_range(self):
         count, sides = self.damage_dice
-        bonus = f"+{self.damage_bonus}" if self.damage_bonus else ""
-        return f"{count}d{sides}{bonus}"
+        return count + self.damage_bonus, count * sides + self.damage_bonus
 
 
 class Combat:
@@ -250,7 +249,8 @@ class Combat:
         # Small result badges over each fighter, starting with the initiative roll.
         self.badges = [
             {"unit": f.unit, "time": BADGE_TIME + 0.6, "face": None, "color": (181, 197, 209),
-             "text": f"선공 {f.initiative_roll}+{f.dexterity}={f.initiative}"}
+             "title": f"선공 {f.initiative}",
+             "detail": f"주사위 {f.initiative_roll} + 민첩 {f.dexterity}"}
             for f in self.fighters
         ]
         self.start_turn()
@@ -590,7 +590,9 @@ class Combat:
                 result = attack["result"]
                 self.badges.append({
                     "unit": attacker.unit, "time": BADGE_TIME, "face": result["roll"],
-                    "text": f"{result['total']} vs {target.armor_class} {badge_label(result)}",
+                    "title": badge_label(result),
+                    "detail": f"주사위 {result['roll']} + 명중 {attacker.attack_bonus} = {result['total']}"
+                              f" · 필요 {target.armor_class}",
                     "color": badge_color(result),
                 })
             if attack["dice_time"] >= DICE_ROLL_TIME + DICE_HOLD_TIME:
@@ -676,21 +678,26 @@ class Combat:
                 attack["tick"] = tick
                 attack["face"] = self.dice_visual.randint(1, 20)
             target = attack["target"]
-            self.draw_badge(attack["attacker"].unit, attack["face"],
-                            f"+{attack['attacker'].attack_bonus} vs 방어 {target.armor_class}", ui.TEXT)
+            self.draw_badge(attack["attacker"].unit, attack["face"], "명중 판정",
+                            f"{target.armor_class} 이상이면 명중", ui.TEXT)
         for badge in self.badges:
-            self.draw_badge(badge["unit"], badge["face"], badge["text"], badge["color"])
+            self.draw_badge(badge["unit"], badge["face"], badge["title"], badge["detail"], badge["color"])
 
-    def draw_badge(self, unit, face, text, color):
+    def draw_badge(self, unit, face, title, detail, color):
+        """Two-line badge: the outcome in large text, the plain-language sum below."""
         x = unit.x - self.grid.camera_x
-        y = unit.y + 76
-        icon = 30 if face is not None else 0
-        width = icon + ui.text_width(text, 14) + 16
+        y = unit.y + 82
+        icon = 32 if face is not None else 0
+        width = icon + max(ui.text_width(title, 16), ui.text_width(detail, 13)) + 18
         left, right = x - width / 2, x + width / 2
-        ui.panel(left, y - 15, right, y + 15, color)
+        left, right = max(4, left), max(4, left) + width
+        if right > WIDTH - 4:
+            left, right = WIDTH - 4 - width, WIDTH - 4
+        ui.panel(left, y - 19, right, y + 19, color)
         if face is not None:
-            ui.d20_icon(left + 17, y, 12, face, color, 14)
-        ui.text(left + icon + 8, y, text, color, 14)
+            ui.d20_icon(left + 18, y, 13, face, color, 14)
+        ui.text(left + icon + 9, y + 8, title, color, 16)
+        ui.text(left + icon + 9, y - 9, detail, ui.MUTED, 13)
 
     def hovered_target(self):
         target = self.fighter_at(self.hover)
@@ -807,7 +814,8 @@ class Combat:
             chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
             ui.action_icon(left + 18, bottom + 18, 6, True)
             ui.text(left + 30, bottom + 18, f"명중 {chance}%", ui.ACCENT, 20)
-            ui.text(left + 120, bottom + 18, attacker.damage_text(), ui.TEXT, 14)
+            low, high = attacker.damage_range()
+            ui.text(left + 120, bottom + 18, f"피해 {low}~{high}", ui.TEXT, 14)
 
     def draw_turn_order(self):
         count = len(self.order)
