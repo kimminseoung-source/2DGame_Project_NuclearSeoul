@@ -1,30 +1,18 @@
-"""Turn-based combat board laid over the street floor."""
+"""Turn-based combat on the street floor with free, metre-based movement (BG3 style)."""
 
 import random
-from collections import deque
-from math import floor
 
 import pico2d
 
 import ui
-
 from bat import BAT_DURATION, BatSwing
-from tile_map import FLOOR_BOTTOM, FLOOR_TOP, HEIGHT, WIDTH
+from nav import NODE_X, NODE_Y, PX_PER_M_X, PX_PER_M_Y, NavField, metres, path_length, point_along, truncate
+from tile_map import HEIGHT, WIDTH
 from zombie import STRIKE_TIME, WINDUP_TIME
 
 
-COLUMNS = 15
-ROWS = 4
-CELL_WIDTH = 48
-ROW_HEIGHT = (FLOOR_TOP - FLOOR_BOTTOM) / ROWS
-BOARD_LEFT = (WIDTH - COLUMNS * CELL_WIDTH) / 2
-FLOOR_MIDDLE = (FLOOR_BOTTOM + FLOOR_TOP) / 2
-# Horizontal shift per pixel of depth. Farther rows lean left so the cells
-# read as parallelograms on the street instead of flat boxes.
-SKEW = 0.32
-STAND_CLEARANCE = 8
 BANNER_TIME = 1.4
-MOVE_SPEED = 150
+MOVE_SPEED_M = 4.5          # metres per second while walking
 ENEMY_PAUSE = 0.45
 SKIP_PAUSE = 0.9
 POPUP_TIME = 1.3
@@ -35,6 +23,10 @@ BADGE_TIME = 1.5
 DICE_ROLL_TIME = 0.45
 DICE_HOLD_TIME = 0.4
 BADGE_FLICKER = 0.06
+REACH_M = 1.5               # melee reach, as in BG3
+REACH_SLACK_M = 0.05
+MIN_MOVE_M = 0.25
+CLICK_SNAP_M = 0.6          # a click must land this close to the reachable area
 # Top strip (inside the world canvas) and the hotbar strip under the world.
 HUD_BOTTOM = HEIGHT
 HUD_TOP = HEIGHT + 64
@@ -49,137 +41,17 @@ SLOTS_LEFT = 176
 SLOTS_BOTTOM = 8
 END_TURN_CENTER = (708, 52)
 END_TURN_RADIUS = 40
+FOOT_RX, FOOT_RY = 15, 6
 
-GRID_COLOR = (74, 92, 104)
-REACH_COLOR = ui.MOVE
-HOVER_COLOR = ui.ACCENT
 PARTY_COLOR = ui.PARTY
 ENEMY_COLOR = ui.ENEMY
-TARGET_COLOR = ui.DANGER
 TEXT_COLOR = ui.TEXT
-# Straight steps first so equal-length searches do not zigzag through diagonals.
-NEIGHBOURS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
-
-
-def skew_at(y):
-    return (FLOOR_MIDDLE - y) * SKEW
-
-
-def chebyshev(a, b):
-    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
 
 def hit_chance(attack_bonus, armor_class):
     """Chance that d20 + bonus meets the armour class; 1 misses, 20 hits."""
     hits = sum(1 for roll in range(2, 20) if roll + attack_bonus >= armor_class) + 1
     return hits / 20
-
-
-class CombatGrid:
-    """A slanted board fixed to the screen area where combat started."""
-
-    def __init__(self, camera_x, tile_map):
-        self.camera_x = camera_x
-        self.tile_map = tile_map
-
-    def cell_center(self, column, row):
-        y = FLOOR_BOTTOM + ROW_HEIGHT * row + ROW_HEIGHT / 2
-        x = self.camera_x + BOARD_LEFT + CELL_WIDTH * column + CELL_WIDTH / 2 + skew_at(y)
-        return x, y
-
-    def corners(self, column, row):
-        bottom = FLOOR_BOTTOM + ROW_HEIGHT * row
-        top = bottom + ROW_HEIGHT
-        left = self.camera_x + BOARD_LEFT + CELL_WIDTH * column
-        right = left + CELL_WIDTH
-        return (
-            (left + skew_at(bottom), bottom), (right + skew_at(bottom), bottom),
-            (right + skew_at(top), top), (left + skew_at(top), top),
-        )
-
-    def cell_at(self, screen_x, y):
-        """Return the cell under a screen point, or None outside the board."""
-        row = floor((y - FLOOR_BOTTOM) / ROW_HEIGHT)
-        column = floor((screen_x - BOARD_LEFT - skew_at(y)) / CELL_WIDTH)
-        return (column, row) if self.in_bounds(column, row) else None
-
-    def in_bounds(self, column, row):
-        return 0 <= column < COLUMNS and 0 <= row < ROWS
-
-    def blocked(self, column, row):
-        # Use the same floor and wreck collision as exploration.
-        return not self.tile_map.can_stand(*self.cell_center(column, row), STAND_CLEARANCE)
-
-    def nearest_free_cell(self, x, y, taken=()):
-        cells = [
-            (column, row)
-            for column in range(COLUMNS)
-            for row in range(ROWS)
-            if not self.blocked(column, row) and (column, row) not in taken
-        ]
-
-        def distance(cell):
-            cx, cy = self.cell_center(*cell)
-            return (cx - x) ** 2 + (cy - y) ** 2
-
-        return min(cells, key=distance)
-
-    def paths_from(self, start, occupied, limit=None):
-        """Shortest step paths to every reachable cell (8 directions)."""
-        paths = {start: []}
-        queue = deque([start])
-        while queue:
-            cell = queue.popleft()
-            if limit is not None and len(paths[cell]) >= limit:
-                continue
-            for dx, dy in NEIGHBOURS:
-                step = cell[0] + dx, cell[1] + dy
-                if step in paths or not self.walkable(step, occupied):
-                    continue
-                # Do not cut diagonally past the corner of an obstacle.
-                if dx and dy and not (self.walkable((cell[0] + dx, cell[1]), occupied)
-                                      and self.walkable((cell[0], cell[1] + dy), occupied)):
-                    continue
-                paths[step] = paths[cell] + [step]
-                queue.append(step)
-        del paths[start]
-        # Prefer the even, straight line to a cell whenever it is just as short.
-        for cell, path in paths.items():
-            line = self.line_path(start, cell, occupied)
-            if line is not None and len(line) == len(path):
-                paths[cell] = line
-        return paths
-
-    def line_path(self, start, target, occupied):
-        """Evenly spread steps from start to target, or None if something blocks it."""
-        dx, dy = target[0] - start[0], target[1] - start[1]
-        steps = max(abs(dx), abs(dy))
-        path, previous = [], start
-        for index in range(1, steps + 1):
-            cell = (start[0] + floor(dx * index / steps + 0.5), start[1] + floor(dy * index / steps + 0.5))
-            if not self.walkable(cell, occupied):
-                return None
-            sx, sy = cell[0] - previous[0], cell[1] - previous[1]
-            if sx and sy and not (self.walkable((previous[0] + sx, previous[1]), occupied)
-                                  and self.walkable((previous[0], previous[1] + sy), occupied)):
-                return None
-            path.append(cell)
-            previous = cell
-        return path
-
-    def walkable(self, cell, occupied):
-        return self.in_bounds(*cell) and not self.blocked(*cell) and cell not in occupied
-
-    def draw(self, highlights):
-        for column in range(COLUMNS):
-            for row in range(ROWS):
-                points = [(x - self.camera_x, y) for x, y in self.corners(column, row)]
-                if self.blocked(column, row):
-                    (x1, y1), (x2, y2), (x3, y3), (x4, y4) = points
-                    pico2d.draw_line(x1 + 6, y1 + 3, x3 - 6, y3 - 3, 120, 96, 82)
-                    pico2d.draw_line(x2 - 6, y2 + 3, x4 + 6, y4 - 3, 120, 96, 82)
-                    continue
-                draw_cell(points, highlights.get((column, row), GRID_COLOR))
 
 
 def badge_label(result):
@@ -198,40 +70,38 @@ def badge_color(result):
     return ui.DANGER if result["hit"] else ui.MISS
 
 
-def draw_cell(points, color, inset_x=0.06, inset_y=0.12):
-    # Inset each cell slightly so neighbouring outlines do not merge.
-    cx = sum(x for x, _ in points) / 4
-    cy = sum(y for _, y in points) / 4
-    inset = [(x + (cx - x) * inset_x, y + (cy - y) * inset_y) for x, y in points]
-    for (x1, y1), (x2, y2) in zip(inset, inset[1:] + inset[:1]):
-        pico2d.draw_line(x1, y1, x2, y2, *color)
+def fmt_m(value):
+    return f"{value:.1f}m"
 
 
 class Fighter:
-    """Turn data and combat stats for one unit on the board."""
+    """Turn data and combat stats for one unit on the street."""
 
-    def __init__(self, unit, name, team, *, dexterity, move_cells, max_hp,
+    def __init__(self, unit, name, team, *, dexterity, move_m, max_hp,
                  armor_class, attack_bonus, damage_dice, damage_bonus, hp=None):
         self.unit = unit
         self.name = name
         self.team = team
         self.dexterity = dexterity
-        self.move_cells = move_cells
+        self.move_m = move_m
         self.max_hp = max_hp
         self.hp = max_hp if hp is None else hp
         self.armor_class = armor_class
         self.attack_bonus = attack_bonus
         self.damage_dice = damage_dice  # (count, sides)
         self.damage_bonus = damage_bonus
-        self.cell = None
         self.initiative = 0
         self.initiative_roll = 0
         self.surprised = False
-        self.moves_left = 0
+        self.moves_left = 0.0
         self.action = 0
         self.bonus_action = 0
         # One reaction per round, refreshed at the start of the fighter's turn.
         self.reaction = 1
+
+    @property
+    def pos(self):
+        return self.unit.x, self.unit.y
 
     @property
     def alive(self):
@@ -243,24 +113,27 @@ class Fighter:
 
 
 class Combat:
-    """Board, initiative order and the turn currently being played."""
+    """Initiative order, free movement on a hidden lattice, and the current turn."""
 
     def __init__(self, camera_x, tile_map, fighters, surprise, rng=None):
-        self.grid = CombatGrid(camera_x, tile_map)
+        self.camera_x = camera_x
+        self.nav = NavField(tile_map, camera_x, camera_x + WIDTH)
         self.surprise = surprise
         self.rng = rng or random.Random()
         self.banner_time = BANNER_TIME
         self.fighters = fighters
-        taken = []
+        placed = []
         for fighter in fighters:
-            fighter.cell = self.grid.nearest_free_cell(fighter.unit.x, fighter.unit.y, taken)
-            taken.append(fighter.cell)
-            fighter.unit.x, fighter.unit.y = self.grid.cell_center(*fighter.cell)
+            # Keep everyone on open floor and out of each other's bodies.
+            if not self.nav.open_at(fighter.pos, placed):
+                node = self.nav.nearest_open(fighter.pos, placed)
+                fighter.unit.x, fighter.unit.y = self.nav.position(node)
+            placed.append(fighter.pos)
             fighter.surprised = surprise and fighter.team == "enemy"
         self.roll_initiative()
         self.round = 1
         self.turn_index = 0
-        self.hover = None
+        self.hover = None           # mouse position in screen coordinates (world viewport)
         self.hover_screen = None
         self.hover_bottom = None
         self.moving = None
@@ -273,6 +146,9 @@ class Combat:
         self.selected = None
         self.mode = None
         self.dice_visual = random.Random()
+        self._search_cache = None
+        self._plan_cache = None
+        self._area_cache = None
         # Small result badges over each fighter, starting with the initiative roll.
         self.badges = [
             {"unit": f.unit, "time": BADGE_TIME + 0.6, "face": None, "color": (181, 197, 209),
@@ -281,7 +157,6 @@ class Combat:
             for f in self.fighters
         ]
         self.start_turn()
-
 
     # Turn order -----------------------------------------------------------
 
@@ -315,7 +190,7 @@ class Combat:
 
     def start_turn(self):
         fighter = self.current
-        fighter.moves_left = fighter.move_cells
+        fighter.moves_left = float(fighter.move_m)
         fighter.action = 1
         fighter.bonus_action = 1
         fighter.reaction = 1
@@ -346,16 +221,161 @@ class Combat:
         self.wait_time = 0.0
         self.start_turn()
 
+    # Positions and reach --------------------------------------------------
+
+    def blockers(self, mover):
+        return [f.pos for f in self.fighters if f is not mover and f.alive]
+
+    def in_reach(self, a, b):
+        return metres(a, b) <= REACH_M + REACH_SLACK_M
+
+    def attack_targets(self, fighter):
+        enemy_team = "enemy" if fighter.team == "party" else "party"
+        return [f for f in self.living(enemy_team) if self.in_reach(f.pos, fighter.pos)]
+
+    def to_world(self, screen_x, y):
+        return screen_x + self.camera_x, y
+
+    def fighter_under(self, screen_point):
+        """The living fighter whose sprite is under a screen point."""
+        if screen_point is None:
+            return None
+        x, y = self.to_world(*screen_point)
+        hits = [f for f in self.fighters
+                if f.alive and abs(f.unit.x - x) <= 16 and f.unit.y - 14 <= y <= f.unit.y + 46]
+        return min(hits, key=lambda f: abs(f.unit.x - x), default=None)
+
     # Movement -------------------------------------------------------------
 
-    def occupied(self, ignore=None):
-        return {f.cell for f in self.fighters if f is not ignore and f.alive}
+    def search(self, fighter):
+        """Reachable lattice for the fighter's remaining movement, cached per state."""
+        key = (id(fighter), fighter.pos, round(fighter.moves_left, 3), tuple(self.blockers(fighter)))
+        if self._search_cache is None or self._search_cache[0] != key:
+            costs = self.nav.search(fighter.pos, self.blockers(fighter), fighter.moves_left)
+            self._search_cache = (key, costs)
+        return self._search_cache[1]
 
-    def reachable(self, fighter):
-        return self.grid.paths_from(fighter.cell, self.occupied(fighter), fighter.moves_left)
+    def plan_move(self, fighter, screen_point):
+        """Straightened path to the reachable spot nearest the mouse, or None (cached)."""
+        if screen_point is None:
+            return None
+        key = (id(fighter), fighter.pos, round(fighter.moves_left, 3), tuple(self.blockers(fighter)), screen_point)
+        if self._plan_cache is not None and self._plan_cache[0] == key:
+            return self._plan_cache[1]
+        points = self._plan_move(fighter, screen_point)
+        self._plan_cache = (key, points)
+        return points
 
-    def fighter_at(self, cell):
-        return next((f for f in self.fighters if f.cell == cell and f.alive), None)
+    def _plan_move(self, fighter, screen_point):
+        point = self.to_world(*screen_point)
+        costs = self.search(fighter)
+        best = min(costs, key=lambda n: metres(self.nav.position(n), point), default=None)
+        if best is None or metres(self.nav.position(best), point) > CLICK_SNAP_M:
+            return None
+        if metres(self.nav.position(best), fighter.pos) < MIN_MOVE_M:
+            return None
+        blockers = self.blockers(fighter)
+        points = self.nav.route(fighter.pos, best, costs, blockers)
+        # Finish exactly where the player clicked when that spot is open and in budget.
+        if self.nav.open_at(point, blockers):
+            if self.nav.segment_clear(fighter.pos, point, blockers):
+                exact = [fighter.pos, point]
+            elif len(points) > 2 and self.nav.segment_clear(points[-2], point, blockers):
+                exact = points[:-1] + [point]
+            else:
+                exact = points[:-1] + [points[-1], point] if self.nav.segment_clear(points[-1], point, blockers) else None
+            if exact and path_length(exact) <= fighter.moves_left + 1e-6:
+                points = exact
+        return points if path_length(points) <= fighter.moves_left + 1e-6 else truncate(points, fighter.moves_left)
+
+    def start_moving(self, fighter, points):
+        self.moving = {"fighter": fighter, "points": list(points[1:])}
+        if fighter.team == "enemy":
+            fighter.unit.transition("chase")
+
+    def can_react(self, reactor, mover):
+        return (reactor.alive and reactor.team != mover.team and reactor.reaction
+                and not reactor.surprised)
+
+    def provokers(self, mover, old, new):
+        """Enemies whose reach the mover leaves by stepping from old to new."""
+        return [f for f in self.fighters
+                if self.can_react(f, mover) and self.in_reach(f.pos, old) and not self.in_reach(f.pos, new)]
+
+    def path_provokes(self, mover, points):
+        total = path_length(points)
+        previous, walked = points[0], 0.0
+        while walked < total:
+            walked = min(total, walked + 0.1)
+            current = point_along(points, walked)
+            if self.provokers(mover, previous, current):
+                return True
+            previous = current
+        return False
+
+    def update_moving(self, frame_time):
+        fighter, points = self.moving["fighter"], self.moving["points"]
+        unit = fighter.unit
+        old = fighter.pos
+        target = points[0]
+        remaining = metres(old, target)
+        step = min(MOVE_SPEED_M * frame_time, remaining, max(0.0, fighter.moves_left))
+        t = step / remaining if remaining else 1.0
+        new = (old[0] + (target[0] - old[0]) * t, old[1] + (target[1] - old[1]) * t)
+        reactors = self.provokers(fighter, old, new)
+        if reactors:
+            # Stop at the edge of reach and let the enemy take its opportunity attack.
+            reactor = reactors[0]
+            reactor.reaction = 0
+            self.popup("기회 공격!", reactor.unit.x, reactor.unit.y + 96, (255, 214, 127))
+            self.start_attack(reactor, fighter, reaction=True)
+            return
+        if abs(target[0] - old[0]) > 1:
+            unit.direction = 1 if target[0] > old[0] else -1
+        unit.x, unit.y = new
+        unit.walk_time += frame_time
+        fighter.moves_left = max(0.0, fighter.moves_left - step)
+        if metres(new, target) < 1e-3:
+            unit.x, unit.y = target
+            points.pop(0)
+        if points and fighter.moves_left > 1e-3:
+            return
+        self.moving = None
+        unit.walk_time = 0.0
+        if fighter.team == "enemy":
+            unit.transition("idle")
+            self.enemy_act(fighter)
+
+    # Enemy turn -----------------------------------------------------------
+
+    def enemy_approach(self, fighter):
+        targets = self.living("party")
+        target = min(targets, key=lambda f: metres(f.pos, fighter.pos))
+        if self.in_reach(target.pos, fighter.pos):
+            self.enemy_act(fighter)
+            return
+        blockers = self.blockers(fighter)
+        costs = self.nav.search(fighter.pos, blockers)
+        goals = [n for n in costs if metres(self.nav.position(n), target.pos) <= REACH_M - 0.15]
+        if goals:
+            goal = min(goals, key=lambda n: costs[n][0])
+        else:
+            goal = min(costs, key=lambda n: metres(self.nav.position(n), target.pos), default=None)
+        if goal is None:
+            self.wait_time = ENEMY_PAUSE
+            return
+        points = truncate(self.nav.route(fighter.pos, goal, costs, blockers), fighter.moves_left)
+        if len(points) < 2:
+            self.enemy_act(fighter)
+            return
+        self.start_moving(fighter, points)
+
+    def enemy_act(self, fighter):
+        targets = self.attack_targets(fighter)
+        if targets and fighter.action:
+            self.start_attack(fighter, min(targets, key=lambda f: f.hp))
+        else:
+            self.wait_time = ENEMY_PAUSE
 
     # Selection and action bar ---------------------------------------------
 
@@ -363,7 +383,7 @@ class Combat:
         """Action bar entries for the selected fighter: (key, label, cost, enabled)."""
         fighter = self.selected
         return [
-            ("move", "이동", f"{fighter.moves_left}칸", fighter.moves_left > 0),
+            ("move", "이동", fmt_m(fighter.moves_left), fighter.moves_left >= MIN_MOVE_M),
             ("attack", "공격", "행동", bool(fighter.action) and bool(self.attack_targets(fighter))),
             ("end", "턴 종료", "Space", True),
         ]
@@ -409,10 +429,6 @@ class Combat:
         if hit is not None and hit[0] is not None:
             self.choose_action(hit[0][0])
 
-    def attack_targets(self, fighter):
-        return [f for f in self.living("enemy" if fighter.team == "party" else "party")
-                if chebyshev(f.cell, fighter.cell) <= 1]
-
     def choose_action(self, kind):
         if not self.is_player_turn():
             return
@@ -425,14 +441,14 @@ class Combat:
         entry = next(e for e in self.actions() if e[0] == kind)
         if not entry[3]:
             if kind == "move":
-                self.log = "남은 이동 칸이 없습니다."
+                self.log = "남은 이동 거리가 없습니다."
             elif not self.selected.action:
                 self.log = "이번 턴의 행동을 이미 썼습니다."
             else:
-                self.log = "옆 칸에 공격할 적이 없습니다. 먼저 다가가세요."
+                self.log = f"근접 거리({fmt_m(REACH_M)}) 안에 적이 없습니다. 먼저 다가가세요."
         else:
             self.mode = kind
-            self.log = "이동할 칸을 클릭하세요 · 우클릭 취소" if kind == "move" else "공격할 적을 클릭하세요 · 우클릭 취소"
+            self.log = "갈 곳을 클릭하세요 · 우클릭 취소" if kind == "move" else "공격할 적을 클릭하세요 · 우클릭 취소"
 
     def right_click(self):
         if not self.is_player_turn():
@@ -444,117 +460,28 @@ class Combat:
     def click(self, screen_x, y):
         if not self.is_player_turn():
             return
-        cell = self.grid.cell_at(screen_x, y)
-        clicked = self.fighter_at(cell)
         fighter = self.current
-        if clicked is fighter:
+        clicked = self.fighter_under((screen_x, y))
+        if clicked is fighter and self.mode is None:
             self.selected = fighter
-            self.mode = None
             self.log = "행동을 고르세요 · 1 이동  2 공격  Space 턴 종료"
-            return
-        if self.selected is None:
-            self.log = "먼저 내 캐릭터를 클릭해 선택하세요."
             return
         if self.mode == "attack":
             if clicked is not None and clicked in self.attack_targets(fighter):
                 self.mode = None
                 self.start_attack(fighter, clicked)
             else:
-                self.log = "옆 칸의 적을 클릭하세요 · 우클릭 취소"
+                self.log = "근접 거리 안의 적을 클릭하세요 · 우클릭 취소"
         elif self.mode == "move":
-            path = self.reachable(fighter).get(cell)
-            if path:
+            points = self.plan_move(fighter, (screen_x, y))
+            if points:
                 self.mode = None
                 self.log = "행동을 고르세요"
-                self.start_moving(fighter, path)
+                self.start_moving(fighter, points)
+            else:
+                self.log = "갈 수 없는 곳입니다 · 파란 영역 안을 클릭하세요"
         else:
             self.log = "아래 행동 막대에서 행동을 고르세요."
-
-    def start_moving(self, fighter, path):
-        self.moving = {"fighter": fighter, "path": list(path), "from": fighter.cell}
-        fighter.cell = path[-1]
-        if fighter.team == "enemy":
-            fighter.unit.transition("chase")
-        self.check_provoke()
-
-    def can_react(self, reactor, mover):
-        return (reactor.alive and reactor.team != mover.team and reactor.reaction
-                and not reactor.surprised)
-
-    def provokers(self, mover, from_cell, to_cell):
-        """Enemies whose reach the mover leaves by stepping from one cell to the next."""
-        return [
-            f for f in self.fighters
-            if self.can_react(f, mover)
-            and chebyshev(f.cell, from_cell) <= 1 < chebyshev(f.cell, to_cell)
-        ]
-
-    def path_provokes(self, mover, path):
-        previous = mover.cell
-        for step in path:
-            if self.provokers(mover, previous, step):
-                return True
-            previous = step
-        return False
-
-    def check_provoke(self):
-        """Pause the move for an opportunity attack before leaving reach."""
-        move = self.moving
-        mover = move["fighter"]
-        reactors = self.provokers(mover, move["from"], move["path"][0])
-        if not reactors:
-            return
-        reactor = reactors[0]
-        reactor.reaction = 0
-        self.popup("기회 공격!", reactor.unit.x, reactor.unit.y + 96, (255, 214, 127))
-        self.start_attack(reactor, mover, reaction=True)
-
-    def enemy_approach(self, fighter):
-        targets = self.living("party")
-        target = min(targets, key=lambda f: chebyshev(f.cell, fighter.cell))
-        if chebyshev(target.cell, fighter.cell) <= 1:
-            self.enemy_act(fighter)
-            return
-        paths = self.grid.paths_from(fighter.cell, self.occupied(fighter))
-        goals = [path for cell, path in paths.items() if chebyshev(cell, target.cell) == 1]
-        if not goals:
-            self.wait_time = ENEMY_PAUSE
-            return
-        path = min(goals, key=len)[:fighter.move_cells]
-        self.start_moving(fighter, path)
-
-    def enemy_act(self, fighter):
-        targets = [f for f in self.living("party") if chebyshev(f.cell, fighter.cell) <= 1]
-        if targets and fighter.action:
-            self.start_attack(fighter, min(targets, key=lambda f: f.hp))
-        else:
-            self.wait_time = ENEMY_PAUSE
-
-    def update_moving(self, frame_time):
-        fighter, path = self.moving["fighter"], self.moving["path"]
-        unit = fighter.unit
-        target_x, target_y = self.grid.cell_center(*path[0])
-        dx, dy = target_x - unit.x, target_y - unit.y
-        distance = (dx * dx + dy * dy) ** 0.5
-        step = MOVE_SPEED * frame_time
-        if abs(dx) > 1:
-            unit.direction = 1 if dx > 0 else -1
-        unit.walk_time += frame_time
-        if distance > step:
-            unit.x += dx / distance * step
-            unit.y += dy / distance * step
-            return
-        unit.x, unit.y = target_x, target_y
-        self.moving["from"] = path.pop(0)
-        fighter.moves_left = max(0, fighter.moves_left - 1)
-        if path:
-            self.check_provoke()
-            return
-        self.moving = None
-        unit.walk_time = 0.0
-        if fighter.team == "enemy":
-            unit.transition("idle")
-            self.enemy_act(fighter)
 
     # Attacks --------------------------------------------------------------
 
@@ -606,10 +533,6 @@ class Combat:
         label = "치명타!" if result["critical"] else "명중"
         color = (255, 214, 127) if result["critical"] else (255, 160, 130)
         self.popup(f"{label} -{damage}", x, y, color)
-        rolls = "+".join(map(str, result["damage_rolls"]))
-        count, sides = attacker.damage_dice
-        if result["critical"]:
-            count *= 2
         self.log = f"{attacker.name} {label}: {target.name}에게 피해 {damage}"
         self.effects.append(("impact", target.unit.x, target.unit.y))
         if not target.alive:
@@ -679,7 +602,6 @@ class Combat:
         mover = attack["target"]
         if self.moving is None or mover.alive:
             return
-        mover.cell = self.moving["from"]
         self.moving = None
         if self.outcome is None and mover is self.current:
             self.wait_time = ENEMY_PAUSE
@@ -733,66 +655,100 @@ class Combat:
 
     def draw_badge(self, unit, face, title, detail, color):
         """Two-line badge: the outcome in large text, the plain-language sum below."""
-        x = unit.x - self.grid.camera_x
+        x = unit.x - self.camera_x
         y = unit.y + 82
         icon = 32 if face is not None else 0
         width = icon + max(ui.text_width(title, 16), ui.text_width(detail, 13)) + 18
-        left, right = x - width / 2, x + width / 2
-        left, right = max(4, left), max(4, left) + width
-        if right > WIDTH - 4:
-            left, right = WIDTH - 4 - width, WIDTH - 4
-        ui.panel(left, y - 19, right, y + 19, color)
+        left = max(4, min(WIDTH - 4 - width, x - width / 2))
+        ui.panel(left, y - 19, left + width, y + 19, color)
         if face is not None:
             ui.d20_icon(left + 18, y, 13, face, color, 14)
         ui.text(left + icon + 9, y + 8, title, color, 16)
         ui.text(left + icon + 9, y - 9, detail, ui.MUTED, 13)
 
     def hovered_target(self):
-        target = self.fighter_at(self.hover)
+        target = self.fighter_under(self.hover)
         if target is None or target.team == self.current.team:
             return None
         return target
 
-    def outline(self, cell, color):
-        corners = self.grid.corners(*cell)
-        draw_cell([(x - self.grid.camera_x, y) for x, y in corners], color, 0.0, 0.0)
+    def foot_ring(self, fighter, color, scale=1.0, dashed=False):
+        x, y = fighter.pos
+        ui.ellipse(x - self.camera_x, y - 10, FOOT_RX * scale, FOOT_RY * scale, color, dashed=dashed)
 
     # Board layer (under the units) ----------------------------------------
 
     def draw(self):
-        highlights = {}
         player_turn = self.is_player_turn()
         if player_turn and self.mode == "move":
-            for cell in self.reachable(self.current):
-                highlights[cell] = REACH_COLOR
-            if self.hover in highlights:
-                highlights[self.hover] = HOVER_COLOR
+            self.draw_reach_area()
+        if player_turn and self.mode == "attack":
+            x, y = self.current.pos
+            # Melee reach drawn as a dashed ellipse in floor perspective.
+            ui.ellipse(x - self.camera_x, y - 10, REACH_M * PX_PER_M_X, REACH_M * PX_PER_M_Y,
+                       ui.DANGER, 40, dashed=True)
         for fighter in self.fighters:
-            if fighter.alive:
-                highlights[fighter.cell] = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
-        self.grid.draw(highlights)
+            if not fighter.alive:
+                continue
+            color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
+            active = fighter is self.current and self.outcome is None
+            self.foot_ring(fighter, ui.ACCENT if active else color)
+            if active:
+                self.foot_ring(fighter, ui.ACCENT, 1.2)
         if player_turn:
             if self.mode == "attack":
                 for enemy in self.attack_targets(self.current):
-                    self.outline(enemy.cell, TARGET_COLOR)
-            if self.selected is not None:
-                self.outline(self.selected.cell, HOVER_COLOR)
-            elif self.hover == self.current.cell:
-                self.outline(self.current.cell, (200, 230, 210))
+                    self.foot_ring(enemy, ui.DANGER, 1.35)
+            hovered = self.hovered_target()
+            if hovered is not None:
+                self.foot_ring(hovered, ui.DANGER, 1.2)
             if self.mode == "move":
                 self.draw_move_path()
 
+    def draw_reach_area(self):
+        """BG3-like movement area: a soft fill with a brighter rim."""
+        costs = self.search(self.current)
+        if self._area_cache is None or self._area_cache[0] is not costs:
+            self._area_cache = (costs, self.area_shapes(set(costs)))
+        runs, rim = self._area_cache[1]
+        for left, right, y in runs:
+            pico2d.draw_rectangle(left - self.camera_x, y - NODE_Y / 2, right - self.camera_x, y + NODE_Y / 2 - 1,
+                                  *ui.MOVE, 34, filled=True)
+        for x, y in rim:
+            pico2d.draw_rectangle(x - self.camera_x - 1, y - 1, x - self.camera_x + 1, y + 1, *ui.MOVE, filled=True)
+
+    def area_shapes(self, nodes):
+        """Merge reachable nodes into row runs for the fill and collect rim points."""
+        runs, rim = [], []
+        for row in sorted({r for _, r in nodes}):
+            columns = sorted(c for c, r in nodes if r == row)
+            start = previous = columns[0]
+            for column in columns[1:] + [None]:
+                if column is not None and column == previous + 1:
+                    previous = column
+                    continue
+                left, y = self.nav.position((start, row))
+                right, _ = self.nav.position((previous, row))
+                runs.append((left - NODE_X / 2, right + NODE_X / 2 - 1, y))
+                if column is not None:
+                    start = previous = column
+        for c, r in nodes:
+            if any((c + dc, r + dr) not in nodes for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                rim.append(self.nav.position((c, r)))
+        return runs, rim
+
     def draw_move_path(self):
-        path = self.reachable(self.current).get(self.hover)
-        if not path:
+        points = self.plan_move(self.current, self.hover)
+        if not points:
             return
-        danger = self.path_provokes(self.current, path)
+        danger = self.path_provokes(self.current, points)
         color = ui.DANGER if danger else ui.ACCENT
-        points = [self.grid.cell_center(*cell) for cell in [self.current.cell] + path]
-        for (x1, y1), (x2, y2) in zip(points, points[1:]):
-            pico2d.draw_line(x1 - self.grid.camera_x, y1, x2 - self.grid.camera_x, y2, *color)
-        for x, y in points[1:-1]:
-            pico2d.draw_circle(x - self.grid.camera_x, y, 2, *color, filled=True)
+        screen = [(x - self.camera_x, y) for x, y in points]
+        for (x1, y1), (x2, y2) in zip(screen, screen[1:]):
+            pico2d.draw_line(x1, y1, x2, y2, *color)
+            pico2d.draw_line(x1, y1 + 1, x2, y2 + 1, *color)
+        end_x, end_y = screen[-1]
+        ui.ellipse(end_x, end_y - 10, FOOT_RX, FOOT_RY, color)
 
     # Overlay layer (above the units) --------------------------------------
 
@@ -813,7 +769,7 @@ class Combat:
                 self.draw_move_label()
         for text, x, y, time_left, color in self.popups:
             rise = (POPUP_TIME - time_left) * 22
-            ui.text_center(x - self.grid.camera_x, y + rise, text, color)
+            ui.text_center(x - self.camera_x, y + rise, text, color)
         self.draw_badges()
         if self.current.team == "party" and self.outcome is None:
             self.draw_resource_row()
@@ -826,20 +782,20 @@ class Combat:
             ui.text_center(WIDTH / 2, 320, label, ui.ACCENT, 20)
 
     def draw_move_label(self):
-        path = self.reachable(self.current).get(self.hover)
-        if not path:
+        points = self.plan_move(self.current, self.hover)
+        if not points:
             return
-        x, y = self.grid.cell_center(*self.hover)
-        x -= self.grid.camera_x
-        danger = self.path_provokes(self.current, path)
-        label = f"{len(path)}칸" + (" · 기회 공격 위험" if danger else "")
+        x, y = points[-1]
+        x -= self.camera_x
+        danger = self.path_provokes(self.current, points)
+        label = fmt_m(path_length(points)) + (" · 기회 공격 위험" if danger else "")
         color = ui.DANGER if danger else ui.ACCENT
         width = ui.text_width(label, 14) + 14
         ui.panel(x - width / 2, y + 22, x + width / 2, y + 42, color)
         ui.text_center(x, y + 32, label, color, 14)
 
     def draw_health(self, fighter):
-        x = fighter.unit.x - self.grid.camera_x
+        x = fighter.unit.x - self.camera_x
         y = fighter.unit.y + 52
         color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
         ui.bar(x - 18, y, 36, 4, fighter.hp / fighter.max_hp, color)
@@ -872,14 +828,15 @@ class Combat:
 
     def draw_hit_chip(self, attacker, target):
         """Hit chance next to the hovered enemy, like BG3's cursor readout."""
-        x = target.unit.x - self.grid.camera_x + 26
+        x = target.unit.x - self.camera_x + 26
         y = target.unit.y + 34
+        distance = metres(attacker.pos, target.pos)
         if self.mode != "attack":
-            lines = [("2 공격을 고르면 명중 확률 표시", ui.MUTED)]
+            lines = [("2 공격을 고르면 명중 확률 표시", ui.MUTED), (f"거리 {fmt_m(distance)}", ui.MUTED)]
         elif not attacker.action:
             lines = [("자원이 충분하지 않음: 행동", ui.DANGER)]
-        elif chebyshev(attacker.cell, target.cell) > 1:
-            lines = [("너무 멂 · 옆 칸으로 다가가세요", ui.DANGER)]
+        elif not self.in_reach(attacker.pos, target.pos):
+            lines = [(f"너무 멂 · 거리 {fmt_m(distance)}", ui.DANGER), (f"{fmt_m(REACH_M)} 안으로 다가가세요", ui.MUTED)]
         else:
             chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
             low, high = attacker.damage_range()
@@ -1039,24 +996,24 @@ class Combat:
         fighter = self.selected or self.current
         x = SLOTS_LEFT + (SLOT_COLUMNS * (SLOT_SIZE + SLOT_GAP)) / 2 - 90
         y = 13
-        ui.panel(x - 14, y - 11, x + 190, y + 11, ui.BORDER, ui.PANEL, 200)
+        ui.panel(x - 14, y - 11, x + 214, y + 11, ui.BORDER, ui.PANEL, 200)
         ui.action_icon(x, y, 6, bool(fighter.action))
         ui.bonus_icon(x + 20, y, 7, bool(fighter.bonus_action))
         ui.reaction_icon(x + 40, y, 7, bool(fighter.reaction))
-        total = max(1, fighter.move_cells)
-        cost = 0
+        total = max(0.1, fighter.move_m)
+        cost = 0.0
         if self.is_player_turn() and self.mode == "move":
-            path = self.reachable(fighter).get(self.hover)
-            cost = len(path) if path else 0
-        left_after = fighter.moves_left - cost
+            points = self.plan_move(fighter, self.hover)
+            cost = path_length(points) if points else 0.0
+        left_after = max(0.0, fighter.moves_left - cost)
         ui.bar(x + 58, y - 3, 60, 6, left_after / total, ui.MOVE)
         if cost:
             # The part this move would spend, shown in gold like BG3's preview.
             start = x + 58 + 60 * left_after / total
             pico2d.draw_rectangle(start, y - 3, start + 60 * cost / total, y + 3, *ui.ACCENT, filled=True)
-            ui.text(x + 124, y, f"이동 {cost}칸 사용 · 남음 {left_after}", ui.ACCENT, 12)
+            ui.text(x + 124, y, f"{fmt_m(cost)} 사용 · 남음 {fmt_m(left_after)}", ui.ACCENT, 12)
         else:
-            ui.text(x + 124, y, f"이동 {fighter.moves_left}/{fighter.move_cells}", ui.MUTED, 12)
+            ui.text(x + 124, y, f"이동 {fighter.moves_left:.1f}/{fmt_m(fighter.move_m)}", ui.MUTED, 12)
 
     def draw_slot_tooltip(self):
         """Tooltip above a hovered hotbar slot, drawn in world coordinates."""
@@ -1067,12 +1024,12 @@ class Combat:
             return
         (kind, label, cost, enabled), (left, _, right, _) = hit
         if kind == "move":
-            lines = [f"이동 · 남은 {self.selected.moves_left}칸", "칸을 골라 걸어갑니다"]
+            lines = [f"이동 · 남은 거리 {fmt_m(self.selected.moves_left)}", "원하는 곳을 클릭해 걸어갑니다"]
         else:
-            lines = ["근접 공격 · 행동 1", "옆 칸의 적을 방망이로 칩니다"]
+            lines = ["근접 공격 · 행동 1", f"{fmt_m(REACH_M)} 안의 적을 방망이로 칩니다"]
         if not enabled:
-            reason = "이동할 칸이 없음" if kind == "move" else (
-                "자원이 충분하지 않음: 행동" if not self.selected.action else "옆 칸에 적이 없음")
+            reason = "남은 이동 거리가 없음" if kind == "move" else (
+                "자원이 충분하지 않음: 행동" if not self.selected.action else "근접 거리에 적이 없음")
             lines.append(reason)
         width = max(ui.text_width(line, 13) for line in lines) + 18
         height = 18 * len(lines) + 10

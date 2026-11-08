@@ -36,11 +36,11 @@ SURPRISE_RANGE = 96
 SCREEN_HEIGHT = HEIGHT + 64
 # Draft combat stats until characters get full stat sheets.
 PLAYER_STATS = dict(
-    dexterity=2, move_cells=5, max_hp=MAX_HEALTH, armor_class=12,
+    dexterity=2, move_m=7.5, max_hp=MAX_HEALTH, armor_class=12,
     attack_bonus=4, damage_dice=(1, 6), damage_bonus=2,
 )
 ZOMBIE_STATS = dict(
-    dexterity=0, move_cells=4, max_hp=9, armor_class=10,
+    dexterity=0, move_m=6.0, max_hp=9, armor_class=10,
     attack_bonus=3, damage_dice=(1, 6), damage_bonus=0,
 )
 
@@ -261,7 +261,7 @@ def handle_events(game):
             if game.combat is not None:
                 region, x, y = ui.split_mouse(event.x, event.y)
                 in_world = region == "world"
-                game.combat.hover = game.combat.grid.cell_at(x, y) if in_world else None
+                game.combat.hover = (x, y) if in_world else None
                 game.combat.hover_screen = (x, y) if in_world else None
                 game.combat.hover_bottom = None if in_world else (x, y)
         if (event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT

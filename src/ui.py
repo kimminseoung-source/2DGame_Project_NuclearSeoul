@@ -154,3 +154,11 @@ def split_mouse(sdl_x, sdl_y):
 def ring(x, y, radius, color, thickness=3):
     for offset in range(thickness):
         pico2d.draw_circle(x, y, radius - offset, *color)
+
+def ellipse(x, y, rx, ry, color, segments=28, dashed=False):
+    points = [(x + rx * cos(2 * pi * i / segments), y + ry * sin(2 * pi * i / segments))
+              for i in range(segments)]
+    for index, ((x1, y1), (x2, y2)) in enumerate(zip(points, points[1:] + points[:1])):
+        if dashed and index % 2:
+            continue
+        pico2d.draw_line(x1, y1, x2, y2, *color)
