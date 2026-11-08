@@ -1,12 +1,14 @@
 """Turn-based combat on the street floor with free, metre-based movement (BG3 style)."""
 
 import random
+from collections import deque
 
 import pico2d
 
 import ui
 from bat import BAT_DURATION, BatSwing
 from nav import NODE_X, NODE_Y, PX_PER_M_X, PX_PER_M_Y, NavField, metres, path_length, point_along, truncate
+from nav import bodies_clash as nav_clash
 from tile_map import HEIGHT, WIDTH
 from zombie import STRIKE_TIME, WINDUP_TIME
 
@@ -42,6 +44,12 @@ SLOTS_BOTTOM = 8
 END_TURN_CENTER = (708, 52)
 END_TURN_RADIUS = 40
 FOOT_RX, FOOT_RY = 15, 6
+LOG_WIDTH = 230
+LOG_LINES = 8
+LOG_LINE = 16
+LOG_HEADER = 22
+LOG_RIGHT = WIDTH - 8
+LOG_TOP = HEIGHT - 8
 
 PARTY_COLOR = ui.PARTY
 ENEMY_COLOR = ui.ENEMY
@@ -157,6 +165,8 @@ class Combat:
         self._plan_cache = None
         self._area_cache = None
         self._approach_cache = None
+        self.history = deque(maxlen=40)
+        self.log_open = True
         # Small result badges over each fighter, starting with the initiative roll.
         self.badges = [
             {"unit": f.unit, "time": BADGE_TIME + 0.6, "face": None, "color": (181, 197, 209),
@@ -164,7 +174,13 @@ class Combat:
              "detail": f"주사위 {f.initiative_roll} + 민첩 {f.dexterity}"}
             for f in self.fighters
         ]
+        order = ", ".join(f"{f.name} {f.initiative}" for f in self.order)
+        self.record("기습! 전투 시작" if surprise else "발각! 전투 시작", ui.ACCENT)
+        self.record(f"선공(1d4+민첩): {order}", ui.MUTED)
         self.start_turn()
+
+    def record(self, text, color=TEXT_COLOR):
+        self.history.append((text, color))
 
     # Turn order -----------------------------------------------------------
 
@@ -205,7 +221,9 @@ class Combat:
         # Like BG3, the active party member is selected automatically.
         self.selected = fighter if fighter.team == "party" else None
         self.mode = None
+        self.record(f"{self.round}라운드 · {fighter.name}의 턴", ui.DIM)
         if fighter.surprised:
+            self.record(f"{fighter.name}: 기습당해 행동 불가", ui.MISS)
             self.log = f"{fighter.name}: 기습당해 이번 라운드에 행동하지 못합니다."
             self.wait_time = SKIP_PAUSE
             return
@@ -251,7 +269,11 @@ class Combat:
         x, y = self.to_world(*screen_point)
         hits = [f for f in self.fighters
                 if f.alive and abs(f.unit.x - x) <= 16 and f.unit.y - 14 <= y <= f.unit.y + 46]
-        return min(hits, key=lambda f: abs(f.unit.x - x), default=None)
+        if not hits:
+            return None
+        foes = [f for f in hits if f.team != self.current.team]
+        pool = foes or hits
+        return min(pool, key=lambda f: (abs(f.unit.x - x), abs(f.unit.y + 16 - y)))
 
     # Movement -------------------------------------------------------------
 
@@ -305,12 +327,17 @@ class Combat:
         goals = [n for n in costs if metres(self.nav.position(n), target.pos) <= REACH_M - 0.15]
         points = None
         if goals:
-            goal = min(goals, key=lambda n: costs[n][0])
+            goal = min(goals, key=lambda n: costs[n][0] + self.side_penalty(n, target))
             points = self.nav.route(fighter.pos, goal, costs, self.blockers(fighter))
             if path_length(points) > fighter.moves_left + 1e-6:
                 points = None
         self._approach_cache = (key, points)
         return points
+
+    def side_penalty(self, node, target):
+        """Extra cost (m) for spots not beside the target, so fighters face each other."""
+        x, y = self.nav.position(node)
+        return 0.5 * abs(y - target.pos[1]) / PX_PER_M_Y
 
     def start_moving(self, fighter, points, then_attack=None):
         self.moving = {"fighter": fighter, "points": list(points[1:]), "then_attack": then_attack}
@@ -346,12 +373,18 @@ class Combat:
         step = min(MOVE_SPEED_M * frame_time, remaining, max(0.0, fighter.moves_left))
         t = step / remaining if remaining else 1.0
         new = (old[0] + (target[0] - old[0]) * t, old[1] + (target[1] - old[1]) * t)
-        reactors = self.provokers(fighter, old, new)
+        if any(nav_clash(new, b) for b in self.blockers(fighter)):
+            # Safety stop: never walk into another body, whatever the route said.
+            points.clear()
+            new = old
+            step = 0.0
+        reactors = self.provokers(fighter, old, new) if step else []
         if reactors:
             # Stop at the edge of reach and let the enemy take its opportunity attack.
             reactor = reactors[0]
             reactor.reaction = 0
             self.popup("기회 공격!", reactor.unit.x, reactor.unit.y + 96, (255, 214, 127))
+            self.record(f"{fighter.name}이(가) 사거리를 벗어남 · {reactor.name} 기회 공격", ui.CRITICAL)
             self.start_attack(reactor, fighter, reaction=True)
             return
         if abs(target[0] - old[0]) > 1:
@@ -386,7 +419,7 @@ class Combat:
         costs = self.nav.search(fighter.pos, blockers)
         goals = [n for n in costs if metres(self.nav.position(n), target.pos) <= REACH_M - 0.15]
         if goals:
-            goal = min(goals, key=lambda n: costs[n][0])
+            goal = min(goals, key=lambda n: costs[n][0] + self.side_penalty(n, target))
         else:
             goal = min(costs, key=lambda n: metres(self.nav.position(n), target.pos), default=None)
         if goal is None:
@@ -485,7 +518,17 @@ class Combat:
             self.mode = None
             self.log = "행동을 고르세요"
 
+    def log_header_rect(self):
+        return LOG_RIGHT - LOG_WIDTH, LOG_TOP - LOG_HEADER, LOG_RIGHT, LOG_TOP
+
+    def toggle_log(self):
+        self.log_open = not self.log_open
+
     def click(self, screen_x, y):
+        left, bottom, right, top = self.log_header_rect()
+        if left <= screen_x <= right and bottom <= y <= top:
+            self.toggle_log()
+            return
         if not self.is_player_turn():
             return
         fighter = self.current
@@ -494,7 +537,7 @@ class Combat:
             self.selected = fighter
             self.log = "행동을 고르세요 · 1 이동  2 공격  Space 턴 종료"
             return
-        if clicked is not None and clicked.team != fighter.team and self.mode != "move":
+        if clicked is not None and clicked.team != fighter.team:
             self.attack_or_approach(fighter, clicked)
             return
         if self.mode == "attack":
@@ -566,8 +609,10 @@ class Combat:
         result = self.attack["result"]
         x, y = target.unit.x, target.unit.y + 62
         kind = "기회 공격" if self.attack["reaction"] else "공격"
+        roll_text = f"합 {result['total']}, 필요 {target.armor_class}"
         if not result["hit"]:
             label = "대실패" if result["fumble"] else "빗나감"
+            self.record(f"{attacker.name} {kind}: {label} ({roll_text})", ui.MISS)
             self.popup(label, x, y, (181, 197, 209))
             self.log = f"{attacker.name}의 {kind}이 빗나갔습니다."
             return
@@ -576,6 +621,8 @@ class Combat:
         label = "치명타!" if result["critical"] else "명중"
         color = (255, 214, 127) if result["critical"] else (255, 160, 130)
         self.popup(f"{label} -{damage}", x, y, color)
+        self.record(f"{attacker.name} {kind}: {label} ({roll_text})", color)
+        self.record(f"  {target.name} 피해 {damage} · 체력 {target.hp}/{target.max_hp}", TEXT_COLOR)
         self.log = f"{attacker.name} {label}: {target.name}에게 피해 {damage}"
         self.effects.append(("impact", target.unit.x, target.unit.y))
         if not target.alive:
@@ -585,14 +632,17 @@ class Combat:
         if fighter.team == "enemy":
             fighter.unit.transition("stunned")
             self.log = f"{fighter.name}을(를) 쓰러뜨렸습니다."
+            self.record(f"{fighter.name} 쓰러짐", ui.ACCENT)
         if not self.living("enemy"):
             self.outcome = "victory"
             self.wait_time = VICTORY_PAUSE
             self.log = "승리! 모든 적을 쓰러뜨렸습니다."
+            self.record("승리", ui.PARTY)
         elif not self.living("party"):
             self.outcome = "defeat"
             self.wait_time = VICTORY_PAUSE
             self.log = "주인공이 쓰러졌습니다."
+            self.record("패배 · 주인공이 쓰러짐", ui.ENEMY)
 
     def update_attack(self, frame_time):
         attack = self.attack
@@ -826,11 +876,45 @@ class Combat:
             self.draw_resource_row()
         if self.is_player_turn():
             self.draw_slot_tooltip()
+        self.draw_log()
         if self.banner_time:
             label = "기습! 전투 시작" if self.surprise else "발각! 전투 시작"
             width = ui.text_width(label, 20) + 48
             ui.panel(WIDTH / 2 - width / 2, 300, WIDTH / 2 + width / 2, 340, ui.ACCENT)
             ui.text_center(WIDTH / 2, 320, label, ui.ACCENT, 20)
+
+    def draw_log(self):
+        """Collapsible combat log in the top-right corner (click the header or press L)."""
+        left, bottom, right, top = self.log_header_rect()
+        mouse = self.hover
+        hovered = mouse is not None and left <= mouse[0] <= right and bottom <= mouse[1] <= top
+        ui.panel(left, bottom, right, top, ui.ACCENT if hovered else (120, 98, 60), ui.PANEL_RAISED, 235)
+        # Open: triangle pointing down; folded: pointing right.
+        tx, ty = left + 12, (bottom + top) / 2
+        if self.log_open:
+            pico2d.draw_line(tx - 5, ty + 3, tx + 5, ty + 3, *ui.ACCENT)
+            pico2d.draw_line(tx - 5, ty + 3, tx, ty - 4, *ui.ACCENT)
+            pico2d.draw_line(tx + 5, ty + 3, tx, ty - 4, *ui.ACCENT)
+        else:
+            pico2d.draw_line(tx - 3, ty + 5, tx - 3, ty - 5, *ui.ACCENT)
+            pico2d.draw_line(tx - 3, ty + 5, tx + 4, ty, *ui.ACCENT)
+            pico2d.draw_line(tx - 3, ty - 5, tx + 4, ty, *ui.ACCENT)
+        ui.text(left + 24, ty, "전투 기록", ui.TEXT, 14)
+        ui.text(right - 64, ty, "L 접기" if self.log_open else "L 펼치기", ui.DIM, 12)
+        if not self.log_open:
+            return
+        lines = list(self.history)[-LOG_LINES:]
+        height = LOG_LINE * len(lines) + 8
+        ui.panel(left, bottom - height, right, bottom, (64, 80, 92), ui.PANEL, 215)
+        for index, (line, color) in enumerate(lines):
+            ui.text(left + 8, bottom - 12 - LOG_LINE * index, self.fit(line, LOG_WIDTH - 14, 12), color, 12)
+
+    def fit(self, line, width, size):
+        if ui.text_width(line, size) <= width:
+            return line
+        while line and ui.text_width(line + "…", size) > width:
+            line = line[:-1]
+        return line + "…"
 
     def draw_move_label(self):
         points = self.plan_move(self.current, self.hover)
@@ -855,10 +939,10 @@ class Combat:
         """BG3-style target readout under the turn order: name, big health bar, status."""
         color = ENEMY_COLOR if target.team == "enemy" else PARTY_COLOR
         center, top = WIDTH / 2, HUD_BOTTOM - 10
-        ui.panel(center - 170, top - 74, center + 170, top + 6, (120, 98, 60), ui.PANEL, 200)
+        ui.panel(center - 140, top - 74, center + 140, top + 6, (120, 98, 60), ui.PANEL, 200)
         ui.text_center(center, top - 8, target.name, color, 18)
         ui.text_center(center, top - 26, f"방어 {target.armor_class}", ui.MUTED, 13)
-        width = 300
+        width = 260
         left = center - width / 2
         ui.panel(left - 2, top - 48, left + width + 2, top - 34, (120, 98, 60), ui.PANEL, 230)
         ui.bar(left, top - 46, width, 10, target.hp / target.max_hp, color, (40, 26, 28))
@@ -1055,28 +1139,32 @@ class Combat:
         ui.text_center(x, y - 14, "Space", ui.MUTED if enabled else ui.DIM, 12)
 
     def draw_resource_row(self):
-        """Resource icons above the hotbar (drawn in the world, under the floor)."""
+        """Resource icons with names above the hotbar (drawn in the world, under the floor)."""
         fighter = self.selected or self.current
-        x = SLOTS_LEFT + (SLOT_COLUMNS * (SLOT_SIZE + SLOT_GAP)) / 2 - 90
+        x = 238
         y = 13
-        ui.panel(x - 14, y - 11, x + 214, y + 11, ui.BORDER, ui.PANEL, 200)
+        ui.panel(x - 12, y - 11, x + 404, y + 11, ui.BORDER, ui.PANEL, 210)
         ui.action_icon(x, y, 6, bool(fighter.action))
-        ui.bonus_icon(x + 20, y, 7, bool(fighter.bonus_action))
-        ui.reaction_icon(x + 40, y, 7, bool(fighter.reaction))
+        ui.text(x + 10, y, "행동", ui.TEXT if fighter.action else ui.DIM, 12)
+        ui.bonus_icon(x + 52, y, 7, bool(fighter.bonus_action))
+        ui.text(x + 62, y, "보조", ui.TEXT if fighter.bonus_action else ui.DIM, 12)
+        ui.reaction_icon(x + 104, y, 7, bool(fighter.reaction))
+        ui.text(x + 114, y, "반응", ui.TEXT if fighter.reaction else ui.DIM, 12)
         total = max(0.1, fighter.move_m)
         cost = 0.0
         if self.is_player_turn() and self.mode == "move":
             points = self.plan_move(fighter, self.hover)
             cost = path_length(points) if points else 0.0
         left_after = max(0.0, fighter.moves_left - cost)
-        ui.bar(x + 58, y - 3, 60, 6, left_after / total, ui.MOVE)
+        bar_x = x + 156
+        ui.bar(bar_x, y - 3, 60, 6, left_after / total, ui.MOVE)
         if cost:
             # The part this move would spend, shown in gold like BG3's preview.
-            start = x + 58 + 60 * left_after / total
+            start = bar_x + 60 * left_after / total
             pico2d.draw_rectangle(start, y - 3, start + 60 * cost / total, y + 3, *ui.ACCENT, filled=True)
-            ui.text(x + 124, y, f"{fmt_m(cost)} 사용 · 남음 {fmt_m(left_after)}", ui.ACCENT, 12)
+            ui.text(bar_x + 66, y, f"{fmt_m(cost)} 사용 · 남음 {fmt_m(left_after)}", ui.ACCENT, 12)
         else:
-            ui.text(x + 124, y, f"이동 {fighter.moves_left:.1f}/{fmt_m(fighter.move_m)}", ui.MUTED, 12)
+            ui.text(bar_x + 66, y, f"이동 {fighter.moves_left:.1f}/{fmt_m(fighter.move_m)}", ui.MUTED, 12)
 
     def draw_slot_tooltip(self):
         """Tooltip above a hovered hotbar slot, drawn in world coordinates."""

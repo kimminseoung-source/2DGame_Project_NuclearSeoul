@@ -294,6 +294,8 @@ def handle_events(game):
                 game.combat.choose_action("move")
             elif event.key == sdl2.SDLK_2:
                 game.combat.choose_action("attack")
+            elif event.key == sdl2.SDLK_l:
+                game.combat.toggle_log()
             continue
         if game.inventory_open:
             handle_inventory_key(game, event.key)

@@ -19,12 +19,22 @@ NODE_X = 8          # 0.25 m across
 NODE_Y = 4          # 0.25 m of depth
 CLEARANCE = 8       # px kept from the wreck and the floor edges, as before
 BODY_GAP_M = 0.9    # two bodies never stand closer than this
+# Sprites are ~30 px wide, so bodies also keep this box apart on screen
+# (otherwise one character could stand right on top of another in depth).
+BODY_BOX_X = 24
+BODY_BOX_Y = 22
 SAMPLE_PX = 3
 NEIGHBOURS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
 
 def metres(a, b):
     return hypot((b[0] - a[0]) / PX_PER_M_X, (b[1] - a[1]) / PX_PER_M_Y)
+
+
+def bodies_clash(a, b):
+    if metres(a, b) < BODY_GAP_M:
+        return True
+    return abs(a[0] - b[0]) < BODY_BOX_X and abs(a[1] - b[1]) < BODY_BOX_Y
 
 
 def path_length(points):
@@ -84,10 +94,10 @@ class NavField:
         x, y = point
         if not (self.left <= x <= self.right and self.tile_map.can_stand(x, y, CLEARANCE)):
             return False
-        return all(metres(point, b) >= BODY_GAP_M for b in blockers)
+        return not any(bodies_clash(point, b) for b in blockers)
 
     def blocked_nodes(self, blockers):
-        return {n for n in self.static if any(metres(self.position(n), b) < BODY_GAP_M for b in blockers)}
+        return {n for n in self.static if any(bodies_clash(self.position(n), b) for b in blockers)}
 
     def nearest_open(self, point, blockers=()):
         blocked = self.blocked_nodes(blockers)
@@ -126,7 +136,9 @@ class NavField:
         while node is not None:
             nodes.append(node)
             node = costs[node][1]
-        points = [start] + [self.position(n) for n in reversed(nodes)]
+        # The search may start from a lattice point inside another body; never route through one.
+        points = [start] + [self.position(n) for n in reversed(nodes)
+                            if self.open_at(self.position(n), blockers)]
         # Pull the string: jump to the farthest point still reachable in a straight line.
         pulled, index = [points[0]], 0
         while index < len(points) - 1:
