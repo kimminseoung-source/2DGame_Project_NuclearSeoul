@@ -21,7 +21,7 @@ INITIATIVE_DIE = 4
 BADGE_TIME = 1.5
 # The hit reel spins, slows down and stops on the result, holds briefly, and only then
 # the swing starts. The player's own rolls spin longer: that wait is where the tension is.
-DICE_ROLL_TIME = 1.3
+DICE_ROLL_TIME = 1.5
 ENEMY_ROLL_TIME = 0.8
 DICE_HOLD_TIME = 0.55
 # The landed hit gauge stays until the swing connects; then the damage roll shows.

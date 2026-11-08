@@ -330,7 +330,8 @@ class SpinMotion:
     back; a near hit hangs on the last red slice, then tips over the line.
     """
 
-    TURNS = 3            # full turns before the result slice
+    TURNS = 5            # full turns before the result slice
+    EASE = 4             # higher = faster start and a longer crawl at the end
     TEASE_SHARE = 0.75   # share of the spin spent before the hang
     HANG = 0.35          # share of the remaining time spent hanging still
     PEEK = 0.45          # how far (in slices) over the line the needle hangs
@@ -347,9 +348,9 @@ class SpinMotion:
     def position(self, elapsed):
         u = max(0.0, min(1.0, elapsed / self.duration))
         if not self.lean:
-            return self.final * ease_out(u, 3)
+            return self.final * ease_out(u, self.EASE)
         if u < self.TEASE_SHARE:
-            return (self.final + self.lean) * ease_out(u / self.TEASE_SHARE, 3)
+            return (self.final + self.lean) * ease_out(u / self.TEASE_SHARE, self.EASE)
         rest = (u - self.TEASE_SHARE) / (1 - self.TEASE_SHARE)
         settle = 0.0 if rest < self.HANG else ease_out((rest - self.HANG) / (1 - self.HANG), 2)
         return self.final + self.lean * (1 - settle)
