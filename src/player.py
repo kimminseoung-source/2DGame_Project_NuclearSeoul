@@ -1,16 +1,24 @@
-"""Player movement and sprite animation."""
+"""The player character as a state machine (course LEC12 style, transitions.Machine).
+
+States: IDLE, WALK, SNEAK, DASH, PICKUP, SWING, and COMBAT while the turn-based
+fight moves the character. update() changes state and position, draw() only draws.
+"""
 
 from math import hypot
 
 import pico2d
 import sdl2
+from transitions import Machine
+
+import camera
+import game_clock
+from bat import BAT_DURATION, BatSwing
 
 
 PLAYER_HALF_SIZE = 11
 WALK_SPEED = 150
 SNEAK_SPEED = 85
 BASE_MOVEMENT_RATE = 0.7
-MAX_FRAME_TIME = 0.05
 DASH_SPEED = 340
 DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
@@ -20,6 +28,11 @@ FRAME_HEIGHT = 58
 WALK_FRAME_TIME = 0.12
 SNEAK_FRAME_TIME = 0.15
 WALK_CYCLE = (1, 2, 3, 2)
+PICKUP_CROUCH = 0.12
+PICKUP_CONTACT = 0.28
+PICKUP_STAND = 0.46
+PICKUP_DURATION = 0.58
+FREE_STATES = ["IDLE", "WALK", "SNEAK"]
 
 
 class Player:
@@ -33,6 +46,84 @@ class Player:
         self.dash_time = 0.0
         self.dash_cooldown = 0.0
         self.dash_direction = (0.0, 0.0)
+        self.pickup_time = 0.0
+        self.swing = None
+        self.speed_multiplier = 1.0
+        self.frozen = False      # set when the run is over
+        self.combat = None       # the fight that moves this character, if any
+        self.events = []         # "pickup" and "bat_contact", read by the play loop
+
+        self.machine = Machine(
+            model=self,
+            states=["IDLE", "WALK", "SNEAK", "DASH", "PICKUP", "SWING", "COMBAT"],
+            transitions=[
+                {"trigger": "walk", "source": ["IDLE", "SNEAK"], "dest": "WALK"},
+                {"trigger": "sneak", "source": ["IDLE", "WALK"], "dest": "SNEAK"},
+                {"trigger": "stop", "source": ["WALK", "SNEAK"], "dest": "IDLE"},
+                {"trigger": "dash", "source": FREE_STATES, "dest": "DASH"},
+                {"trigger": "dash_end", "source": "DASH", "dest": "IDLE"},
+                {"trigger": "pick_up", "source": FREE_STATES, "dest": "PICKUP"},
+                {"trigger": "pickup_end", "source": "PICKUP", "dest": "IDLE"},
+                {"trigger": "swing_bat", "source": FREE_STATES, "dest": "SWING"},
+                {"trigger": "swing_end", "source": "SWING", "dest": "IDLE"},
+                {"trigger": "enter_combat", "source": "*", "dest": "COMBAT"},
+                {"trigger": "leave_combat", "source": "COMBAT", "dest": "IDLE"},
+            ],
+            initial="IDLE",
+            auto_transitions=False,
+        )
+
+    # State entry --------------------------------------------------------------
+
+    def on_enter_IDLE(self):
+        self.walk_time = 0.0
+        self.sneaking = False
+
+    def on_enter_DASH(self):
+        self.dash_time = DASH_DURATION
+        self.dash_cooldown = DASH_COOLDOWN
+        self.sneaking = False
+        self.walk_time = 0.0
+
+    def on_enter_PICKUP(self):
+        self.pickup_time = 0.0
+        self.walk_time = 0.0
+
+    def on_enter_SWING(self):
+        self.swing = BatSwing((self.direction, 0))
+        self.walk_time = 0.0
+
+    def on_exit_SWING(self):
+        self.swing = None
+
+    def on_enter_COMBAT(self):
+        self.dash_time = 0.0
+        self.walk_time = 0.0
+        self.sneaking = False
+        self.swing = None
+
+    # Requests from the play loop --------------------------------------------
+
+    def busy(self):
+        return self.state in ("DASH", "PICKUP", "SWING")
+
+    def start_dash(self):
+        if self.state not in FREE_STATES or self.dash_cooldown:
+            return
+        dx, dy = self.movement_direction(sdl2.SDL_GetKeyboardState(None))
+        if dx == dy == 0:
+            dx = self.direction
+        length = hypot(dx, dy)
+        self.dash_direction = dx / length, dy / length
+        self.dash()
+
+    def start_pickup(self):
+        if self.state in FREE_STATES:
+            self.pick_up()
+
+    def start_swing(self):
+        if self.state in FREE_STATES:
+            self.swing_bat()
 
     @staticmethod
     def movement_direction(keys):
@@ -41,43 +132,62 @@ class Player:
             keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S],
         )
 
-    def start_dash(self):
-        if self.dash_time or self.dash_cooldown:
-            return
-        dx, dy = self.movement_direction(sdl2.SDL_GetKeyboardState(None))
-        if dx == dy == 0:
-            dx = self.direction
-        length = hypot(dx, dy)
-        self.dash_direction = dx / length, dy / length
-        self.dash_time = DASH_DURATION
-        self.dash_cooldown = DASH_COOLDOWN
-        self.sneaking = False
-        self.walk_time = 0.0
+    # Update -------------------------------------------------------------------
 
-    def update(self, frame_time, speed_multiplier=1.0):
-        if self.dash_time:
-            step_time = min(frame_time, MAX_FRAME_TIME, self.dash_time)
-            self.dash_time -= step_time
-            dx, dy = self.dash_direction
-            if not self.move(dx * DASH_SPEED * step_time, dy * DASH_SPEED * step_time):
-                self.dash_time = 0.0
+    def update(self):
+        dt = game_clock.frame_time
+        if self.state == "COMBAT" or dt <= 0:
             return
+        self.dash_cooldown = max(0.0, self.dash_cooldown - dt)
+        step = game_clock.step()
+        if self.state == "DASH":
+            self.update_dash(step)
+        elif self.state == "PICKUP":
+            previous = self.pickup_time
+            self.pickup_time += step
+            if previous < PICKUP_CONTACT <= self.pickup_time:
+                self.events.append("pickup")
+            if self.pickup_time >= PICKUP_DURATION:
+                self.pickup_end()
+        elif self.state == "SWING":
+            if self.swing.update(step):
+                self.events.append("bat_contact")
+            if self.swing.elapsed >= BAT_DURATION:
+                self.swing_end()
+        elif not self.frozen:
+            self.update_walking(step)
 
+    def update_dash(self, step):
+        step_time = min(step, self.dash_time)
+        self.dash_time -= step_time
+        dx, dy = self.dash_direction
+        if not self.move(dx * DASH_SPEED * step_time, dy * DASH_SPEED * step_time):
+            self.dash_time = 0.0
+        if not self.dash_time:
+            self.dash_end()
+
+    def update_walking(self, step):
         keys = sdl2.SDL_GetKeyboardState(None)
         sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         if self.sneaking != sneaking:
+            # Keep the animation phase when switching between walk and sneak speeds.
             previous_frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
             next_frame_time = SNEAK_FRAME_TIME if sneaking else WALK_FRAME_TIME
             self.walk_time *= next_frame_time / previous_frame_time
             self.sneaking = sneaking
         direction_x, direction_y = self.movement_direction(keys)
         if direction_x == direction_y == 0:
+            if self.state != "IDLE":
+                self.stop()
+            self.sneaking = sneaking
             self.walk_time = 0.0
             return
-
-        step_time = min(frame_time, MAX_FRAME_TIME)
-        speed = SNEAK_SPEED if self.sneaking else WALK_SPEED
-        movement_time = step_time * BASE_MOVEMENT_RATE * speed_multiplier
+        if sneaking and self.state != "SNEAK":
+            self.sneak()
+        elif not sneaking and self.state != "WALK":
+            self.walk()
+        movement_time = step * BASE_MOVEMENT_RATE * self.speed_multiplier
+        speed = SNEAK_SPEED if sneaking else WALK_SPEED
         distance_per_axis = speed * movement_time / hypot(direction_x, direction_y)
         if self.move(direction_x * distance_per_axis, direction_y * distance_per_axis):
             self.walk_time += movement_time
@@ -87,7 +197,6 @@ class Player:
     def move(self, dx, dy):
         old_position = self.x, self.y
         next_x, next_y = self.x + dx, self.y + dy
-
         # Resolve axes separately so diagonal movement can slide along walls.
         if self.tile_map.can_stand(next_x, self.y, PLAYER_HALF_SIZE):
             self.x = next_x
@@ -95,28 +204,46 @@ class Player:
             self.y = next_y
         return (self.x, self.y) != old_position
 
-    def start_pickup(self):
-        self.walk_time = 0.0
+    # Draw ---------------------------------------------------------------------
 
-    def draw(self, camera_x=0):
-        if self.dash_time:
-            progress = 1 - self.dash_time / DASH_DURATION
-            if progress < 0.24:
-                self.draw_frame("sneak", 1, camera_x)
+    def draw(self):
+        if self.state == "COMBAT":
+            swing = self.combat.swing_for(self) if self.combat is not None else None
+            if swing is not None:
+                self.draw_swing(swing)
             else:
-                self.draw_dash_trail(camera_x, 1 - progress)
-                self.draw_frame("walk", 1 if progress < 0.65 else 3, camera_x)
-            return
+                self.draw_body()
+        elif self.state == "SWING":
+            self.draw_swing(self.swing)
+        elif self.state == "PICKUP" and PICKUP_CROUCH <= self.pickup_time < PICKUP_STAND:
+            self.draw_frame("action", 0)
+        elif self.state == "DASH":
+            self.draw_dash()
+        else:
+            self.draw_body()
 
+    def draw_swing(self, swing):
+        self.draw_frame("action", swing.frame)
+        swing.draw_trail(self, camera.x)
+
+    def draw_dash(self):
+        progress = 1 - self.dash_time / DASH_DURATION
+        if progress < 0.24:
+            self.draw_frame("sneak", 1)
+        else:
+            self.draw_dash_trail(1 - progress)
+            self.draw_frame("walk", 1 if progress < 0.65 else 3)
+
+    def draw_body(self):
         action = "sneak" if self.sneaking else "walk"
         frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
         frame = 0
         if self.walk_time:
             frame = WALK_CYCLE[int(self.walk_time / frame_time) % len(WALK_CYCLE)]
-        self.draw_frame(action, frame, camera_x)
+        self.draw_frame(action, frame)
 
-    def draw_dash_trail(self, camera_x, strength):
-        x, y = self.x - camera_x, self.y - 12
+    def draw_dash_trail(self, strength):
+        x, y = self.x - camera.x, self.y - 12
         dx, dy = self.dash_direction
         shade = round(60 + 62 * strength)
         for side, length in ((-2, 13), (2, 8)):
@@ -131,12 +258,12 @@ class Player:
         image = self.sprites["walk"]
         return image, 16, image.h - 2 * FRAME_HEIGHT + 20, 46, 38
 
-    def draw_frame(self, action, frame, camera_x):
+    def draw_frame(self, action, frame):
         row = int(self.direction > 0)
         image = self.sprites[action]
         width = ACTION_FRAME_WIDTH if action == "action" else MOVEMENT_FRAME_WIDTH
         image.clip_draw(
             frame * width, image.h - (row + 1) * FRAME_HEIGHT,
             width, FRAME_HEIGHT,
-            self.x - camera_x, self.y - 12 + FRAME_HEIGHT / 2,
+            self.x - camera.x, self.y - 12 + FRAME_HEIGHT / 2,
         )

@@ -1,10 +1,19 @@
-"""A regular infected that pursues the player and strikes at close range."""
+"""A regular infected as a state machine (course LEC12 style, transitions.Machine).
+
+Exploration AI: idle -> chase -> windup -> strike -> recover -> chase, with
+knockback and stunned after a bat blow. During a turn-based fight the combat
+sets the pose directly with transition() and the AI below is paused.
+"""
 
 from math import hypot
 
 import pico2d
+from transitions import Machine
 
-from tile_map import WRECK_LEFT, WRECK_RIGHT, WRECK_Y, WRECK_HALF_DEPTH
+import camera
+import game_clock
+import ui
+from tile_map import WRECK_HALF_DEPTH, WRECK_LEFT, WRECK_RIGHT, WRECK_Y
 
 
 ZOMBIE_RADIUS = 10
@@ -22,24 +31,61 @@ KNOCKBACK_TIME = 0.24
 KNOCKBACK_SPEED = 220
 STAGGER_TIME = 0.38
 WRECK_STUN_TIME = 1.65
+STATES = ["idle", "chase", "windup", "strike", "recover", "knockback", "stunned"]
 
 
 class Zombie:
-    def __init__(self, image, tile_map):
+    def __init__(self, image, tile_map, target):
         self.image = image
         self.tile_map = tile_map
+        self.target = target          # the player it hunts
         self.x, self.y = 570, WRECK_Y
         self.direction = -1
         self.push_direction = 0
-        self.state = "idle"
         self.time_left = 0.0
         self.alerted = False
         self.walk_time = 0.0
         self.detour = None
+        self.in_combat = False
+        self.frozen = False           # paused during a bat hit-stop
+        self.event = None             # "player_hit" or "wreck_hit", read by the play loop
+
+        self.machine = Machine(
+            model=self,
+            states=STATES,
+            transitions=[
+                {"trigger": "notice", "source": "idle", "dest": "chase"},
+                {"trigger": "reach", "source": "chase", "dest": "windup"},
+                {"trigger": "swipe", "source": "windup", "dest": "strike"},
+                {"trigger": "recover_now", "source": "strike", "dest": "recover"},
+                {"trigger": "resume", "source": ["recover", "stunned"], "dest": "chase"},
+                {"trigger": "shoved", "source": "*", "dest": "knockback"},
+                {"trigger": "stun", "source": "knockback", "dest": "stunned"},
+            ],
+            initial="idle",
+            auto_transitions=False,
+        )
+
+    # State entry --------------------------------------------------------------
+
+    def on_enter_windup(self):
+        self.time_left = WINDUP_TIME
+
+    def on_enter_strike(self):
+        self.time_left = STRIKE_TIME
+
+    def on_enter_recover(self):
+        self.time_left = RECOVERY_TIME
+
+    def on_enter_knockback(self):
+        self.time_left = KNOCKBACK_TIME
 
     def transition(self, state, duration=0):
-        self.state = state
+        """Set a pose directly (used by the turn-based fight)."""
+        self.machine.set_state(state)
         self.time_left = duration
+
+    # Exploration behaviour ----------------------------------------------------
 
     def knock_back(self, direction):
         if self.state in ("knockback", "stunned"):
@@ -47,7 +93,7 @@ class Zombie:
         self.push_direction = direction
         self.alerted = True
         self.detour = None
-        self.transition("knockback", KNOCKBACK_TIME)
+        self.shoved()
         return True
 
     def push(self, dx):
@@ -64,8 +110,8 @@ class Zombie:
     def in_reach(self, dx, dy):
         return abs(dx) <= ATTACK_REACH and abs(dy) <= ATTACK_DEPTH
 
-    def chase(self, dt, player):
-        target_x, target_y = player.x, player.y
+    def chase(self, dt):
+        target_x, target_y = self.target.x, self.target.y
         if self.detour is not None:
             axis, clearance = self.detour
             if axis == "y" and abs(self.x - target_x) > 3:
@@ -105,49 +151,56 @@ class Zombie:
         if before != (self.x, self.y):
             self.walk_time += dt
 
-    def update(self, dt, player):
-        dx, dy = player.x - self.x, player.y - self.y
+    def update(self):
+        if self.in_combat or self.frozen or game_clock.frame_time <= 0:
+            return
+        self.event = None
+        dt = game_clock.step()
+        dx, dy = self.target.x - self.x, self.target.y - self.y
         if self.state == "idle":
-            alert_distance = ALERT_DISTANCE * (0.45 if player.sneaking else 1)
+            alert_distance = ALERT_DISTANCE * (0.45 if self.target.sneaking else 1)
             if not self.alerted and hypot(dx, dy) > alert_distance:
-                return None
+                return
             self.alerted = True
-            self.transition("chase")
+            self.notice()
         if self.state == "chase":
             if self.in_reach(dx, dy):
                 self.direction = -1 if dx < 0 else 1
                 self.detour = None
-                self.transition("windup", WINDUP_TIME)
+                self.reach()
             else:
-                self.chase(dt, player)
-            return None
+                self.chase(dt)
+            return
 
         step = min(dt, self.time_left)
         self.time_left -= step
         if self.state == "windup":
             if not self.time_left:
-                self.transition("strike", STRIKE_TIME)
+                self.swipe()
                 if self.in_reach(dx, dy) and dx * self.direction >= 0:
-                    return "player_hit"
+                    self.event = "player_hit"
         elif self.state == "strike":
             if not self.time_left:
-                self.transition("recover", RECOVERY_TIME)
+                self.recover_now()
         elif self.state == "knockback":
             if self.push(self.push_direction * KNOCKBACK_SPEED * step):
-                self.transition("stunned", WRECK_STUN_TIME)
-                return "wreck_hit"
-            if not self.time_left:
-                self.transition("stunned", STAGGER_TIME)
+                self.stun()
+                self.time_left = WRECK_STUN_TIME
+                self.event = "wreck_hit"
+            elif not self.time_left:
+                self.stun()
+                self.time_left = STAGGER_TIME
         elif not self.time_left:
-            self.transition("chase")
-        return None
+            self.resume()
+
+    # Draw ---------------------------------------------------------------------
 
     def portrait_clip(self):
         """Source rectangle of the idle frame, cropped to head and torso."""
         return self.image, 20, 20, 46, 38
 
-    def draw(self, camera_x, font):
-        x = self.x - camera_x
+    def draw(self):
+        x = self.x - camera.x
         if self.state == "windup":
             frame = 1
         elif self.state == "strike":
@@ -165,7 +218,7 @@ class Zombie:
         if frame == 6:
             self.draw_swipe(x)
         if self.state == "windup":
-            font.draw(x - 4, self.y + 48, "!", (255, 153, 91))
+            ui.text(x - 4, self.y + 48, "!", (255, 153, 91))
 
     def draw_swipe(self, x):
         direction = self.direction
