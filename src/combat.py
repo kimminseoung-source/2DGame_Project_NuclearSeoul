@@ -57,7 +57,8 @@ PARTY_COLOR = ui.PARTY
 ENEMY_COLOR = ui.ENEMY
 TARGET_COLOR = ui.DANGER
 TEXT_COLOR = ui.TEXT
-NEIGHBOURS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy]
+# Straight steps first so equal-length searches do not zigzag through diagonals.
+NEIGHBOURS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
 
 def skew_at(y):
@@ -142,7 +143,29 @@ class CombatGrid:
                 paths[step] = paths[cell] + [step]
                 queue.append(step)
         del paths[start]
+        # Prefer the even, straight line to a cell whenever it is just as short.
+        for cell, path in paths.items():
+            line = self.line_path(start, cell, occupied)
+            if line is not None and len(line) == len(path):
+                paths[cell] = line
         return paths
+
+    def line_path(self, start, target, occupied):
+        """Evenly spread steps from start to target, or None if something blocks it."""
+        dx, dy = target[0] - start[0], target[1] - start[1]
+        steps = max(abs(dx), abs(dy))
+        path, previous = [], start
+        for index in range(1, steps + 1):
+            cell = (start[0] + floor(dx * index / steps + 0.5), start[1] + floor(dy * index / steps + 0.5))
+            if not self.walkable(cell, occupied):
+                return None
+            sx, sy = cell[0] - previous[0], cell[1] - previous[1]
+            if sx and sy and not (self.walkable((previous[0] + sx, previous[1]), occupied)
+                                  and self.walkable((previous[0], previous[1] + sy), occupied)):
+                return None
+            path.append(cell)
+            previous = cell
+        return path
 
     def walkable(self, cell, occupied):
         return self.in_bounds(*cell) and not self.blocked(*cell) and cell not in occupied
