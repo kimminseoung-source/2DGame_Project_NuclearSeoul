@@ -70,7 +70,9 @@ class InventoryOverlay:
 
 
 class SettingsOverlay:
-    """F1 settings window for the walking speed."""
+    """F1 settings window: walking speed and whether the hit wheel spins."""
+
+    WIDTH, HEIGHT = 392, 176
 
     def __init__(self, state):
         self.state = state
@@ -78,13 +80,26 @@ class SettingsOverlay:
     def update(self):
         pass
 
+    def rows(self):
+        spin = "건너뛰기 (결과만)" if self.state.skip_spin else "보기"
+        return [("이동 속도", f"< {self.state.speed_percent}% >"),
+                ("명중 돌림판", f"< {spin} >")]
+
     def draw(self):
         if not self.state.settings_open:
             return
-        left, bottom = WIDTH // 2 - 176, HEIGHT // 2 - 66
-        pico2d.draw_rectangle(left, bottom, left + 352, bottom + 132, 15, 23, 31, filled=True)
-        pico2d.draw_rectangle(left, bottom, left + 352, bottom + 132, 135, 170, 157)
-        ui.text(left + 22, bottom + 103, "설정", (181, 197, 209))
-        ui.text(left + 22, bottom + 70, f"이동 속도   < {self.state.speed_percent}% >", (252, 218, 143))
-        ui.text(left + 22, bottom + 42, "좌우 방향키 조절   R 초기화", (181, 197, 209))
-        ui.text(left + 22, bottom + 18, "F1 / Esc 계속하기", (181, 197, 209))
+        left, bottom = WIDTH // 2 - self.WIDTH // 2, HEIGHT // 2 - self.HEIGHT // 2
+        right, top = left + self.WIDTH, bottom + self.HEIGHT
+        pico2d.draw_rectangle(left, bottom, right, top, 15, 23, 31, filled=True)
+        pico2d.draw_rectangle(left, bottom, right, top, 135, 170, 157)
+        ui.text(left + 22, top - 24, "설정", (181, 197, 209))
+        for index, (name, value) in enumerate(self.rows()):
+            y = top - 62 - index * 32
+            selected = index == self.state.settings_row
+            if selected:
+                pico2d.draw_rectangle(left + 12, y - 13, right - 12, y + 13, 40, 52, 62, filled=True)
+            color = (252, 218, 143) if selected else (181, 197, 209)
+            ui.text(left + 22, y, name, color)
+            ui.text(left + 150, y, value, color)
+        ui.text(left + 22, bottom + 42, "위아래 키 선택 · 좌우 키 변경 · R 초기화", (181, 197, 209), 14)
+        ui.text(left + 22, bottom + 18, "F1 / Esc 계속하기", (181, 197, 209), 14)

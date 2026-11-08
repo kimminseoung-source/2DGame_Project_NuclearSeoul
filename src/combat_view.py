@@ -346,7 +346,7 @@ class SpinMotion:
             self.lean = -(face - need) - (1 - self.PEEK)       # just short of the line
 
     def position(self, elapsed):
-        u = max(0.0, min(1.0, elapsed / self.duration))
+        u = max(0.0, min(1.0, elapsed / self.duration)) if self.duration > 0 else 1.0
         if not self.lean:
             return self.final * ease_out(u, self.EASE)
         if u < self.TEASE_SHARE:
@@ -382,7 +382,7 @@ class HitWheel(CombatView):
             if motion is None:
                 need = needed_face(attack["attacker"], attack["target"])
                 motion = attack["spin"] = SpinMotion(attack["result"]["roll"], need, attack["roll_time"])
-            spin = attack["dice_time"] / attack["roll_time"]
+            spin = attack["dice_time"] / attack["roll_time"] if attack["roll_time"] else 1.0
             self.draw_wheel(attack["attacker"], attack["target"], motion.position(attack["dice_time"]), None, spin)
         for record in c.hit_rolls:
             flash = record["time"] > HIT_GAUGE_TIME - self.FLASH_TIME

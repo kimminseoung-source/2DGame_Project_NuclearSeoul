@@ -150,6 +150,7 @@ class Combat:
         self.selected = None
         self.mode = None
         self.dice_visual = random.Random()
+        self.skip_spin = False      # settings: stop the hit wheel at once (result is still shown)
         self._search_cache = None
         self._plan_cache = None
         self._area_cache = None
@@ -575,7 +576,13 @@ class Combat:
         self.attack = {"attacker": fighter, "target": target, "resolved": False, "time": 0.0,
                        "reaction": reaction, "result": self.roll_attack(fighter, target),
                        "phase": "dice", "dice_time": 0.0, "landed": False,
-                       "roll_time": DICE_ROLL_TIME if fighter.team == "party" else ENEMY_ROLL_TIME}
+                       "roll_time": self.roll_time(fighter)}
+
+    def roll_time(self, fighter):
+        """How long the hit wheel spins before it stops on the result."""
+        if self.skip_spin:
+            return 0.0
+        return DICE_ROLL_TIME if fighter.team == "party" else ENEMY_ROLL_TIME
 
     def roll_attack(self, attacker, target):
         roll = self.roll()

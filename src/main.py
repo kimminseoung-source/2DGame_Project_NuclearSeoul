@@ -77,7 +77,9 @@ class GameState:
         self.inventory = Inventory()
         self.inventory_open = False
         self.settings_open = False
+        self.settings_row = 0            # 0: walking speed, 1: hit wheel
         self.speed_percent = DEFAULT_SPEED
+        self.skip_spin = False           # skip the hit wheel's spin and show the result at once
         self.finished = False
         self.message = ""
         self.in_shelter = True
@@ -106,9 +108,11 @@ def reset_world():
         assets = Assets()
     aim_x = state.aim_x if state is not None else None
     speed = state.speed_percent if state is not None else DEFAULT_SPEED
+    skip_spin = state.skip_spin if state is not None else False
     state = GameState()
     state.aim_x = aim_x
     state.speed_percent = speed
+    state.skip_spin = skip_spin
     enter_area(in_shelter=True)
 
 
@@ -243,6 +247,7 @@ def start_combat(surprise):
     player.direction = 1 if zombie.x > player.x else -1
     zombie.direction = -player.direction
     combat = Combat(camera.x, tile_map, fighters, surprise)
+    combat.skip_spin = state.skip_spin
     player.combat = combat
     for view, layer in exploration_views:
         game_world.remove_object(view)
@@ -298,11 +303,13 @@ def handle_events():
                 combat.hover_screen = (x, y) if in_world else None
                 combat.hover_bottom = None if in_world else (x, y)
         if (event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT
-                and combat is not None):
+                and combat is not None and not state.settings_open):
             combat.right_click()
         if event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
             state.aim_x = event.x
-            if combat is not None:
+            if state.settings_open:
+                pass
+            elif combat is not None:
                 region, x, y = ui.split_mouse(event.x, event.y)
                 if region == "world":
                     combat.click(x, y)
@@ -320,6 +327,13 @@ def handle_events():
 
 
 def handle_key(key):
+    # F1 settings work while exploring and in a fight; the game pauses while open.
+    if key == sdl2.SDLK_F1 and not state.inventory_open:
+        state.settings_open = not state.settings_open
+        return True
+    if state.settings_open:
+        handle_settings_key(key)
+        return True
     if combat is not None:
         if key == sdl2.SDLK_ESCAPE:
             return False
@@ -335,19 +349,6 @@ def handle_key(key):
     if state.inventory_open:
         handle_inventory_key(key)
         return True
-    if key == sdl2.SDLK_F1:
-        state.settings_open = not state.settings_open
-        return True
-    if state.settings_open:
-        if key == sdl2.SDLK_ESCAPE:
-            state.settings_open = False
-        elif key == sdl2.SDLK_LEFT:
-            state.speed_percent = max(MIN_SPEED, state.speed_percent - SPEED_STEP)
-        elif key == sdl2.SDLK_RIGHT:
-            state.speed_percent = min(MAX_SPEED, state.speed_percent + SPEED_STEP)
-        elif key == sdl2.SDLK_r:
-            state.speed_percent = DEFAULT_SPEED
-        return True
     if key == sdl2.SDLK_TAB:
         state.inventory_open = True
         state.inventory.message = ""
@@ -361,6 +362,32 @@ def handle_key(key):
     elif key == sdl2.SDLK_r and state.finished:
         reset_world()
     return True
+
+
+SETTINGS_ROWS = 2
+
+
+def handle_settings_key(key):
+    """Up/Down pick a row, Left/Right change it, R resets it, Esc closes."""
+    if key == sdl2.SDLK_ESCAPE:
+        state.settings_open = False
+    elif key == sdl2.SDLK_UP:
+        state.settings_row = (state.settings_row - 1) % SETTINGS_ROWS
+    elif key == sdl2.SDLK_DOWN:
+        state.settings_row = (state.settings_row + 1) % SETTINGS_ROWS
+    elif state.settings_row == 0:
+        if key == sdl2.SDLK_LEFT:
+            state.speed_percent = max(MIN_SPEED, state.speed_percent - SPEED_STEP)
+        elif key == sdl2.SDLK_RIGHT:
+            state.speed_percent = min(MAX_SPEED, state.speed_percent + SPEED_STEP)
+        elif key == sdl2.SDLK_r:
+            state.speed_percent = DEFAULT_SPEED
+    elif key in (sdl2.SDLK_LEFT, sdl2.SDLK_RIGHT):
+        state.skip_spin = not state.skip_spin
+    elif key == sdl2.SDLK_r:
+        state.skip_spin = False
+    if combat is not None:
+        combat.skip_spin = state.skip_spin
 
 
 def handle_inventory_key(key):
