@@ -255,6 +255,9 @@ class Combat:
     def in_reach(self, a, b):
         return metres(a, b) <= REACH_M + REACH_SLACK_M
 
+    def living_foes(self, fighter):
+        return self.living("enemy" if fighter.team == "party" else "party")
+
     def attack_targets(self, fighter):
         enemy_team = "enemy" if fighter.team == "party" else "party"
         return [f for f in self.living(enemy_team) if self.in_reach(f.pos, fighter.pos)]
@@ -445,7 +448,7 @@ class Combat:
         fighter = self.selected
         return [
             ("move", "이동", fmt_m(fighter.moves_left), fighter.moves_left >= MIN_MOVE_M),
-            ("attack", "공격", "행동", bool(fighter.action) and bool(self.attack_targets(fighter))),
+            ("attack", "공격", "행동", bool(fighter.action) and bool(self.living_foes(fighter))),
             ("end", "턴 종료", "Space", True),
         ]
 
@@ -506,10 +509,11 @@ class Combat:
             elif not self.selected.action:
                 self.log = "이번 턴의 행동을 이미 썼습니다."
             else:
-                self.log = f"근접 거리({fmt_m(REACH_M)}) 안에 적이 없습니다. 먼저 다가가세요."
+                self.log = "공격할 적이 없습니다."
         else:
             self.mode = kind
-            self.log = "갈 곳을 클릭하세요 · 우클릭 취소" if kind == "move" else "공격할 적을 클릭하세요 · 우클릭 취소"
+            self.log = ("갈 곳을 클릭하세요 · 우클릭 취소" if kind == "move"
+                        else "공격할 적을 클릭하세요 · 멀면 다가가서 공격 · 우클릭 취소")
 
     def right_click(self):
         if not self.is_player_turn():
@@ -791,8 +795,11 @@ class Combat:
                 self.foot_ring(fighter, ui.ACCENT, 1.2)
         if player_turn:
             if self.mode == "attack":
-                for enemy in self.attack_targets(self.current):
-                    self.foot_ring(enemy, ui.DANGER, 1.35)
+                for enemy in self.living_foes(self.current):
+                    if self.in_reach(self.current.pos, enemy.pos):
+                        self.foot_ring(enemy, ui.DANGER, 1.35)
+                    elif self.plan_approach(self.current, enemy):
+                        self.foot_ring(enemy, ui.ACCENT, 1.35, dashed=True)
             hovered = self.hovered_target()
             if hovered is not None:
                 self.foot_ring(hovered, ui.DANGER, 1.2)
@@ -1177,10 +1184,10 @@ class Combat:
         if kind == "move":
             lines = [f"이동 · 남은 거리 {fmt_m(self.selected.moves_left)}", "원하는 곳을 클릭해 걸어갑니다"]
         else:
-            lines = ["근접 공격 · 행동 1", f"{fmt_m(REACH_M)} 안의 적을 방망이로 칩니다"]
+            lines = ["근접 공격 · 행동 1", "적을 클릭하면 사거리까지 걸어가서 칩니다"]
         if not enabled:
             reason = "남은 이동 거리가 없음" if kind == "move" else (
-                "자원이 충분하지 않음: 행동" if not self.selected.action else "근접 거리에 적이 없음")
+                "자원이 충분하지 않음: 행동" if not self.selected.action else "공격할 적이 없음")
             lines.append(reason)
         width = max(ui.text_width(line, 13) for line in lines) + 18
         height = 18 * len(lines) + 10
