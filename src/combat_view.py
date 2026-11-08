@@ -11,7 +11,7 @@ import game_clock
 import game_world
 import ui
 from combat import (
-    BADGE_FLICKER, DICE_ROLL_TIME, END_TURN_CENTER, END_TURN_RADIUS, ENEMY_COLOR, FOOT_RX, FOOT_RY,
+    BADGE_FLICKER, BADGE_TIME, DICE_ROLL_TIME, END_TURN_CENTER, END_TURN_RADIUS, ENEMY_COLOR, FOOT_RX, FOOT_RY,
     HUD_BOTTOM, HUD_TOP, LOG_LINE, LOG_LINES, LOG_WIDTH, PARTY_COLOR, POPUP_TIME, PORTRAIT_CENTER,
     PORTRAIT_RADIUS, REACH_M, SLOT_COLUMNS, SLOT_GAP, SLOT_SIZE, SLOTS_LEFT, TEXT_COLOR, fmt_m,
     hit_chance,
@@ -366,35 +366,37 @@ class DiceGauge(CombatView):
 
 
 class DamageRoll(CombatView):
-    """The separate damage roll over the target: d6 faces + bonus = damage."""
+    """The damage that landed, as a plain number rising over the target.
+
+    The possible range (e.g. 3~8) is shown beforehand in the hover readout; the
+    dice behind the number stay in the combat log, so the screen only says how
+    much it hurt.
+    """
+
+    RISE_PER_SECOND = 18
 
     def draw(self):
         for record in self.combat.damage_rolls:
-            self.draw_roll(record)
+            self.draw_number(record)
 
-    def draw_roll(self, record):
+    def draw_number(self, record):
         target = record["target"]
-        color = ui.CRITICAL if record["critical"] else ui.DANGER
-        rolls, bonus = record["rolls"], record["bonus"]
-        die, gap = 18, 4
-        total_text = f"= {record['damage']}"
-        width = 14 + len(rolls) * (die + gap) + ui.text_width(f"+{bonus}", 14) + 8 + ui.text_width(total_text, 20) + 14
-        height = 44
+        elapsed = BADGE_TIME - record["time"]
         x = self.sx(target.unit.x)
-        y = target.unit.y + 66
-        left = max(4, min(WIDTH - 4 - width, x - width / 2))
-        ui.panel(left, y, left + width, y + height, color)
-        label = "치명타 피해" if record["critical"] else "피해"
-        ui.text(left + 8, y + height - 10, f"{label}  d{record['sides']}", ui.MUTED, 11)
-        cx = left + 10
-        for value in rolls:
-            pico2d.draw_rectangle(cx, y + 6, cx + die, y + 6 + die, 30, 40, 48, filled=True)
-            pico2d.draw_rectangle(cx, y + 6, cx + die, y + 6 + die, *color)
-            ui.text_center(cx + die / 2, y + 15, str(value), ui.TEXT, 13)
-            cx += die + gap
-        ui.text(cx + 2, y + 15, f"+{bonus}", ui.MUTED, 14)
-        cx += ui.text_width(f"+{bonus}", 14) + 8
-        ui.text(cx, y + 15, total_text, color, 20)
+        y = target.unit.y + 74 + elapsed * self.RISE_PER_SECOND
+        number = f"-{record['damage']}"
+        if record["critical"]:
+            ui.text_center(x, y + 24, "치명타!", ui.CRITICAL, 16)
+            self.outlined(x, y, number, ui.CRITICAL, 30)
+        else:
+            self.outlined(x, y, number, ui.DANGER, 26)
+
+    @staticmethod
+    def outlined(x, y, text, color, size):
+        # A dark outline keeps the number readable over the bright sky.
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1)):
+            ui.text_center(x + dx, y + dy, text, (14, 18, 22), size)
+        ui.text_center(x, y, text, color, size)
 
 
 class ResourceRow(CombatView):
