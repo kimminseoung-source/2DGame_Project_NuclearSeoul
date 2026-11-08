@@ -19,7 +19,7 @@ from combat import (
     hit_chance,
 )
 from nav import NODE_X, NODE_Y, PX_PER_M_X, PX_PER_M_Y, metres, path_length
-from tile_map import HEIGHT, WIDTH
+from tile_map import WIDTH
 
 WEAPON_RECT = (112, 30, 160, 78)   # the equipped-weapon slot beside the portrait
 
@@ -353,29 +353,6 @@ class ReelMotion:
         rest = (u - self.TEASE_SHARE) / (1 - self.TEASE_SHARE)
         settle = 0.0 if rest < self.HANG else ease_out((rest - self.HANG) / (1 - self.HANG), 2)
         return self.final + self.lean * (1 - settle)
-
-
-class Spotlight(CombatView):
-    """While the hit reel spins, everything but the two fighters and the reel dims."""
-
-    MAX_ALPHA = 120
-    FADE_IN = 0.3
-
-    def draw(self):
-        attack = self.combat.attack
-        if attack is None or attack.get("phase") != "dice":
-            return
-        alpha = int(self.MAX_ALPHA * min(1.0, attack["dice_time"] / self.FADE_IN))
-        a, t = attack["attacker"].unit, attack["target"].unit
-        left = max(0, self.sx(min(a.x, t.x)) - 70)
-        right = min(WIDTH, self.sx(max(a.x, t.x)) + 70)
-        bottom = max(0, min(a.y, t.y) - 34)
-        top = min(HEIGHT, max(a.y, t.y) + HitReel.OFFSET_Y + HitReel.HEIGHT + 34)
-        shade = (6, 8, 12, alpha)
-        pico2d.draw_rectangle(0, 0, WIDTH, bottom, *shade, filled=True)
-        pico2d.draw_rectangle(0, top, WIDTH, HEIGHT, *shade, filled=True)
-        pico2d.draw_rectangle(0, bottom, left, top, *shade, filled=True)
-        pico2d.draw_rectangle(right, bottom, WIDTH, top, *shade, filled=True)
 
 
 class HitReel(CombatView):
@@ -752,7 +729,7 @@ class Hotbar(CombatView):
 
 def create_views(combat):
     """Every screen object of a fight with the layer it belongs to."""
-    overlay = [Spotlight, HealthBars, PartyColumn, TargetHeader, PointerInfo, Popups, InitiativeBadges,
+    overlay = [HealthBars, PartyColumn, TargetHeader, PointerInfo, Popups, InitiativeBadges,
                HitReel, DamageRoll, ResourceRow, SlotTooltip, CombatLog, StartBanner]
     views = [(CombatBoard(combat), game_world.BOARD)]
     views += [(view(combat), game_world.OVERLAY) for view in overlay]
