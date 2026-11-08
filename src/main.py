@@ -40,7 +40,7 @@ class Exploration:
             for action in ("walk", "sneak", "action")
         }
         self.exploration_map = TileMap(pico2d.load_image(str(ASSETS / "surface_side.png")))
-        self.zombie_image = pico2d.load_image(str(ASSETS / "zombie_charge.png"))
+        self.zombie_image = pico2d.load_image(str(ASSETS / "zombie_regular.png"))
         self.wreck_image = pico2d.load_image(str(ASSETS / "street_wreck.png"))
         self.bat_impact_sound = pico2d.load_wav(str(ASSETS / "bat_impact.wav"))
         self.bat_impact_sound.set_volume(65)
@@ -108,7 +108,6 @@ def draw_ground_objects(game, font):
         if -16 < crate_x < WIDTH + 16:
             objects.append((CRATE_POSITION[1], lambda: draw_crate(crate_x, CRATE_POSITION[1], game.crate_broken)))
     if game.zombie is not None:
-        game.zombie.draw_warning(game.camera_x)
         objects.append((WRECK_Y, lambda: draw_wreck(game)))
         objects.append((game.zombie.y, lambda: game.zombie.draw(game.camera_x, font)))
     if not game.has_filter:
@@ -180,7 +179,7 @@ def enter_area(game, in_shelter):
         game.zombie = Zombie(game.zombie_image, game.tile_map)
         game.supply, game.exit = SUPPLY, EXIT
         spawn = SPAWN
-        game.message = "감염자의 돌진을 피해 다음 대피소로 이동하세요."
+        game.message = "감염자를 피해 다음 대피소로 이동하세요."
     game.player = Player(*spawn, game.tile_map, game.player_sprites)
 
 
@@ -334,7 +333,7 @@ def update_zombie(game, frame_time):
         game.player.dash_time = 0.0
         game.pickup_time = None
         game.bat_swing = None
-        game.message = "돌진에 맞았습니다. 다음에는 앞뒤로 피하세요."
+        game.message = "감염자에게 맞았습니다. 거리를 벌리세요."
         if game.health == 0:
             game.finished = True
             game.message = "쓰러졌습니다. R로 다시 시작"
