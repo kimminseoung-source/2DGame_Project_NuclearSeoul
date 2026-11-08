@@ -19,6 +19,8 @@ from combat import (
 from nav import NODE_X, NODE_Y, PX_PER_M_X, PX_PER_M_Y, metres, path_length
 from tile_map import WIDTH
 
+WEAPON_RECT = (112, 30, 160, 78)   # the equipped-weapon slot beside the portrait
+
 
 def team_color(fighter):
     return PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
@@ -439,28 +441,42 @@ class SlotTooltip(CombatView):
         c = self.combat
         if not c.is_player_turn() or c.hover_bottom is None:
             return
-        hit = c.slot_at(*c.hover_bottom)
+        mx, my = c.hover_bottom
+        fighter = c.selected
+        w_left, w_bottom, w_right, w_top = WEAPON_RECT
+        if w_left <= mx <= w_right and w_bottom <= my <= w_top:
+            # The weapon itself: what one swing does.
+            self.draw_box(self.attack_lines(fighter), w_left, w_right)
+            return
+        hit = c.slot_at(mx, my)
         if hit is None or hit[0] is None:
             return
         (kind, label, cost, enabled), (left, _, right, _) = hit
         if kind == "move":
-            lines = [f"이동 · 남은 거리 {fmt_m(c.selected.moves_left)}", "원하는 곳을 클릭해 걸어갑니다"]
+            lines = [(f"이동 · 남은 거리 {fmt_m(fighter.moves_left)}", ui.TEXT),
+                     ("원하는 곳을 클릭해 걸어갑니다", ui.MUTED)]
         else:
-            low, high = c.selected.damage_range()
-            lines = [f"근접 공격 · 행동 1 · 피해 {low}~{high}", "적을 클릭하면 사거리까지 걸어가서 칩니다"]
+            lines = self.attack_lines(fighter) + [("적을 클릭하면 사거리까지 걸어가서 칩니다", ui.MUTED)]
         if not enabled:
             reason = "남은 이동 거리가 없음" if kind == "move" else (
-                "자원이 충분하지 않음: 행동" if not c.selected.action else "공격할 적이 없음")
-            lines.append(reason)
-        width = max(ui.text_width(line, 13) for line in lines) + 18
+                "자원이 충분하지 않음: 행동" if not fighter.action else "공격할 적이 없음")
+            lines.append((reason, ui.DANGER))
+        self.draw_box(lines, left, right)
+
+    @staticmethod
+    def attack_lines(fighter):
+        low, high = fighter.damage_range()
+        return [("방망이 근접 공격 · 행동 1", ui.TEXT), (f"피해 {low}~{high}", ui.DANGER)]
+
+    @staticmethod
+    def draw_box(lines, left, right):
+        width = max(ui.text_width(text, 13) for text, _ in lines) + 18
         height = 18 * len(lines) + 10
         x = max(4, min(WIDTH - width - 4, (left + right) / 2 - width / 2))
         bottom = 30
         ui.panel(x, bottom, x + width, bottom + height, ui.BORDER_LIGHT, ui.PANEL, 240)
-        for index, line in enumerate(lines):
-            last = index == len(lines) - 1
-            color = ui.TEXT if index == 0 else (ui.DANGER if not enabled and last else ui.MUTED)
-            ui.text(x + 9, bottom + height - 14 - 18 * index, line, color, 13)
+        for index, (text, color) in enumerate(lines):
+            ui.text(x + 9, bottom + height - 14 - 18 * index, text, color, 13)
 
 
 class CombatLog(CombatView):
@@ -551,7 +567,7 @@ class Hotbar(CombatView):
         ui.panel(0, 0, WIDTH - 1, ui.BOTTOM_HEIGHT - 1, ui.BORDER, ui.PANEL, 255)
         pico2d.draw_line(0, ui.BOTTOM_HEIGHT - 2, WIDTH, ui.BOTTOM_HEIGHT - 2, 120, 98, 60)
         self.draw_round_portrait(c.current)
-        self.draw_weapon_slot(c.selected or c.current)
+        self.draw_weapon_slot()
         player_turn = c.is_player_turn()
         mouse = c.hover_bottom
         for entry, (left, bottom, right, top) in c.bottom_slots():
@@ -583,14 +599,13 @@ class Hotbar(CombatView):
         ui.text_center(x, y - PORTRAIT_RADIUS + 7, label, ui.TEXT, 14)
 
     @staticmethod
-    def draw_weapon_slot(fighter):
-        left, bottom, right, top = 112, 30, 160, 78
+    def draw_weapon_slot():
+        left, bottom, right, top = WEAPON_RECT
         ui.panel(left, bottom, right, top, ui.BORDER_LIGHT, ui.PANEL_RAISED, 255)
         for offset in (-1, 0, 1):
             pico2d.draw_line(left + 12 + offset, bottom + 10, right - 12 + offset, top - 10, 196, 160, 110)
         pico2d.draw_line(left + 10, bottom + 8, left + 16, bottom + 14, 90, 70, 50)
-        low, high = fighter.damage_range()
-        ui.text_center((left + right) / 2, bottom - 10, f"방망이 {low}~{high}", ui.MUTED, 12)
+        ui.text_center((left + right) / 2, bottom - 10, "방망이", ui.MUTED, 12)
 
     def draw_slot(self, entry, left, bottom, right, top, hovered):
         if entry is None:
@@ -611,9 +626,9 @@ class Hotbar(CombatView):
             pico2d.draw_line(cx + 9, cy + 6, cx + 1, cy + 7, *color)
             pico2d.draw_line(cx + 9, cy + 6, cx + 6, cy - 2, *color)
         else:
-            # The damage one swing can do, where the eye lands first.
-            low, high = (self.combat.selected or self.combat.current).damage_range()
-            ui.text_center(cx, cy, f"{low}~{high}", ui.DANGER if enabled else ui.DIM, 14)
+            for offset in (-1, 0, 1):
+                pico2d.draw_line(cx - 10 + offset, cy - 10, cx + 9 + offset, cy + 9, *color)
+            pico2d.draw_line(cx - 4, cy + 6, cx + 6, cy - 4, *color)
         number = {"move": "1", "attack": "2"}[kind]
         ui.text(left + 3, top - 7, number, ui.MUTED if enabled else ui.DIM, 11)
         ui.text_center(cx, bottom + 7, label, ui.TEXT if enabled else ui.DIM, 11)
