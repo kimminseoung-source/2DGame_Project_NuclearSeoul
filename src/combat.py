@@ -169,6 +169,8 @@ class Fighter:
         self.moves_left = 0
         self.action = 0
         self.bonus_action = 0
+        # One reaction per round, refreshed at the start of the fighter's turn.
+        self.reaction = 1
 
     @property
     def alive(self):
@@ -242,6 +244,7 @@ class Combat:
         fighter.moves_left = fighter.move_cells
         fighter.action = 1
         fighter.bonus_action = 1
+        fighter.reaction = 1
         if fighter.surprised:
             self.log = f"{fighter.name}: 기습당해 이번 라운드에 행동하지 못합니다."
             self.wait_time = SKIP_PAUSE
@@ -297,10 +300,43 @@ class Combat:
             self.start_moving(fighter, path)
 
     def start_moving(self, fighter, path):
+        self.moving = {"fighter": fighter, "path": list(path), "from": fighter.cell}
         fighter.cell = path[-1]
-        self.moving = fighter, list(path)
         if fighter.team == "enemy":
             fighter.unit.transition("chase")
+        self.check_provoke()
+
+    def can_react(self, reactor, mover):
+        return (reactor.alive and reactor.team != mover.team and reactor.reaction
+                and not reactor.surprised)
+
+    def provokers(self, mover, from_cell, to_cell):
+        """Enemies whose reach the mover leaves by stepping from one cell to the next."""
+        return [
+            f for f in self.fighters
+            if self.can_react(f, mover)
+            and chebyshev(f.cell, from_cell) <= 1 < chebyshev(f.cell, to_cell)
+        ]
+
+    def path_provokes(self, mover, path):
+        previous = mover.cell
+        for step in path:
+            if self.provokers(mover, previous, step):
+                return True
+            previous = step
+        return False
+
+    def check_provoke(self):
+        """Pause the move for an opportunity attack before leaving reach."""
+        move = self.moving
+        mover = move["fighter"]
+        reactors = self.provokers(mover, move["from"], move["path"][0])
+        if not reactors:
+            return
+        reactor = reactors[0]
+        reactor.reaction = 0
+        self.popup("기회 공격!", reactor.unit.x, reactor.unit.y + 96, (255, 214, 127))
+        self.start_attack(reactor, mover, reaction=True)
 
     def enemy_approach(self, fighter):
         targets = self.living("party")
@@ -325,7 +361,7 @@ class Combat:
             self.wait_time = ENEMY_PAUSE
 
     def update_moving(self, frame_time):
-        fighter, path = self.moving
+        fighter, path = self.moving["fighter"], self.moving["path"]
         unit = fighter.unit
         target_x, target_y = self.grid.cell_center(*path[0])
         dx, dy = target_x - unit.x, target_y - unit.y
@@ -339,8 +375,9 @@ class Combat:
             unit.y += dy / distance * step
             return
         unit.x, unit.y = target_x, target_y
-        path.pop(0)
+        self.moving["from"] = path.pop(0)
         if path:
+            self.check_provoke()
             return
         self.moving = None
         unit.walk_time = 0.0
@@ -350,12 +387,14 @@ class Combat:
 
     # Attacks --------------------------------------------------------------
 
-    def start_attack(self, fighter, target):
-        fighter.action = 0
+    def start_attack(self, fighter, target, reaction=False):
+        if not reaction:
+            fighter.action = 0
         dx = target.unit.x - fighter.unit.x
         if abs(dx) > 1:
             fighter.unit.direction = 1 if dx > 0 else -1
-        attack = {"attacker": fighter, "target": target, "resolved": False, "time": 0.0}
+        attack = {"attacker": fighter, "target": target, "resolved": False, "time": 0.0,
+                  "reaction": reaction}
         if fighter.team == "party":
             attack["swing"] = BatSwing((fighter.unit.direction, 0))
         else:
@@ -407,7 +446,7 @@ class Combat:
             if swing.update(frame_time):
                 self.resolve_attack(attacker, target)
             if swing.elapsed >= BAT_DURATION:
-                self.attack = None
+                self.finish_attack()
             return
         zombie = attacker.unit
         if not attack["resolved"]:
@@ -420,9 +459,23 @@ class Combat:
         zombie.time_left = max(0.0, zombie.time_left - frame_time)
         if not zombie.time_left:
             zombie.transition("idle")
-            self.attack = None
-            if self.outcome is None:
+            self.finish_attack()
+
+    def finish_attack(self):
+        attack = self.attack
+        self.attack = None
+        if not attack["reaction"]:
+            if attack["attacker"].team == "enemy" and self.outcome is None:
                 self.wait_time = ENEMY_PAUSE
+            return
+        # An opportunity attack interrupted a move: resume it unless the mover fell.
+        mover = attack["target"]
+        if self.moving is None or mover.alive:
+            return
+        mover.cell = self.moving["from"]
+        self.moving = None
+        if self.outcome is None and mover is self.current:
+            self.wait_time = ENEMY_PAUSE
 
     # Frame update ---------------------------------------------------------
 
@@ -434,10 +487,11 @@ class Combat:
         for popup in self.popups:
             popup[3] -= frame_time
         self.popups = [p for p in self.popups if p[3] > 0]
-        if self.moving is not None:
-            self.update_moving(frame_time)
-        elif self.attack is not None:
+        # An opportunity attack pauses the move it interrupted, so attacks go first.
+        if self.attack is not None:
             self.update_attack(frame_time)
+        elif self.moving is not None:
+            self.update_moving(frame_time)
         elif self.wait_time:
             self.wait_time = max(0.0, self.wait_time - frame_time)
             if not self.wait_time and self.outcome is None:
@@ -459,7 +513,9 @@ class Combat:
             return self.log
         action = "행동 1" if fighter.action else "행동 0"
         bonus = "보조 1" if fighter.bonus_action else "보조 0"
-        return f"{self.round}라운드 · 이동 {fighter.moves_left}/{fighter.move_cells}칸 · {action} · {bonus} · Space 턴 종료"
+        reaction = "반응 1" if fighter.reaction else "반응 0"
+        return (f"{self.round}R · 이동 {fighter.moves_left}/{fighter.move_cells} · {action} · {bonus}"
+                f" · {reaction} · Space 턴 종료")
 
     def hovered_target(self):
         target = self.fighter_at(self.hover)
@@ -500,6 +556,11 @@ class Combat:
             target = self.hovered_target()
             if target is not None:
                 self.draw_attack_preview(self.current, target, font)
+            else:
+                path = self.reachable(self.current).get(self.hover)
+                if path and self.path_provokes(self.current, path):
+                    x, y = self.grid.cell_center(*self.hover)
+                    font.draw(x - self.grid.camera_x - 52, y + 30, "기회 공격 위험!", (255, 160, 130))
         for text, x, y, time_left, color in self.popups:
             rise = (POPUP_TIME - time_left) * 22
             font.draw(x - self.grid.camera_x - 40, y + rise, text, color)
