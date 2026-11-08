@@ -21,7 +21,7 @@ import ui
 from background import Background
 from bat import BAT_HITSTOP
 from combat import Combat, Fighter
-from combat_view import CombatBoard, CombatBottom, CombatHud, CombatOverlay
+from combat_view import create_views
 from effects import Impact
 from exit_door import ExitDoor
 from hud import ExplorationBar, ExplorationHud, InventoryOverlay, SettingsOverlay
@@ -246,12 +246,7 @@ def start_combat(surprise):
     player.combat = combat
     for view, layer in exploration_views:
         game_world.remove_object(view)
-    combat_views = [
-        (CombatBoard(combat), game_world.BOARD),
-        (CombatOverlay(combat), game_world.OVERLAY),
-        (CombatHud(combat), game_world.HUD),
-        (CombatBottom(combat), game_world.BOTTOM),
-    ]
+    combat_views = create_views(combat)
     for view, layer in combat_views:
         game_world.add_object(view, layer)
     state.message = "피폭체를 기습했습니다." if surprise else "피폭체에게 발각됐습니다."

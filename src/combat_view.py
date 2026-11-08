@@ -1,54 +1,638 @@
-"""Game-world objects that put a running fight on screen.
+"""Screen objects for a running fight.
 
-The Combat class holds the rules; these objects give it update()/draw() on the
-right layers: the board under the units, the overlay above them, the top strip
-and the hotbar.
+Combat (combat.py) holds the rules. Each class here is one element on screen with
+update()/draw(), registered in a game_world layer by create_views() — the same
+pattern as the course's Boy/Grass/Ball objects.
 """
 
+import pico2d
+
 import game_clock
+import game_world
+import ui
+from combat import (
+    BADGE_FLICKER, DICE_ROLL_TIME, END_TURN_CENTER, END_TURN_RADIUS, ENEMY_COLOR, FOOT_RX, FOOT_RY,
+    HUD_BOTTOM, HUD_TOP, LOG_LINE, LOG_LINES, LOG_WIDTH, PARTY_COLOR, POPUP_TIME, PORTRAIT_CENTER,
+    PORTRAIT_RADIUS, REACH_M, SLOT_COLUMNS, SLOT_GAP, SLOT_SIZE, SLOTS_LEFT, TEXT_COLOR, fmt_m,
+    hit_chance,
+)
+from nav import NODE_X, NODE_Y, PX_PER_M_X, PX_PER_M_Y, metres, path_length
+from tile_map import WIDTH
 
 
-class CombatBoard:
-    """Board layer: runs the fight each frame and draws movement area, rings and paths."""
+def team_color(fighter):
+    return PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
 
+
+def draw_portrait(fighter, left, bottom, width, height, color):
+    pico2d.draw_rectangle(left, bottom, left + width, bottom + height, 24, 32, 40, filled=True)
+    pico2d.draw_rectangle(left, bottom, left + width, bottom + height, *color)
+    clip = getattr(fighter.unit, "portrait_clip", None)
+    if clip is None:
+        return
+    image, sx, sy, sw, sh = clip()
+    scale = min((width - 4) / sw, (height - 4) / sh)
+    image.clip_draw(sx, sy, sw, sh, left + width / 2, bottom + height / 2, sw * scale, sh * scale)
+    if not fighter.alive:
+        pico2d.draw_rectangle(left, bottom, left + width, bottom + height, 0, 0, 0, 150, filled=True)
+
+
+def roll_outcome(result):
+    """Verdict text and colour for a hit roll."""
+    if result["critical"]:
+        return "치명타!", ui.CRITICAL
+    if result["fumble"]:
+        return "대실패", ui.DIM
+    return ("명중!", ui.DANGER) if result["hit"] else ("빗나감", ui.MISS)
+
+
+class CombatView:
     def __init__(self, combat):
         self.combat = combat
+
+    def sx(self, x):
+        """World x to screen x (the fight keeps the camera fixed)."""
+        return x - self.combat.camera_x
+
+    def update(self):
+        pass
+
+
+# Board layer (under the units) ---------------------------------------------------
+
+class CombatBoard(CombatView):
+    """Runs the fight each frame and draws the movement area, foot rings and paths."""
+
+    def __init__(self, combat):
+        super().__init__(combat)
+        self.area_cache = None
 
     def update(self):
         self.combat.update(game_clock.step())
 
-    def draw(self):
-        self.combat.draw()
-
-
-class CombatOverlay:
-    def __init__(self, combat):
-        self.combat = combat
-
-    def update(self):
-        pass
+    def foot_ring(self, fighter, color, scale=1.0, dashed=False):
+        x, y = fighter.pos
+        ui.ellipse(self.sx(x), y - 10, FOOT_RX * scale, FOOT_RY * scale, color, dashed=dashed)
 
     def draw(self):
-        self.combat.draw_overlay()
+        c = self.combat
+        player_turn = c.is_player_turn()
+        if player_turn and c.mode == "move":
+            self.draw_reach_area()
+        if player_turn and c.mode == "attack":
+            x, y = c.current.pos
+            # Melee reach as a dashed ellipse in floor perspective.
+            ui.ellipse(self.sx(x), y - 10, REACH_M * PX_PER_M_X, REACH_M * PX_PER_M_Y, ui.DANGER, 40, dashed=True)
+        for fighter in c.fighters:
+            if not fighter.alive:
+                continue
+            active = fighter is c.current and c.outcome is None
+            self.foot_ring(fighter, ui.ACCENT if active else team_color(fighter))
+            if active:
+                self.foot_ring(fighter, ui.ACCENT, 1.2)
+        if not player_turn:
+            return
+        if c.mode == "attack":
+            for enemy in c.living_foes(c.current):
+                if c.in_reach(c.current.pos, enemy.pos):
+                    self.foot_ring(enemy, ui.DANGER, 1.35)
+                elif c.plan_approach(c.current, enemy):
+                    self.foot_ring(enemy, ui.ACCENT, 1.35, dashed=True)
+        hovered = c.hovered_target()
+        if hovered is not None:
+            self.foot_ring(hovered, ui.DANGER, 1.2)
+        if c.mode == "move":
+            self.draw_move_path()
+        elif hovered is not None and c.current.action and not c.in_reach(c.current.pos, hovered.pos):
+            points = c.plan_approach(c.current, hovered)
+            if points:
+                self.draw_polyline(points, ui.ACCENT)
+                end_x, end_y = points[-1]
+                ui.ellipse(self.sx(end_x), end_y - 10, FOOT_RX, FOOT_RY, ui.ACCENT, dashed=True)
+
+    def draw_polyline(self, points, color, thick=False):
+        screen = [(self.sx(x), y) for x, y in points]
+        for (x1, y1), (x2, y2) in zip(screen, screen[1:]):
+            pico2d.draw_line(x1, y1, x2, y2, *color)
+            if thick:
+                pico2d.draw_line(x1, y1 + 1, x2, y2 + 1, *color)
+
+    def draw_move_path(self):
+        c = self.combat
+        points = c.plan_move(c.current, c.hover)
+        if not points:
+            return
+        color = ui.DANGER if c.path_provokes(c.current, points) else ui.ACCENT
+        self.draw_polyline(points, color, thick=True)
+        end_x, end_y = points[-1]
+        ui.ellipse(self.sx(end_x), end_y - 10, FOOT_RX, FOOT_RY, color)
+
+    def draw_reach_area(self):
+        """BG3-like movement area: a soft fill with a brighter rim."""
+        costs = self.combat.search(self.combat.current)
+        if self.area_cache is None or self.area_cache[0] is not costs:
+            self.area_cache = (costs, self.area_shapes(set(costs)))
+        runs, rim = self.area_cache[1]
+        for left, right, y in runs:
+            pico2d.draw_rectangle(self.sx(left), y - NODE_Y / 2, self.sx(right), y + NODE_Y / 2 - 1,
+                                  *ui.MOVE, 34, filled=True)
+        for x, y in rim:
+            pico2d.draw_rectangle(self.sx(x) - 1, y - 1, self.sx(x) + 1, y + 1, *ui.MOVE, filled=True)
+
+    def area_shapes(self, nodes):
+        """Merge reachable nodes into row runs for the fill and collect rim points."""
+        nav = self.combat.nav
+        runs, rim = [], []
+        for row in sorted({r for _, r in nodes}):
+            columns = sorted(c for c, r in nodes if r == row)
+            start = previous = columns[0]
+            for column in columns[1:] + [None]:
+                if column is not None and column == previous + 1:
+                    previous = column
+                    continue
+                left, y = nav.position((start, row))
+                right, _ = nav.position((previous, row))
+                runs.append((left - NODE_X / 2, right + NODE_X / 2 - 1, y))
+                if column is not None:
+                    start = previous = column
+        for c, r in nodes:
+            if any((c + dc, r + dr) not in nodes for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                rim.append(nav.position((c, r)))
+        return runs, rim
 
 
-class CombatHud:
-    def __init__(self, combat):
-        self.combat = combat
+# Overlay layer (above the units) ------------------------------------------------
 
-    def update(self):
-        pass
+class HealthBars(CombatView):
+    def draw(self):
+        for fighter in self.combat.fighters:
+            if fighter.alive:
+                ui.bar(self.sx(fighter.unit.x) - 18, fighter.unit.y + 52, 36, 4,
+                       fighter.hp / fighter.max_hp, team_color(fighter))
+
+
+class PartyColumn(CombatView):
+    """Party portraits down the left edge with health, as in BG3."""
 
     def draw(self):
-        self.combat.draw_hud()
+        c = self.combat
+        top = HUD_BOTTOM - 14
+        for fighter in c.fighters:
+            if fighter.team != "party":
+                continue
+            active = fighter is c.current and c.outcome is None
+            border = ui.ACCENT if active else (PARTY_COLOR if fighter.alive else ui.DIM)
+            left, bottom = 8, top - 66
+            pico2d.draw_rectangle(left - 2, bottom - 2, left + 54, top + 2, *ui.PANEL, 220, filled=True)
+            draw_portrait(fighter, left, bottom, 52, 66, border)
+            ui.panel(left + 4, bottom + 2, left + 48, bottom + 18, border, ui.PANEL, 230)
+            ui.text_center(left + 26, bottom + 10, f"{fighter.hp}/{fighter.max_hp}", ui.TEXT, 12)
+            top = bottom - 10
 
 
-class CombatBottom:
-    def __init__(self, combat):
-        self.combat = combat
-
-    def update(self):
-        pass
+class TargetHeader(CombatView):
+    """BG3-style target readout under the turn order: name, big health bar, status."""
 
     def draw(self):
-        self.combat.draw_bottom()
+        c = self.combat
+        target = c.hovered_target() if c.is_player_turn() else None
+        if target is None and c.attack is not None:
+            target = c.attack["target"]
+        if target is None:
+            return
+        color = team_color(target)
+        center, top = WIDTH / 2, HUD_BOTTOM - 10
+        ui.panel(center - 140, top - 74, center + 140, top + 6, (120, 98, 60), ui.PANEL, 200)
+        ui.text_center(center, top - 8, target.name, color, 18)
+        ui.text_center(center, top - 26, f"방어 {target.armor_class}", ui.MUTED, 13)
+        width = 260
+        left = center - width / 2
+        ui.panel(left - 2, top - 48, left + width + 2, top - 34, (120, 98, 60), ui.PANEL, 230)
+        ui.bar(left, top - 46, width, 10, target.hp / target.max_hp, color, (40, 26, 28))
+        ui.text_center(center, top - 41, f"{target.hp}/{target.max_hp}", ui.TEXT, 12)
+        statuses = []
+        if target.surprised:
+            statuses.append(("기습당함", ui.DANGER))
+        if target.team == "enemy" and target.alive:
+            statuses.append(("적대적", ENEMY_COLOR))
+        if not target.alive:
+            statuses.append(("쓰러짐", ui.DIM))
+        x = center - sum(ui.text_width(s, 13) + 26 for s, _ in statuses) / 2
+        for label, chip_color in statuses:
+            pico2d.draw_circle(x + 6, top - 62, 5, *chip_color, filled=True)
+            ui.text(x + 15, top - 62, label, ui.MUTED, 13)
+            x += ui.text_width(label, 13) + 26
+
+
+class PointerInfo(CombatView):
+    """What the mouse is over: hit chance next to an enemy, or the distance of a move."""
+
+    def draw(self):
+        c = self.combat
+        if not c.is_player_turn():
+            return
+        target = c.hovered_target()
+        if target is not None:
+            self.draw_hit_chip(c.current, target)
+        elif c.mode == "move":
+            self.draw_move_label()
+
+    def draw_hit_chip(self, attacker, target):
+        c = self.combat
+        x = self.sx(target.unit.x) + 24
+        y = target.unit.y + 30
+        chance = round(hit_chance(attacker.attack_bonus, target.armor_class) * 100)
+        low, high = attacker.damage_range()
+        approach = None
+        if not attacker.action:
+            note, note_color = "자원이 충분하지 않음: 행동", ui.DANGER
+        elif c.in_reach(attacker.pos, target.pos):
+            note, note_color = "클릭하면 공격", ui.MUTED
+        else:
+            approach = c.plan_approach(attacker, target)
+            if approach:
+                note, note_color = f"{fmt_m(path_length(approach))} 이동 후 공격", ui.ACCENT
+            else:
+                note, note_color = f"닿지 않음 · 거리 {fmt_m(metres(attacker.pos, target.pos))}", ui.DANGER
+        usable = bool(attacker.action) and (c.in_reach(attacker.pos, target.pos) or approach)
+        big = f"{chance}%"
+        detail = f"피해 {low}~{high} · 방어 {target.armor_class}"
+        width = max(32 + ui.text_width(big, 24) + 6 + ui.text_width("명중 확률", 13),
+                    ui.text_width(detail, 13), ui.text_width(note, 13)) + 20
+        height = 70
+        x = min(x, WIDTH - width - 4)
+        ui.panel(x, y, x + width, y + height, ui.ACCENT if usable else ui.DIM, ui.PANEL, 235)
+        for offset in (-1, 0, 1):
+            pico2d.draw_line(x + 10 + offset, y + height - 30, x + 24 + offset, y + height - 12, 196, 160, 110)
+        ui.text(x + 32, y + height - 20, big, ui.ACCENT if usable else ui.DIM, 24)
+        ui.text(x + 32 + ui.text_width(big, 24) + 6, y + height - 24, "명중 확률", ui.MUTED, 13)
+        ui.text(x + 10, y + 26, detail, ui.TEXT, 13)
+        ui.text(x + 10, y + 10, note, note_color, 13)
+
+    def draw_move_label(self):
+        c = self.combat
+        points = c.plan_move(c.current, c.hover)
+        if not points:
+            return
+        x, y = points[-1]
+        x = self.sx(x)
+        danger = c.path_provokes(c.current, points)
+        label = fmt_m(path_length(points)) + (" · 기회 공격 위험" if danger else "")
+        color = ui.DANGER if danger else ui.ACCENT
+        width = ui.text_width(label, 14) + 14
+        ui.panel(x - width / 2, y + 22, x + width / 2, y + 42, color)
+        ui.text_center(x, y + 32, label, color, 14)
+
+
+class Popups(CombatView):
+    """Short floating texts such as '기회 공격!'."""
+
+    def draw(self):
+        for text, x, y, time_left, color in self.combat.popups:
+            rise = (POPUP_TIME - time_left) * 22
+            ui.text_center(self.sx(x), y + rise, text, color)
+
+
+class InitiativeBadges(CombatView):
+    """'선공 6 / 주사위 4 + 민첩 2' over each fighter when the fight starts."""
+
+    def draw(self):
+        for badge in self.combat.badges:
+            unit = badge["unit"]
+            x, y = self.sx(unit.x), unit.y + 82
+            width = max(ui.text_width(badge["title"], 16), ui.text_width(badge["detail"], 13)) + 18
+            left = max(4, min(WIDTH - 4 - width, x - width / 2))
+            ui.panel(left, y - 19, left + width, y + 19, badge["color"])
+            ui.text(left + 9, y + 8, badge["title"], badge["color"], 16)
+            ui.text(left + 9, y - 9, badge["detail"], ui.MUTED, 13)
+
+
+class DiceGauge(CombatView):
+    """Hit roll as a gauge: where the total lands against the 'needed' line.
+
+    While rolling: the d20 face flickers and the gauge shows only the needed line.
+    After landing: a marker shows the total, and the verdict is written in large type.
+    """
+
+    WIDTH, HEIGHT = 240, 74
+
+    def draw(self):
+        c = self.combat
+        attack = c.attack
+        if attack is not None and attack.get("phase") == "dice" and not attack["landed"]:
+            tick = int(attack["dice_time"] / BADGE_FLICKER)
+            if attack.get("tick") != tick:
+                attack["tick"] = tick
+                attack["face"] = c.dice_visual.randint(1, 20)
+            self.draw_gauge(attack["attacker"], attack["target"], attack["face"], None)
+        for record in c.hit_rolls:
+            self.draw_gauge(record["attacker"], record["target"], record["result"]["roll"], record["result"])
+
+    def draw_gauge(self, attacker, target, face, result):
+        width, height = self.WIDTH, self.HEIGHT
+        x = self.sx(attacker.unit.x)
+        y = attacker.unit.y + 70
+        left = max(4, min(WIDTH - 4 - width, x - width / 2))
+        bonus, need = attacker.attack_bonus, target.armor_class
+        if result is None:
+            chance = round(hit_chance(bonus, need) * 100)
+            title, color = f"명중 판정  {chance}%", ui.TEXT
+        else:
+            title, color = roll_outcome(result)
+        ui.panel(left, y, left + width, y + height, color)
+        ui.d20_icon(left + 20, y + height - 19, 13, face, color, 14)
+        ui.text(left + 40, y + height - 19, title, color, 18)
+        hint = f"d20 + {bonus}"
+        ui.text(left + width - ui.text_width(hint, 12) - 10, y + height - 19, hint, ui.MUTED, 12)
+
+        # Gauge: every possible total from 1+bonus to 20+bonus, split at the needed value.
+        low, high = 1 + bonus, 20 + bonus
+        bar_left, bar_width, bar_y = left + 14, width - 28, y + 22
+
+        def at(value):
+            return bar_left + bar_width * max(0.0, min(1.0, (value - low) / (high - low)))
+
+        need_x = at(need)
+        pico2d.draw_rectangle(bar_left, bar_y - 4, need_x, bar_y + 4, 64, 72, 80, filled=True)
+        pico2d.draw_rectangle(need_x, bar_y - 4, bar_left + bar_width, bar_y + 4, 140, 66, 50, filled=True)
+        pico2d.draw_line(need_x, bar_y - 8, need_x, bar_y + 8, *ui.TEXT)
+        ui.text(min(need_x + 4, left + width - 52), bar_y - 13, f"필요 {need}", ui.MUTED, 11)
+        if result is None:
+            return
+        mark_x = at(result["total"])
+        for dx in range(-5, 6):
+            pico2d.draw_line(mark_x + dx, bar_y + 9, mark_x, bar_y + 2, *color)
+        ui.text_center(mark_x, bar_y + 16, str(result["total"]), color, 13)
+
+
+class DamageRoll(CombatView):
+    """The separate damage roll over the target: d6 faces + bonus = damage."""
+
+    def draw(self):
+        for record in self.combat.damage_rolls:
+            self.draw_roll(record)
+
+    def draw_roll(self, record):
+        target = record["target"]
+        color = ui.CRITICAL if record["critical"] else ui.DANGER
+        rolls, bonus = record["rolls"], record["bonus"]
+        die, gap = 18, 4
+        total_text = f"= {record['damage']}"
+        width = 14 + len(rolls) * (die + gap) + ui.text_width(f"+{bonus}", 14) + 8 + ui.text_width(total_text, 20) + 14
+        height = 44
+        x = self.sx(target.unit.x)
+        y = target.unit.y + 66
+        left = max(4, min(WIDTH - 4 - width, x - width / 2))
+        ui.panel(left, y, left + width, y + height, color)
+        label = "치명타 피해" if record["critical"] else "피해"
+        ui.text(left + 8, y + height - 10, f"{label}  d{record['sides']}", ui.MUTED, 11)
+        cx = left + 10
+        for value in rolls:
+            pico2d.draw_rectangle(cx, y + 6, cx + die, y + 6 + die, 30, 40, 48, filled=True)
+            pico2d.draw_rectangle(cx, y + 6, cx + die, y + 6 + die, *color)
+            ui.text_center(cx + die / 2, y + 15, str(value), ui.TEXT, 13)
+            cx += die + gap
+        ui.text(cx + 2, y + 15, f"+{bonus}", ui.MUTED, 14)
+        cx += ui.text_width(f"+{bonus}", 14) + 8
+        ui.text(cx, y + 15, total_text, color, 20)
+
+
+class ResourceRow(CombatView):
+    """Named resource icons above the hotbar (drawn in the world, under the floor)."""
+
+    def draw(self):
+        c = self.combat
+        if c.current.team != "party" or c.outcome is not None:
+            return
+        fighter = c.selected or c.current
+        x, y = 238, 13
+        ui.panel(x - 12, y - 11, x + 404, y + 11, ui.BORDER, ui.PANEL, 210)
+        ui.action_icon(x, y, 6, bool(fighter.action))
+        ui.text(x + 10, y, "행동", ui.TEXT if fighter.action else ui.DIM, 12)
+        ui.bonus_icon(x + 52, y, 7, bool(fighter.bonus_action))
+        ui.text(x + 62, y, "보조", ui.TEXT if fighter.bonus_action else ui.DIM, 12)
+        ui.reaction_icon(x + 104, y, 7, bool(fighter.reaction))
+        ui.text(x + 114, y, "반응", ui.TEXT if fighter.reaction else ui.DIM, 12)
+        total = max(0.1, fighter.move_m)
+        cost = 0.0
+        if c.is_player_turn() and c.mode == "move":
+            points = c.plan_move(fighter, c.hover)
+            cost = path_length(points) if points else 0.0
+        left_after = max(0.0, fighter.moves_left - cost)
+        bar_x = x + 156
+        ui.bar(bar_x, y - 3, 60, 6, left_after / total, ui.MOVE)
+        if cost:
+            # The part this move would spend, shown in gold like BG3's preview.
+            start = bar_x + 60 * left_after / total
+            pico2d.draw_rectangle(start, y - 3, start + 60 * cost / total, y + 3, *ui.ACCENT, filled=True)
+            ui.text(bar_x + 66, y, f"{fmt_m(cost)} 사용 · 남음 {fmt_m(left_after)}", ui.ACCENT, 12)
+        else:
+            ui.text(bar_x + 66, y, f"이동 {fighter.moves_left:.1f}/{fmt_m(fighter.move_m)}", ui.MUTED, 12)
+
+
+class SlotTooltip(CombatView):
+    """Tooltip above a hovered hotbar slot, drawn in world coordinates."""
+
+    def draw(self):
+        c = self.combat
+        if not c.is_player_turn() or c.hover_bottom is None:
+            return
+        hit = c.slot_at(*c.hover_bottom)
+        if hit is None or hit[0] is None:
+            return
+        (kind, label, cost, enabled), (left, _, right, _) = hit
+        if kind == "move":
+            lines = [f"이동 · 남은 거리 {fmt_m(c.selected.moves_left)}", "원하는 곳을 클릭해 걸어갑니다"]
+        else:
+            lines = ["근접 공격 · 행동 1", "적을 클릭하면 사거리까지 걸어가서 칩니다"]
+        if not enabled:
+            reason = "남은 이동 거리가 없음" if kind == "move" else (
+                "자원이 충분하지 않음: 행동" if not c.selected.action else "공격할 적이 없음")
+            lines.append(reason)
+        width = max(ui.text_width(line, 13) for line in lines) + 18
+        height = 18 * len(lines) + 10
+        x = max(4, min(WIDTH - width - 4, (left + right) / 2 - width / 2))
+        bottom = 30
+        ui.panel(x, bottom, x + width, bottom + height, ui.BORDER_LIGHT, ui.PANEL, 240)
+        for index, line in enumerate(lines):
+            last = index == len(lines) - 1
+            color = ui.TEXT if index == 0 else (ui.DANGER if not enabled and last else ui.MUTED)
+            ui.text(x + 9, bottom + height - 14 - 18 * index, line, color, 13)
+
+
+class CombatLog(CombatView):
+    """Collapsible combat log in the top-right corner (click the header or press L)."""
+
+    def draw(self):
+        c = self.combat
+        left, bottom, right, top = c.log_header_rect()
+        mouse = c.hover
+        hovered = mouse is not None and left <= mouse[0] <= right and bottom <= mouse[1] <= top
+        ui.panel(left, bottom, right, top, ui.ACCENT if hovered else (120, 98, 60), ui.PANEL_RAISED, 235)
+        tx, ty = left + 12, (bottom + top) / 2
+        if c.log_open:
+            pico2d.draw_line(tx - 5, ty + 3, tx + 5, ty + 3, *ui.ACCENT)
+            pico2d.draw_line(tx - 5, ty + 3, tx, ty - 4, *ui.ACCENT)
+            pico2d.draw_line(tx + 5, ty + 3, tx, ty - 4, *ui.ACCENT)
+        else:
+            pico2d.draw_line(tx - 3, ty + 5, tx - 3, ty - 5, *ui.ACCENT)
+            pico2d.draw_line(tx - 3, ty + 5, tx + 4, ty, *ui.ACCENT)
+            pico2d.draw_line(tx - 3, ty - 5, tx + 4, ty, *ui.ACCENT)
+        ui.text(left + 24, ty, "전투 기록", ui.TEXT, 14)
+        ui.text(right - 64, ty, "L 접기" if c.log_open else "L 펼치기", ui.DIM, 12)
+        if not c.log_open:
+            return
+        lines = list(c.history)[-LOG_LINES:]
+        height = LOG_LINE * len(lines) + 8
+        ui.panel(left, bottom - height, right, bottom, (64, 80, 92), ui.PANEL, 215)
+        for index, (line, color) in enumerate(lines):
+            ui.text(left + 8, bottom - 12 - LOG_LINE * index, self.fit(line, LOG_WIDTH - 14, 12), color, 12)
+
+    @staticmethod
+    def fit(line, width, size):
+        if ui.text_width(line, size) <= width:
+            return line
+        while line and ui.text_width(line + "…", size) > width:
+            line = line[:-1]
+        return line + "…"
+
+
+class StartBanner(CombatView):
+    def draw(self):
+        c = self.combat
+        if not c.banner_time:
+            return
+        label = "기습! 전투 시작" if c.surprise else "발각! 전투 시작"
+        width = ui.text_width(label, 20) + 48
+        ui.panel(WIDTH / 2 - width / 2, 300, WIDTH / 2 + width / 2, 340, ui.ACCENT)
+        ui.text_center(WIDTH / 2, 320, label, ui.ACCENT, 20)
+
+
+# Top strip ------------------------------------------------------------------------
+
+class TurnOrderBar(CombatView):
+    """Turn order portraits in the top strip, current fighter outlined in gold."""
+
+    def draw(self):
+        c = self.combat
+        ui.panel(0, HUD_BOTTOM, WIDTH - 1, HUD_TOP - 1, ui.BORDER, ui.PANEL, 255)
+        pico2d.draw_line(0, HUD_BOTTOM + 1, WIDTH, HUD_BOTTOM + 1, 120, 98, 60)
+        ui.text(14, HUD_BOTTOM + 40, f"{c.round}라운드", ui.ACCENT, 16)
+        ui.text(14, HUD_BOTTOM + 18, "선공 1d4 + 민첩", ui.DIM, 12)
+        size, gap = 46, 6
+        count = len(c.order)
+        left = WIDTH / 2 - (count * size + (count - 1) * gap) / 2
+        for index, fighter in enumerate(c.order):
+            x = left + index * (size + gap)
+            current = index == c.turn_index and c.outcome is None
+            border = ui.ACCENT if current else (team_color(fighter) if fighter.alive else ui.DIM)
+            bottom = HUD_BOTTOM + 8
+            draw_portrait(fighter, x, bottom, size, 50, border)
+            if current:
+                pico2d.draw_rectangle(x - 2, bottom - 2, x + size + 2, bottom + 52, *ui.ACCENT)
+            ui.bar(x + 3, bottom + 3, size - 6, 4, fighter.hp / fighter.max_hp, team_color(fighter))
+            ui.text(x + size - 12, bottom + 42, str(fighter.initiative), ui.MUTED, 11)
+            if fighter.surprised:
+                ui.text_center(x + size / 2, bottom + 25, "기습", ui.DANGER, 12)
+        if c.log:
+            ui.text(left + count * (size + gap) + 20, HUD_BOTTOM + 32, c.log, ui.MUTED, 13)
+
+
+# Bottom hotbar ----------------------------------------------------------------------
+
+class Hotbar(CombatView):
+    """BG3-style hotbar: round portrait, weapon, action slots and the round end-turn button."""
+
+    def draw(self):
+        c = self.combat
+        ui.panel(0, 0, WIDTH - 1, ui.BOTTOM_HEIGHT - 1, ui.BORDER, ui.PANEL, 255)
+        pico2d.draw_line(0, ui.BOTTOM_HEIGHT - 2, WIDTH, ui.BOTTOM_HEIGHT - 2, 120, 98, 60)
+        self.draw_round_portrait(c.current)
+        self.draw_weapon_slot()
+        player_turn = c.is_player_turn()
+        mouse = c.hover_bottom
+        for entry, (left, bottom, right, top) in c.bottom_slots():
+            hovered = mouse is not None and left <= mouse[0] <= right and bottom <= mouse[1] <= top
+            self.draw_slot(entry, left, bottom, right, top, hovered and player_turn)
+        self.draw_end_turn(player_turn)
+
+    def draw_round_portrait(self, fighter):
+        x, y = PORTRAIT_CENTER
+        color = team_color(fighter)
+        pico2d.draw_circle(x, y, PORTRAIT_RADIUS, 24, 32, 40, filled=True)
+        clip = getattr(fighter.unit, "portrait_clip", None)
+        if clip is not None:
+            image, sx, sy, sw, sh = clip()
+            scale = PORTRAIT_RADIUS * 1.35 / max(sw, sh)
+            image.clip_draw(sx, sy, sw, sh, x, y + 6, sw * scale, sh * scale)
+        # Lost health fills the circle from below in red, as in BG3.
+        lost = 1 - fighter.hp / fighter.max_hp
+        if lost:
+            height = 2 * PORTRAIT_RADIUS * lost
+            pico2d.draw_rectangle(x - PORTRAIT_RADIUS + 8, y - PORTRAIT_RADIUS + 4,
+                                  x + PORTRAIT_RADIUS - 8, y - PORTRAIT_RADIUS + 4 + height,
+                                  170, 40, 40, 110, filled=True)
+        ui.ring(x, y, PORTRAIT_RADIUS, color, 3)
+        ui.ring(x, y, PORTRAIT_RADIUS + 3, (120, 98, 60), 1)
+        label = f"{fighter.hp}/{fighter.max_hp}"
+        width = ui.text_width(label, 14) + 12
+        ui.panel(x - width / 2, y - PORTRAIT_RADIUS - 2, x + width / 2, y - PORTRAIT_RADIUS + 16, color)
+        ui.text_center(x, y - PORTRAIT_RADIUS + 7, label, ui.TEXT, 14)
+
+    @staticmethod
+    def draw_weapon_slot():
+        left, bottom, right, top = 112, 30, 160, 78
+        ui.panel(left, bottom, right, top, ui.BORDER_LIGHT, ui.PANEL_RAISED, 255)
+        for offset in (-1, 0, 1):
+            pico2d.draw_line(left + 12 + offset, bottom + 10, right - 12 + offset, top - 10, 196, 160, 110)
+        pico2d.draw_line(left + 10, bottom + 8, left + 16, bottom + 14, 90, 70, 50)
+        ui.text_center((left + right) / 2, bottom - 10, "방망이", ui.MUTED, 12)
+
+    def draw_slot(self, entry, left, bottom, right, top, hovered):
+        if entry is None:
+            ui.panel(left, bottom, right, top, (44, 54, 62), (20, 27, 34), 255)
+            return
+        kind, label, cost, enabled = entry
+        if kind == self.combat.mode:
+            border, fill = ui.ACCENT, (60, 76, 86)
+        elif enabled:
+            border, fill = (ui.ACCENT if hovered else ui.BORDER_LIGHT), ui.PANEL_RAISED
+        else:
+            border, fill = ui.DIM, ui.PANEL
+        ui.panel(left, bottom, right, top, border, fill, 255)
+        color = (230, 210, 170) if enabled else ui.DIM
+        cx, cy = (left + right) / 2, (bottom + top) / 2 + 4
+        if kind == "move":
+            pico2d.draw_line(cx - 11, cy - 6, cx + 9, cy + 6, *color)
+            pico2d.draw_line(cx + 9, cy + 6, cx + 1, cy + 7, *color)
+            pico2d.draw_line(cx + 9, cy + 6, cx + 6, cy - 2, *color)
+        else:
+            for offset in (-1, 0, 1):
+                pico2d.draw_line(cx - 10 + offset, cy - 10, cx + 9 + offset, cy + 9, *color)
+            pico2d.draw_line(cx - 4, cy + 6, cx + 6, cy - 4, *color)
+        number = {"move": "1", "attack": "2"}[kind]
+        ui.text(left + 3, top - 7, number, ui.MUTED if enabled else ui.DIM, 11)
+        ui.text_center(cx, bottom + 7, label, ui.TEXT if enabled else ui.DIM, 11)
+        if kind == "attack":
+            ui.action_icon(right - 7, top - 7, 4, enabled)
+
+    def draw_end_turn(self, enabled):
+        x, y = END_TURN_CENTER
+        mouse = self.combat.hover_bottom
+        hovered = mouse is not None and (mouse[0] - x) ** 2 + (mouse[1] - y) ** 2 <= END_TURN_RADIUS ** 2
+        pico2d.draw_circle(x, y, END_TURN_RADIUS, 22, 44, 58, filled=True)
+        ring_color = ui.ACCENT if hovered and enabled else ((96, 170, 190) if enabled else ui.DIM)
+        ui.ring(x, y, END_TURN_RADIUS, ring_color, 4)
+        ui.ring(x, y, END_TURN_RADIUS + 3, (120, 98, 60), 1)
+        ui.text_center(x, y + 6, "턴 종료", ui.TEXT if enabled else ui.DIM)
+        ui.text_center(x, y - 14, "Space", ui.MUTED if enabled else ui.DIM, 12)
+
+
+def create_views(combat):
+    """Every screen object of a fight with the layer it belongs to."""
+    overlay = [HealthBars, PartyColumn, TargetHeader, PointerInfo, Popups, InitiativeBadges,
+               DiceGauge, DamageRoll, ResourceRow, SlotTooltip, CombatLog, StartBanner]
+    views = [(CombatBoard(combat), game_world.BOARD)]
+    views += [(view(combat), game_world.OVERLAY) for view in overlay]
+    views += [(TurnOrderBar(combat), game_world.HUD), (Hotbar(combat), game_world.BOTTOM)]
+    return views
