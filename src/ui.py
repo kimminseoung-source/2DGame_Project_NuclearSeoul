@@ -114,3 +114,43 @@ def d20_icon(x, y, radius, face, color, size=16):
     for (x1, y1), (x2, y2) in zip(hexagon, hexagon[1:] + hexagon[:1]):
         pico2d.draw_line(x1, y1, x2, y2, *color)
     text_center(x, y, str(face), color, size)
+
+
+# Screen regions -------------------------------------------------------------
+# The window is the exploration canvas (world + top HUD strip) with a hotbar
+# strip added underneath. Each region is drawn with its own viewport so the
+# existing world code keeps its coordinates and the bar starts at y = 0.
+WORLD_HEIGHT = 480 + 64
+BOTTOM_HEIGHT = 104
+SCREEN_WIDTH = 768
+SCREEN_HEIGHT = WORLD_HEIGHT + BOTTOM_HEIGHT
+
+
+def _region(top, height):
+    sdl2.SDL_RenderSetViewport(canvas.renderer, sdl2.SDL_Rect(0, top, SCREEN_WIDTH, height))
+    canvas.canvas_height = height
+
+
+def begin_world():
+    _region(0, WORLD_HEIGHT)
+
+
+def begin_bottom():
+    _region(WORLD_HEIGHT, BOTTOM_HEIGHT)
+
+
+def end_regions():
+    sdl2.SDL_RenderSetViewport(canvas.renderer, None)
+    canvas.canvas_height = SCREEN_HEIGHT
+
+
+def split_mouse(sdl_x, sdl_y):
+    """Map an SDL mouse position to ("world", x, y) or ("bottom", x, y)."""
+    if sdl_y < WORLD_HEIGHT:
+        return "world", sdl_x, WORLD_HEIGHT - 1 - sdl_y
+    return "bottom", sdl_x, SCREEN_HEIGHT - 1 - sdl_y
+
+
+def ring(x, y, radius, color, thickness=3):
+    for offset in range(thickness):
+        pico2d.draw_circle(x, y, radius - offset, *color)

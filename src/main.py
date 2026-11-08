@@ -99,25 +99,52 @@ def draw_settings(game, font):
 
 def render_world(game, font):
     pico2d.clear_canvas()
+    ui.begin_world()
+    draw_world(game, font)
+    ui.begin_bottom()
+    if game.combat is not None:
+        game.combat.draw_bottom()
+    else:
+        draw_exploration_bar(game)
+    ui.end_regions()
+    pico2d.update_canvas()
+
+
+def draw_exploration_bar(game):
+    ui.panel(0, 0, WIDTH - 1, ui.BOTTOM_HEIGHT - 1, ui.BORDER, ui.PANEL, 255)
+    pico2d.draw_line(0, ui.BOTTOM_HEIGHT - 2, WIDTH, ui.BOTTOM_HEIGHT - 2, 120, 98, 60)
+    x, y, radius = 58, 52, 44
+    pico2d.draw_circle(x, y, radius, 24, 32, 40, filled=True)
+    image, sx, sy, sw, sh = game.player.portrait_clip()
+    scale = radius * 1.35 / max(sw, sh)
+    image.clip_draw(sx, sy, sw, sh, x, y + 6, sw * scale, sh * scale)
+    ui.ring(x, y, radius, ui.PARTY, 3)
+    ui.ring(x, y, radius + 3, (120, 98, 60), 1)
+    label = f"{game.health}/{MAX_HEALTH}"
+    width = ui.text_width(label, 14) + 12
+    ui.panel(x - width / 2, y - radius - 2, x + width / 2, y - radius + 16, ui.PARTY)
+    ui.text_center(x, y - radius + 7, label, ui.TEXT, 14)
+    ui.text(124, 70, "WASD 이동   Shift 은신   E 상호작용   Space 대시", ui.MUTED, 14)
+    ui.text(124, 44, "좌클릭 공격 · 들키기 전에 가까이서 좌클릭하면 기습", ui.MUTED, 14)
+    ui.text(124, 18, "Tab 배낭   F1 설정   Esc 종료", ui.DIM, 14)
+
+
+def draw_world(game, font):
     game.tile_map.draw(game.camera_x)
     finished, message = game.finished, game.message
     draw_ground_objects(game, font)
     if game.combat is not None:
         game.combat.draw_overlay()
         game.combat.draw_hud()
-        pico2d.update_canvas()
         return
     pico2d.draw_rectangle(0, HEIGHT, WIDTH - 1, HEIGHT + 63, 15, 23, 31, filled=True)
-    hint = "WASD 이동  Shift 은신  E 상호작용  좌클릭 공격·기습  Space 대시  Tab 배낭  F1"
-    font.draw(16, HEIGHT + 44, hint, (181, 197, 209))
-    font.draw(16, HEIGHT + 18, message, (133, 231, 184) if finished else (245, 222, 169))
+    font.draw(16, HEIGHT + 32, message, (133, 231, 184) if finished else (245, 222, 169))
     font.draw(500, HEIGHT + 18, f"체력 {game.health}/{MAX_HEALTH}", (238, 169, 149))
     draw_filter_slot(WIDTH - 162, HEIGHT + 8, game.inventory.count(SPARE_FILTER), font)
     if game.settings_open:
         draw_settings(game, font)
     elif game.inventory_open:
         draw_inventory(game.inventory, font, WIDTH, HEIGHT)
-    pico2d.update_canvas()
 
 
 def draw_ground_objects(game, font):
@@ -237,8 +264,11 @@ def handle_events(game):
         if event.type == sdl2.SDL_MOUSEMOTION:
             game.aim_x = event.x
             if game.combat is not None:
-                game.combat.hover = game.combat.grid.cell_at(event.x, SCREEN_HEIGHT - 1 - event.y)
-                game.combat.hover_screen = event.x, SCREEN_HEIGHT - 1 - event.y
+                region, x, y = ui.split_mouse(event.x, event.y)
+                in_world = region == "world"
+                game.combat.hover = game.combat.grid.cell_at(x, y) if in_world else None
+                game.combat.hover_screen = (x, y) if in_world else None
+                game.combat.hover_bottom = None if in_world else (x, y)
         if (event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT
                 and game.combat is not None):
             game.combat.right_click()
@@ -246,7 +276,11 @@ def handle_events(game):
             game.aim_x = event.x
             busy = game.inventory_open or game.settings_open or game.finished or action_in_progress(game)
             if game.combat is not None:
-                game.combat.click(event.x, SCREEN_HEIGHT - 1 - event.y)
+                region, x, y = ui.split_mouse(event.x, event.y)
+                if region == "world":
+                    game.combat.click(x, y)
+                else:
+                    game.combat.click_bottom(x, y)
             elif not busy:
                 face_cursor(game)
                 if can_surprise(game):
@@ -455,7 +489,7 @@ def update_camera(game):
 
 
 def enlarge_window():
-    logical_height = HEIGHT + 64
+    logical_height = ui.SCREEN_HEIGHT
     display = sdl2.SDL_GetWindowDisplayIndex(canvas.window)
     usable = sdl2.SDL_Rect()
     if display < 0 or sdl2.SDL_GetDisplayUsableBounds(display, usable) != 0:
@@ -478,7 +512,7 @@ def enlarge_window():
 
 
 def main():
-    pico2d.open_canvas(WIDTH, HEIGHT + 64, sync=True)
+    pico2d.open_canvas(WIDTH, ui.SCREEN_HEIGHT, sync=True)
     try:
         ui.enable_blending()
         enlarge_window()

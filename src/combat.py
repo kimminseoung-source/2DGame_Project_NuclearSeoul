@@ -35,13 +35,20 @@ BADGE_TIME = 1.5
 DICE_ROLL_TIME = 0.45
 DICE_HOLD_TIME = 0.4
 BADGE_FLICKER = 0.06
-# The combat hotbar replaces the exploration HUD strip at the top of the window.
+# Top strip (inside the world canvas) and the hotbar strip under the world.
 HUD_BOTTOM = HEIGHT
 HUD_TOP = HEIGHT + 64
-SLOT_SIZE = 50
-SLOT_GAP = 8
-SLOTS_LEFT = 352
-END_TURN_RECT = (650, HUD_BOTTOM + 7, 760, HUD_TOP - 7)
+BAR_HEIGHT = ui.BOTTOM_HEIGHT
+PORTRAIT_CENTER = (58, 52)
+PORTRAIT_RADIUS = 44
+SLOT_SIZE = 40
+SLOT_GAP = 4
+SLOT_COLUMNS = 8
+SLOT_ROWS = 2
+SLOTS_LEFT = 176
+SLOTS_BOTTOM = 8
+END_TURN_CENTER = (708, 52)
+END_TURN_RADIUS = 40
 CARD_WIDTH = 122
 CARD_HEIGHT = 52
 CARD_GAP = 8
@@ -236,6 +243,7 @@ class Combat:
         self.turn_index = 0
         self.hover = None
         self.hover_screen = None
+        self.hover_bottom = None
         self.moving = None
         self.attack = None
         self.wait_time = 0.0
@@ -292,7 +300,8 @@ class Combat:
         fighter.action = 1
         fighter.bonus_action = 1
         fighter.reaction = 1
-        self.selected = None
+        # Like BG3, the active party member is selected automatically.
+        self.selected = fighter if fighter.team == "party" else None
         self.mode = None
         if fighter.surprised:
             self.log = f"{fighter.name}: 기습당해 이번 라운드에 행동하지 못합니다."
@@ -302,7 +311,7 @@ class Combat:
             self.log = f"{fighter.name}의 턴"
             self.enemy_approach(fighter)
         else:
-            self.log = f"{fighter.name}의 턴 · 캐릭터를 클릭해 선택하세요"
+            self.log = f"{fighter.name}의 턴 · 아래 핫바에서 행동을 고르세요"
 
     def end_turn(self):
         if self.moving is not None or self.attack is not None or self.outcome is not None:
@@ -340,18 +349,46 @@ class Combat:
             ("end", "턴 종료", "Space", True),
         ]
 
+    def bottom_slots(self):
+        """Hotbar slots in bar coordinates: (entry or None, (left, bottom, right, top))."""
+        entries = [e for e in self.actions() if e[0] != "end"] if self.selected else []
+        slots = []
+        for index in range(SLOT_COLUMNS * SLOT_ROWS):
+            column, row = index % SLOT_COLUMNS, SLOT_ROWS - 1 - index // SLOT_COLUMNS
+            left = SLOTS_LEFT + column * (SLOT_SIZE + SLOT_GAP)
+            bottom = SLOTS_BOTTOM + row * (SLOT_SIZE + SLOT_GAP)
+            entry = entries[index] if index < len(entries) else None
+            slots.append((entry, (left, bottom, left + SLOT_SIZE, bottom + SLOT_SIZE)))
+        return slots
+
+    def end_turn_rect(self):
+        x, y = END_TURN_CENTER
+        return x - END_TURN_RADIUS, y - END_TURN_RADIUS, x + END_TURN_RADIUS, y + END_TURN_RADIUS
+
     def button_rects(self):
-        """Clickable hotbar slots in the top HUD strip, plus the end-turn button."""
+        """Usable bar buttons (bar coordinates), including end turn."""
         if not self.is_player_turn():
             return []
-        rects = []
-        if self.selected is not None:
-            for index, entry in enumerate(e for e in self.actions() if e[0] != "end"):
-                left = SLOTS_LEFT + index * (SLOT_SIZE + SLOT_GAP)
-                rects.append((entry, (left, HUD_BOTTOM + 7, left + SLOT_SIZE, HUD_BOTTOM + 7 + SLOT_SIZE)))
-        end_entry = next(e for e in self.actions() if e[0] == "end") if self.selected else ("end", "턴 종료", "Space", True)
-        rects.append((end_entry, END_TURN_RECT))
+        rects = [(entry, rect) for entry, rect in self.bottom_slots() if entry is not None]
+        rects.append((("end", "턴 종료", "Space", True), self.end_turn_rect()))
         return rects
+
+    def slot_at(self, x, y):
+        for entry, (left, bottom, right, top) in self.bottom_slots():
+            if left <= x <= right and bottom <= y <= top:
+                return entry, (left, bottom, right, top)
+        return None
+
+    def click_bottom(self, x, y):
+        if not self.is_player_turn():
+            return
+        cx, cy = END_TURN_CENTER
+        if (x - cx) ** 2 + (y - cy) ** 2 <= END_TURN_RADIUS ** 2:
+            self.choose_action("end")
+            return
+        hit = self.slot_at(x, y)
+        if hit is not None and hit[0] is not None:
+            self.choose_action(hit[0][0])
 
     def attack_targets(self, fighter):
         return [f for f in self.living("enemy" if fighter.team == "party" else "party")
@@ -384,17 +421,10 @@ class Combat:
         if self.mode is not None:
             self.mode = None
             self.log = "행동을 고르세요"
-        elif self.selected is not None:
-            self.selected = None
-            self.log = f"{self.current.name}의 턴 · 캐릭터를 클릭해 선택하세요"
 
     def click(self, screen_x, y):
         if not self.is_player_turn():
             return
-        for (kind, *_), (left, bottom, right, top) in self.button_rects():
-            if left <= screen_x <= right and bottom <= y <= top:
-                self.choose_action(kind)
-                return
         cell = self.grid.cell_at(screen_x, y)
         clicked = self.fighter_at(cell)
         fighter = self.current
@@ -763,11 +793,9 @@ class Combat:
             rise = (POPUP_TIME - time_left) * 22
             ui.text_center(x - self.grid.camera_x, y + rise, text, color)
         self.draw_badges()
-        if self.log:
-            y = CARDS_TOP - CARD_HEIGHT - 24
-            width = ui.text_width(self.log, 14) + 20
-            ui.panel(WIDTH / 2 - width / 2, y - 11, WIDTH / 2 + width / 2, y + 11, ui.BORDER, ui.PANEL, 170)
-            ui.text_center(WIDTH / 2, y, self.log, ui.TEXT, 14)
+        if self.is_player_turn():
+            self.draw_resource_row()
+            self.draw_slot_tooltip()
         if self.banner_time:
             label = "기습! 전투 시작" if self.surprise else "발각! 전투 시작"
             width = ui.text_width(label, 20) + 48
@@ -858,53 +886,132 @@ class Combat:
 
     def draw_hud(self):
         ui.panel(0, HUD_BOTTOM, WIDTH - 1, HUD_TOP - 1, ui.BORDER, ui.PANEL, 255)
+        ui.text(16, HUD_BOTTOM + 32, f"{self.round}라운드", ui.MUTED)
+        if self.log:
+            ui.text_center(WIDTH / 2, HUD_BOTTOM + 32, self.log, ui.TEXT, 14)
+
+    # Bottom hotbar ----------------------------------------------------------
+
+    def draw_bottom(self):
+        """BG3-style hotbar: round portrait, weapon, action slots, round end-turn button."""
+        ui.panel(0, 0, WIDTH - 1, BAR_HEIGHT - 1, ui.BORDER, ui.PANEL, 255)
+        pico2d.draw_line(0, BAR_HEIGHT - 2, WIDTH, BAR_HEIGHT - 2, 120, 98, 60)
         fighter = self.current
-        team_color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
-        self.draw_portrait(fighter, 8, HUD_BOTTOM + 7, 44, 50, team_color)
-        ui.text(60, HUD_TOP - 15, f"{fighter.name}의 턴", team_color)
-        ui.bar(60, HUD_BOTTOM + 26, 130, 7, fighter.hp / fighter.max_hp, team_color)
-        ui.text(60, HUD_BOTTOM + 13, f"체력 {fighter.hp}/{fighter.max_hp}", ui.MUTED, 13)
-        self.draw_resources(fighter, 206)
-        if fighter.team != "party" or self.outcome is not None:
-            ui.text(SLOTS_LEFT, HUD_BOTTOM + 32, self.log, ui.MUTED, 14)
-            return
-        if self.selected is None and self.is_player_turn():
-            ui.text(SLOTS_LEFT, HUD_BOTTOM + 32, "캐릭터를 클릭해 선택하세요", ui.ACCENT, 14)
-        self.draw_hotbar()
-
-    def draw_resources(self, fighter, left):
-        y = HUD_BOTTOM + 42
-        ui.action_icon(left + 10, y, 8, bool(fighter.action))
-        ui.bonus_icon(left + 36, y, 10, bool(fighter.bonus_action))
-        ui.reaction_icon(left + 62, y, 10, bool(fighter.reaction))
-        ui.text(left, HUD_BOTTOM + 22, f"이동 {fighter.moves_left}/{fighter.move_cells}칸", ui.MUTED, 13)
-        ui.bar(left, HUD_BOTTOM + 8, 120, 5, fighter.moves_left / max(1, fighter.move_cells), ui.MOVE)
-
-    def draw_hotbar(self):
-        mouse = self.hover_screen
-        for (kind, label, cost, enabled), (left, bottom, right, top) in self.button_rects():
-            chosen = kind == self.mode
+        self.draw_round_portrait(fighter)
+        self.draw_weapon_slot(fighter)
+        player_turn = self.is_player_turn()
+        mouse = self.hover_bottom
+        for entry, (left, bottom, right, top) in self.bottom_slots():
             hovered = mouse is not None and left <= mouse[0] <= right and bottom <= mouse[1] <= top
-            if kind == "end":
-                border = ui.ACCENT if hovered else ui.BORDER_LIGHT
-                ui.panel(left, bottom, right, top, border, ui.PANEL_RAISED, 255)
-                ui.text_center((left + right) / 2, top - 17, "턴 종료", ui.TEXT)
-                ui.text_center((left + right) / 2, bottom + 11, "Space", ui.MUTED, 13)
-                continue
-            if chosen:
-                border, fill = ui.ACCENT, (52, 70, 82)
-            elif enabled:
-                border, fill = (ui.ACCENT if hovered else ui.BORDER_LIGHT), ui.PANEL_RAISED
-            else:
-                border, fill = ui.DIM, ui.PANEL
-            ui.panel(left, bottom, right, top, border, fill, 255)
-            color = ui.TEXT if enabled else ui.DIM
-            number = {"move": "1", "attack": "2"}[kind]
-            ui.text(left + 4, top - 9, number, ui.MUTED if enabled else ui.DIM, 12)
-            ui.text_center((left + right) / 2, bottom + 22, label, color)
-            if kind == "move":
-                ui.bar(left + 8, bottom + 6, SLOT_SIZE - 16, 4,
-                       self.selected.moves_left / max(1, self.selected.move_cells),
-                       ui.MOVE if enabled else ui.DIM)
-            else:
-                ui.action_icon(right - 9, top - 9, 5, enabled)
+            self.draw_slot(entry, left, bottom, right, top, hovered and player_turn)
+        self.draw_end_turn(player_turn)
+
+    def draw_round_portrait(self, fighter):
+        x, y = PORTRAIT_CENTER
+        team_color = PARTY_COLOR if fighter.team == "party" else ENEMY_COLOR
+        pico2d.draw_circle(x, y, PORTRAIT_RADIUS, 24, 32, 40, filled=True)
+        clip = getattr(fighter.unit, "portrait_clip", None)
+        if clip is not None:
+            image, sx, sy, sw, sh = clip()
+            size = PORTRAIT_RADIUS * 1.35
+            scale = size / max(sw, sh)
+            image.clip_draw(sx, sy, sw, sh, x, y + 6, sw * scale, sh * scale)
+        # Lost health fills the circle from below in red, as in BG3.
+        lost = 1 - fighter.hp / fighter.max_hp
+        if lost:
+            height = 2 * PORTRAIT_RADIUS * lost
+            pico2d.draw_rectangle(x - PORTRAIT_RADIUS + 8, y - PORTRAIT_RADIUS + 4,
+                                  x + PORTRAIT_RADIUS - 8, y - PORTRAIT_RADIUS + 4 + height,
+                                  170, 40, 40, 110, filled=True)
+        ui.ring(x, y, PORTRAIT_RADIUS, team_color, 3)
+        ui.ring(x, y, PORTRAIT_RADIUS + 3, (120, 98, 60), 1)
+        label = f"{fighter.hp}/{fighter.max_hp}"
+        width = ui.text_width(label, 14) + 12
+        ui.panel(x - width / 2, y - PORTRAIT_RADIUS - 2, x + width / 2, y - PORTRAIT_RADIUS + 16, team_color)
+        ui.text_center(x, y - PORTRAIT_RADIUS + 7, label, ui.TEXT, 14)
+
+    def draw_weapon_slot(self, fighter):
+        left, bottom, right, top = 112, 30, 160, 78
+        ui.panel(left, bottom, right, top, ui.BORDER_LIGHT, ui.PANEL_RAISED, 255)
+        # A simple baseball-bat glyph.
+        for offset in (-1, 0, 1):
+            pico2d.draw_line(left + 12 + offset, bottom + 10, right - 12 + offset, top - 10, 196, 160, 110)
+        pico2d.draw_line(left + 10, bottom + 8, left + 16, bottom + 14, 90, 70, 50)
+        ui.text_center((left + right) / 2, bottom - 10, "방망이", ui.MUTED, 12)
+
+    def draw_slot(self, entry, left, bottom, right, top, hovered):
+        if entry is None:
+            ui.panel(left, bottom, right, top, (44, 54, 62), (20, 27, 34), 255)
+            return
+        kind, label, cost, enabled = entry
+        chosen = kind == self.mode
+        if chosen:
+            border, fill = ui.ACCENT, (60, 76, 86)
+        elif enabled:
+            border, fill = (ui.ACCENT if hovered else ui.BORDER_LIGHT), ui.PANEL_RAISED
+        else:
+            border, fill = ui.DIM, ui.PANEL
+        ui.panel(left, bottom, right, top, border, fill, 255)
+        color = (230, 210, 170) if enabled else ui.DIM
+        cx, cy = (left + right) / 2, (bottom + top) / 2 + 4
+        if kind == "move":
+            pico2d.draw_line(cx - 11, cy - 6, cx + 9, cy + 6, *color)
+            pico2d.draw_line(cx + 9, cy + 6, cx + 1, cy + 7, *color)
+            pico2d.draw_line(cx + 9, cy + 6, cx + 6, cy - 2, *color)
+        else:
+            for offset in (-1, 0, 1):
+                pico2d.draw_line(cx - 10 + offset, cy - 10, cx + 9 + offset, cy + 9, *color)
+            pico2d.draw_line(cx - 4, cy + 6, cx + 6, cy - 4, *color)
+        number = {"move": "1", "attack": "2"}[kind]
+        ui.text(left + 3, top - 7, number, ui.MUTED if enabled else ui.DIM, 11)
+        ui.text_center(cx, bottom + 7, label, ui.TEXT if enabled else ui.DIM, 11)
+        if kind == "attack":
+            ui.action_icon(right - 7, top - 7, 4, enabled)
+
+    def draw_end_turn(self, enabled):
+        x, y = END_TURN_CENTER
+        mouse = self.hover_bottom
+        hovered = mouse is not None and (mouse[0] - x) ** 2 + (mouse[1] - y) ** 2 <= END_TURN_RADIUS ** 2
+        pico2d.draw_circle(x, y, END_TURN_RADIUS, 22, 44, 58, filled=True)
+        ring_color = ui.ACCENT if hovered and enabled else ((96, 170, 190) if enabled else ui.DIM)
+        ui.ring(x, y, END_TURN_RADIUS, ring_color, 4)
+        ui.ring(x, y, END_TURN_RADIUS + 3, (120, 98, 60), 1)
+        ui.text_center(x, y + 6, "턴 종료", ui.TEXT if enabled else ui.DIM)
+        ui.text_center(x, y - 14, "Space", ui.MUTED if enabled else ui.DIM, 12)
+
+    def draw_resource_row(self):
+        """Resource icons above the hotbar (drawn in the world, under the floor)."""
+        fighter = self.selected or self.current
+        x = SLOTS_LEFT + (SLOT_COLUMNS * (SLOT_SIZE + SLOT_GAP)) / 2 - 90
+        y = 13
+        ui.panel(x - 14, y - 11, x + 190, y + 11, ui.BORDER, ui.PANEL, 200)
+        ui.action_icon(x, y, 6, bool(fighter.action))
+        ui.bonus_icon(x + 20, y, 7, bool(fighter.bonus_action))
+        ui.reaction_icon(x + 40, y, 7, bool(fighter.reaction))
+        ui.bar(x + 58, y - 3, 60, 6, fighter.moves_left / max(1, fighter.move_cells), ui.MOVE)
+        ui.text(x + 124, y, f"이동 {fighter.moves_left}/{fighter.move_cells}", ui.MUTED, 12)
+
+    def draw_slot_tooltip(self):
+        """Tooltip above a hovered hotbar slot, drawn in world coordinates."""
+        if self.hover_bottom is None:
+            return
+        hit = self.slot_at(*self.hover_bottom)
+        if hit is None or hit[0] is None:
+            return
+        (kind, label, cost, enabled), (left, _, right, _) = hit
+        if kind == "move":
+            lines = [f"이동 · 남은 {self.selected.moves_left}칸", "칸을 골라 걸어갑니다"]
+        else:
+            lines = ["근접 공격 · 행동 1", "옆 칸의 적을 방망이로 칩니다"]
+        if not enabled:
+            reason = "이동할 칸이 없음" if kind == "move" else (
+                "자원이 충분하지 않음: 행동" if not self.selected.action else "옆 칸에 적이 없음")
+            lines.append(reason)
+        width = max(ui.text_width(line, 13) for line in lines) + 18
+        height = 18 * len(lines) + 10
+        x = max(4, min(WIDTH - width - 4, (left + right) / 2 - width / 2))
+        bottom = 30
+        ui.panel(x, bottom, x + width, bottom + height, ui.BORDER_LIGHT, ui.PANEL, 240)
+        for index, line in enumerate(lines):
+            color = ui.TEXT if index == 0 else (ui.DANGER if not enabled and index == len(lines) - 1 else ui.MUTED)
+            ui.text(x + 9, bottom + height - 14 - 18 * index, line, color, 13)
