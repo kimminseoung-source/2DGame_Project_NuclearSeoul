@@ -2,6 +2,7 @@
 
 from math import hypot
 
+import pico2d
 import sdl2
 
 
@@ -58,11 +59,8 @@ class Player:
             step_time = min(frame_time, MAX_FRAME_TIME, self.dash_time)
             self.dash_time -= step_time
             dx, dy = self.dash_direction
-            if self.move(dx * DASH_SPEED * step_time, dy * DASH_SPEED * step_time):
-                self.walk_time += step_time * 3
-            else:
+            if not self.move(dx * DASH_SPEED * step_time, dy * DASH_SPEED * step_time):
                 self.dash_time = 0.0
-                self.walk_time = 0.0
             return
 
         keys = sdl2.SDL_GetKeyboardState(None)
@@ -101,12 +99,32 @@ class Player:
         self.walk_time = 0.0
 
     def draw(self, camera_x=0):
+        if self.dash_time:
+            progress = 1 - self.dash_time / DASH_DURATION
+            if progress < 0.24:
+                self.draw_frame("sneak", 1, camera_x)
+            else:
+                self.draw_dash_trail(camera_x, 1 - progress)
+                self.draw_frame("walk", 1 if progress < 0.65 else 3, camera_x)
+            return
+
         action = "sneak" if self.sneaking else "walk"
         frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
         frame = 0
         if self.walk_time:
             frame = WALK_CYCLE[int(self.walk_time / frame_time) % len(WALK_CYCLE)]
         self.draw_frame(action, frame, camera_x)
+
+    def draw_dash_trail(self, camera_x, strength):
+        x, y = self.x - camera_x, self.y - 12
+        dx, dy = self.dash_direction
+        shade = round(60 + 62 * strength)
+        for side, length in ((-2, 13), (2, 8)):
+            start_x, start_y = x - 9 * dx - side * dy, y - 9 * dy + side * dx
+            pico2d.draw_line(
+                start_x, start_y, start_x - dx * length * strength,
+                start_y - dy * length * strength, shade, shade - 10, shade - 22,
+            )
 
     def draw_frame(self, action, frame, camera_x):
         row = int(self.direction > 0)
