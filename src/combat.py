@@ -473,6 +473,8 @@ class Combat:
         return None
 
     def click_bottom(self, x, y):
+        if self.stop_spin():
+            return
         if not self.is_player_turn():
             return
         cx, cy = END_TURN_CENTER
@@ -518,7 +520,21 @@ class Combat:
     def toggle_log(self):
         self.log_open = not self.log_open
 
+    def stop_spin(self):
+        """A click while the hit wheel spins stops it on the result at once.
+
+        Only the spin is cut short: the stopped wheel and the verdict still show for the
+        usual hold before the swing. Returns True when a spin was stopped.
+        """
+        attack = self.attack
+        if attack is None or attack["phase"] != "dice" or attack["landed"]:
+            return False
+        attack["roll_time"] = attack["dice_time"]
+        return True
+
     def click(self, screen_x, y):
+        if self.stop_spin():
+            return
         left, bottom, right, top = self.log_header_rect()
         if left <= screen_x <= right and bottom <= y <= top:
             self.toggle_log()
