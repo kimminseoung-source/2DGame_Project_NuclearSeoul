@@ -433,6 +433,9 @@ class HitWheel(CombatView):
         for offset in (-0.8, 0, 0.8):
             pico2d.draw_line(cx, cy, *ui.dial_point(cx, cy, radius + 4, edge + offset), *ui.ACCENT)
         ui.ring(cx, cy, radius + 5, rim, 3)
+        # The target's armour sits at the end of the red, where the roll must reach.
+        DamageRoll.outlined(*ui.dial_point(cx, cy, radius + 15, edge - self.SLICE / 2),
+                            str(target.armor_class), ui.TEXT, 13)
         if flash and result["hit"]:
             ui.ring(cx, cy, radius + 9, rim, 2)
 
