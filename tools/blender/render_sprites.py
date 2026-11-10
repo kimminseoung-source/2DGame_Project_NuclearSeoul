@@ -51,6 +51,8 @@ def parse_args():
                         help="sheet=count pairs overriding --frames, e.g. walk=8 hurt=3")
     parser.add_argument("--list", action="store_true", help="only print the actions and stop")
     parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
+    parser.add_argument("--tilt", type=float, default=0.0,
+                        help="degrees the camera looks down from above (0 = eye level)")
     parser.add_argument("--head", type=float, default=1.0, help="head size multiplier")
     parser.add_argument("--bulk", type=float, default=1.0, help="thickness multiplier for torso, arms and legs")
     parser.add_argument("--legs", type=float, default=1.0,
@@ -132,7 +134,7 @@ def shape_body(armature, head, bulk, legs=1.0):
         hold_scale(armature, "Head", head / inherited, head, head / inherited)
 
 
-def setup_camera(scene):
+def setup_camera(scene, tilt_deg=0.0):
     metres_per_px = PERSON_HEIGHT_M / PERSON_HEIGHT_PX
     cam_data = bpy.data.cameras.new("SpriteCam")
     cam_data.type = "ORTHO"
@@ -141,8 +143,10 @@ def setup_camera(scene):
     scene.collection.objects.link(cam)
     # Look along +Y from the front side of the screen; X is screen-right, Z is up.
     centre_z = CELL_H * metres_per_px / 2 - FEET_FROM_BOTTOM * metres_per_px
-    cam.location = (0.0, -10.0, centre_z)
-    cam.rotation_euler = (math.radians(90), 0.0, 0.0)
+    # Tilt looks down from slightly above, like the game's street (seen from above the road).
+    tilt = math.radians(tilt_deg)
+    cam.location = (0.0, -10.0 * math.cos(tilt), centre_z + 10.0 * math.sin(tilt))
+    cam.rotation_euler = (math.radians(90) - tilt, 0.0, 0.0)
     scene.camera = cam
 
 
@@ -296,7 +300,7 @@ def main():
             obj.rotation_euler[2] += math.radians(args.turn)
     shape_body(armature, args.head, args.bulk, args.legs)
     flat = tuple(float(v) for v in args.flat.split(",")) if args.flat else None
-    setup_camera(scene)
+    setup_camera(scene, args.tilt)
     setup_render(scene, flat)
     out_dir = os.path.abspath(args.out)
     tmp_dir = os.path.join(out_dir, "_frames")
