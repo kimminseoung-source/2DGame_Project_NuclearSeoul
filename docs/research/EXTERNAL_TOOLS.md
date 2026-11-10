@@ -119,6 +119,19 @@
 - **주인공**: 지금처럼 방망이를 쓰려면 City Enemies의 방망이 남자가 가장 가깝다. 지금의 노란 방호 후드 주인공을 유지할지, 이 시리즈로 바꿔 전체 느낌을 맞출지는 내려받은 그림을 나란히 놓고 정한다.
 - **동료**: Homeless의 칼 든 여자·수염 난 남자, Graffiti 인물이 방공호에서 모으는 동료로 어울린다.
 - [Free Characters With Melee Attack](https://free-game-assets.itch.io/free-characters-with-melee-attack-pixel-art)(남·여·사이보그)는 사이버펑크 계열이라 느낌이 달라 제외한다.
+## 5-6. 캐릭터 품질과 특색 (2026-11-10)
+
+사용자 의견: 5-5절의 CraftPix 캐릭터는 품질이 낮고, 캐릭터마다 특색이 도드라져야 한다. 무료·옆모습·현대(포스트 아포칼립스)·고품질·개성 있는 캐릭터를 다시 찾았다.
+
+| 후보 | 내용 | 맞지 않는 점 |
+| --- | --- | --- |
+| [2D Pixel Art Male and Female Character](https://gandalfhardcore.itch.io/2d-pixel-art-male-and-female-character) (GandalfHardcore) | 무료, 옆모습, 프레임 80×64(우리 58px와 비슷). 옷 50종·머리 58종·모자 41종·가면·손 아이템 레이어를 조합해 캐릭터마다 다른 모습을 만들 수 있다. 공격 6프레임·쓰러짐 10프레임 | 판타지 옷 위주, 피격 동작 없음 |
+| [Post-Apocalyptic Town & Survivors](https://happyhustle.itch.io/post-apocalyptic-town-survivors) (HappyHustle) | 무료, 생존자 5종(수색꾼·의무병·정비공·경비·상인) | 탑뷰, 공격·피격·쓰러짐 없음, 생성형 AI 제작 |
+| [Pixel Art Character Pack](https://bruno-farias.itch.io/sidescroller-character-pack) (Bruno Farias) | 무료, 옆모습, 평점 높음 | 중세 판타지 |
+
+- 결론: 무료이면서 현대 배경·옆모습·고품질·전투 동작을 모두 갖추고 캐릭터마다 개성이 뚜렷한 세트는 찾지 못했다.
+- **제안**: 주인공과 동료는 지금 주인공을 만든 방식(이미지 생성 도구로 그리고 다듬기, `assets/README.md`·`assets/ANIMATION_GUIDE.md`)을 이어 가 같은 화풍으로 직접 만든다. 동료마다 실루엣·대표 색·무기·소품을 다르게 정해 특색을 살린다(예: 구급가방을 멘 의대생, 렌치를 든 정비공, 전공서를 든 공대생). 외부 무료 에셋은 피폭체·배경·소품·효과음에 쓴다.
+- 대안: GandalfHardcore 조합형 팩으로 동료를 조합하되, 판타지 옷을 현대풍으로 다듬는 작업이 필요하다.
 ### 조사에서 나온 주의점
 
 - **CraftPix 계열(free-game-assets 포함)은 무료여도 원본 파일 재배포가 금지**다. 게임에 쓰는 것은 되지만, 과제 규칙대로 PNG를 공개 저장소에 올리면 충돌할 수 있다. 쓰려면 교수님께 "라이선스상 공개 저장소에 올릴 수 없는 리소스"의 처리 방법을 먼저 확인해야 한다.
