@@ -1,18 +1,25 @@
 """Render a rigged 3D character into side-view pixel sprite sheets (Dead Cells style).
 
-Run with Blender in the background, for example:
+Run with Blender in the background (full command examples are kept in
+assets/characters/CHARACTER_WORKFLOW.md):
 
-    blender -b -P tools/blender/render_sprites.py -- --model path/to/character.glb
-        --out assets/characters/render --actions Walk Idle --frames 8
+    blender -b -P tools/blender/render_sprites.py -- --model <body.gltf>
+        --anim-file <animations.glb> --out assets/characters/base
+        --map walk=Walk_Loop pickup=Fixing_Kneeling@0-30 --frames-for walk=8 pickup=4
+        --head 1.45 --bulk 1.25 --flat 0.80,0.62,0.50 --bands 3 --outline
 
-What it does (see assets/characters/CHARACTER_SPEC.md for the cell rules):
-- imports the model (.glb/.gltf/.fbx) and turns it to face screen-right;
-- places an orthographic camera at the side so one cell is 96 x 64 px, the feet sit
-  on y = 60 from the top and a 1.8 m person is about 54 px tall;
-- renders each action at N evenly spaced frames with flat studio lighting, no
-  anti-aliasing and a dark outline, on a transparent background;
-- reduces the colours to a few steps per channel and glues the frames into one
-  horizontal sheet per action: <out>/<action>.png.
+What it does (cell rules: assets/characters/CHARACTER_SPEC.md):
+- imports the body, borrows actions from another file with the same bone names, and
+  turns the model to face screen-right;
+- optional body proportions: a bigger head (--head) and a thicker build (--bulk), held
+  by bone constraints so the animation cannot undo them;
+- an orthographic side camera: one cell is 96 x 64 px, the feet stand on y = 60 from the
+  top, 1.8 m is 54 px;
+- flat studio lighting, no anti-aliasing, transparent background; optionally one flat
+  colour for the whole body (--flat);
+- after rendering: light is cut into a few bands (--bands, cel shading) and a 1 px dark
+  outline is drawn around the figure (--outline);
+- the frames of each action are glued into one horizontal sheet: <out>/<sheet>.png.
 """
 
 import argparse
@@ -26,7 +33,8 @@ CELL_W, CELL_H = 96, 64
 FEET_FROM_BOTTOM = 4            # px: the feet line is y = 60 from the top
 PERSON_HEIGHT_M = 1.8
 PERSON_HEIGHT_PX = 54
-LEVELS = 6                      # colour steps per channel after rendering
+OUTLINE_RGB = (0.06, 0.07, 0.10)
+LIGHT_TURN_DEG = 70             # studio light rotation around the vertical axis
 
 
 def parse_args():
@@ -34,28 +42,24 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--out", required=True)
-    parser.add_argument("--actions", nargs="*", default=None, help="action names; default: all")
-    parser.add_argument("--frames", type=int, default=8)
-    parser.add_argument("--list", action="store_true", help="only print the actions in the model")
-    parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
     parser.add_argument("--anim-file", default=None,
                         help="file whose actions are borrowed (same bone names), e.g. the animation library")
     parser.add_argument("--map", nargs="*", default=None,
-                        help="sheet=action pairs, e.g. walk=Walk_Loop swing=Sword_Attack")
+                        help="sheet=action pairs, optionally with a frame range: pickup=Fixing_Kneeling@0-30")
+    parser.add_argument("--frames", type=int, default=8)
     parser.add_argument("--frames-for", nargs="*", default=None,
                         help="sheet=count pairs overriding --frames, e.g. walk=8 hurt=3")
+    parser.add_argument("--list", action="store_true", help="only print the actions and stop")
+    parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
+    parser.add_argument("--head", type=float, default=1.0, help="head size multiplier")
+    parser.add_argument("--bulk", type=float, default=1.0, help="thickness multiplier for torso, arms and legs")
+    parser.add_argument("--flat", default=None, help="one body colour as r,g,b in 0..1 (base mannequin)")
+    parser.add_argument("--bands", type=int, default=0, help="light bands for cel shading (0 = off)")
+    parser.add_argument("--outline", action="store_true", help="draw a 1 px dark outline around the figure")
     return parser.parse_args(argv)
 
 
-def import_animations(path):
-    """Import a file only for its actions; its own objects are removed again."""
-    before = set(bpy.data.objects)
-    import_model(path)
-    for action in bpy.data.actions:
-        action.use_fake_user = True
-    for obj in set(bpy.data.objects) - before:
-        bpy.data.objects.remove(obj, do_unlink=True)
-
+# Scene ---------------------------------------------------------------------------
 
 def clear_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -71,11 +75,53 @@ def import_model(path):
         raise SystemExit(f"unsupported model type: {ext}")
 
 
+def import_animations(path):
+    """Import a file only for its actions; its own objects are removed again."""
+    before = set(bpy.data.objects)
+    import_model(path)
+    for action in bpy.data.actions:
+        action.use_fake_user = True
+    for obj in set(bpy.data.objects) - before:
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+
 def find_armature():
-    for obj in bpy.data.objects:
-        if obj.type == "ARMATURE":
-            return obj
-    return None
+    return next((o for o in bpy.data.objects if o.type == "ARMATURE"), None)
+
+
+def remove_loose_meshes(armature):
+    """Drop helper meshes that are neither parented nor skinned (e.g. a preview sphere)."""
+    for obj in list(bpy.data.objects):
+        skinned = any(m.type == "ARMATURE" for m in getattr(obj, "modifiers", []))
+        if obj.type == "MESH" and obj.parent is None and not skinned and armature is not None:
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def hold_scale(armature, bone, x, y, z):
+    """Fix a bone's local scale after the animation is applied (Limit Scale with min = max)."""
+    pose_bone = armature.pose.bones.get(bone)
+    if pose_bone is None:
+        return
+    c = pose_bone.constraints.new("LIMIT_SCALE")
+    c.use_min_x = c.use_max_x = c.use_min_y = c.use_max_y = c.use_min_z = c.use_max_z = True
+    c.min_x = c.max_x = x
+    c.min_y = c.max_y = y
+    c.min_z = c.max_z = z
+    c.owner_space = "LOCAL"
+
+
+def shape_body(armature, head, bulk):
+    """Bone-local Y runs along the bone, so X/Z thicken it without making it longer."""
+    if armature is None:
+        return
+    if bulk != 1.0:
+        # Children inherit scale, so thicken only where it does not double up.
+        for bone in ("pelvis", "thigh_l", "thigh_r", "upperarm_l", "upperarm_r"):
+            hold_scale(armature, bone, bulk, 1.0, bulk)
+        hold_scale(armature, "spine_02", bulk, 1.0, bulk)
+    if head != 1.0:
+        inherited = bulk if bulk != 1.0 else 1.0    # spine_02's thickness already reaches the head
+        hold_scale(armature, "Head", head / inherited, head, head / inherited)
 
 
 def setup_camera(scene):
@@ -92,7 +138,7 @@ def setup_camera(scene):
     scene.camera = cam
 
 
-def setup_render(scene):
+def setup_render(scene, flat):
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.resolution_x = CELL_W
     scene.render.resolution_y = CELL_H
@@ -103,22 +149,28 @@ def setup_render(scene):
     scene.display.render_aa = "OFF"                     # hard pixel edges
     shading = scene.display.shading
     shading.light = "STUDIO"
-    shading.color_type = "TEXTURE"                      # skin and clothes come from their textures
-    shading.show_object_outline = True
-    shading.object_outline_color = (0.06, 0.07, 0.10)
-    shading.show_cavity = True
-    shading.cavity_type = "BOTH"
+    # Light from the front-left of the figure so its side shows a lit and a shaded half.
+    shading.studiolight_rotate_z = math.radians(LIGHT_TURN_DEG)
+    if flat:
+        shading.color_type = "SINGLE"
+        shading.single_color = flat
+    else:
+        shading.color_type = "TEXTURE"                  # skin and clothes come from their textures
+    shading.show_object_outline = False                 # the outline is drawn after rendering
+    shading.show_cavity = False                         # cavity reads as noise at this size
     scene.view_settings.view_transform = "Standard"
 
 
-def frames_of(action, count):
-    start, end = action.frame_range
+# Frames and sheets ---------------------------------------------------------------
+
+def frames_of(action, count, frame_range=None):
+    start, end = frame_range or action.frame_range
     if count <= 1:
         return [int(start)]
-    if action.name.endswith("_Loop"):
+    if frame_range is None and action.name.endswith("_Loop"):
         step = (end - start) / count                     # loop: the last frame equals the first
     else:
-        step = (end - start) / (count - 1)               # one-shot: keep the final pose
+        step = (end - start) / (count - 1)               # one-shot or a cut: keep the final pose
     return [round(start + i * step) for i in range(count)]
 
 
@@ -131,23 +183,36 @@ def assign_action(armature, action):
         data.action_slot = slots[0]
 
 
-def posterize(pixels):
-    out = list(pixels)
-    for i in range(0, len(out), 4):
-        alpha = out[i + 3]
-        if alpha < 0.5:
-            out[i:i + 4] = [0.0, 0.0, 0.0, 0.0]
+def finish_pixels(pixels, bands, outline):
+    """Cel bands on the light and a 1 px outline; pixels is a flat RGBA list, bottom row first."""
+    px = list(pixels)
+    solid = [px[i + 3] >= 0.5 for i in range(0, len(px), 4)]
+    for n, is_solid in enumerate(solid):
+        i = n * 4
+        if not is_solid:
+            px[i:i + 4] = [0.0, 0.0, 0.0, 0.0]
             continue
-        for c in range(3):
-            out[i + c] = round(out[i + c] * (LEVELS - 1)) / (LEVELS - 1)
-        out[i + 3] = 1.0
-    return out
+        if bands:
+            r, g, b = px[i:i + 3]
+            value = max(r, g, b, 1e-6)
+            banded = max(1, round(value * bands)) / bands
+            px[i:i + 3] = [min(1.0, r * banded / value), min(1.0, g * banded / value), min(1.0, b * banded / value)]
+        px[i + 3] = 1.0
+    if outline:
+        for n, is_solid in enumerate(solid):
+            if is_solid:
+                continue
+            x, y = n % CELL_W, n // CELL_W
+            near = any(0 <= x + dx < CELL_W and 0 <= y + dy < CELL_H and solid[(y + dy) * CELL_W + x + dx]
+                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            if near:
+                px[n * 4:n * 4 + 4] = [*OUTLINE_RGB, 1.0]
+    return px
 
 
-def render_action(scene, armature, action, count, out_dir, tmp_dir, sheet_name=None):
+def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, frame_range, args):
     assign_action(armature, action)
-    frames = frames_of(action, count)
-    sheet_name = sheet_name or safe_name(action.name)
+    frames = frames_of(action, count, frame_range)
     sheet = bpy.data.images.new(f"sheet_{sheet_name}", CELL_W * len(frames), CELL_H, alpha=True)
     sheet_px = [0.0] * (CELL_W * len(frames) * CELL_H * 4)
     for index, frame in enumerate(frames):
@@ -156,7 +221,7 @@ def render_action(scene, armature, action, count, out_dir, tmp_dir, sheet_name=N
         scene.render.filepath = path
         bpy.ops.render.render(write_still=True)
         image = bpy.data.images.load(path)
-        px = posterize(image.pixels[:])
+        px = finish_pixels(image.pixels[:], args.bands, args.outline)
         for y in range(CELL_H):
             src = y * CELL_W * 4
             dst = (y * CELL_W * len(frames) + index * CELL_W) * 4
@@ -167,6 +232,17 @@ def render_action(scene, armature, action, count, out_dir, tmp_dir, sheet_name=N
     sheet.file_format = "PNG"
     sheet.save()
     print(f"saved {sheet.filepath_raw} ({len(frames)} frames: {frames})")
+
+
+def parse_map_entry(entry):
+    """'pickup=Fixing_Kneeling@0-30' -> ('pickup', 'Fixing_Kneeling', (0, 30))."""
+    sheet_name, action_part = entry.split("=", 1)
+    frame_range = None
+    if "@" in action_part:
+        action_part, span = action_part.split("@", 1)
+        start, end = span.split("-")
+        frame_range = (float(start), float(end))
+    return sheet_name, action_part, frame_range
 
 
 def safe_name(name):
@@ -185,35 +261,33 @@ def main():
         return
     scene = bpy.context.scene
     armature = find_armature()
+    remove_loose_meshes(armature)
     for obj in bpy.data.objects:
         if obj.parent is None and obj.type in ("ARMATURE", "MESH", "EMPTY"):
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
+    shape_body(armature, args.head, args.bulk)
+    flat = tuple(float(v) for v in args.flat.split(",")) if args.flat else None
     setup_camera(scene)
-    setup_render(scene)
+    setup_render(scene, flat)
     out_dir = os.path.abspath(args.out)
     tmp_dir = os.path.join(out_dir, "_frames")
     os.makedirs(tmp_dir, exist_ok=True)
     counts = dict(pair.split("=") for pair in (args.frames_for or []))
-    if args.map:
-        for pair in args.map:
-            sheet_name, action_name = pair.split("=")
-            action = bpy.data.actions.get(action_name)
-            if action is None:
-                print(f"missing action {action_name}")
-                continue
-            render_action(scene, armature, action, int(counts.get(sheet_name, args.frames)),
-                          out_dir, tmp_dir, sheet_name)
-        return
-    actions = [a for a in bpy.data.actions if not args.actions or a.name in args.actions]
-    if armature is None or not actions:
-        # No animation: render the rest pose once so the size and look can be checked.
+    if armature is None:
         scene.render.filepath = os.path.join(out_dir, "rest.png")
         bpy.ops.render.render(write_still=True)
-        print("saved rest pose only (no armature or actions)")
+        print("saved rest pose only (no armature)")
         return
-    for action in actions:
-        render_action(scene, armature, action, args.frames, out_dir, tmp_dir)
+    entries = [parse_map_entry(e) for e in args.map] if args.map else \
+        [(safe_name(a.name), a.name, None) for a in bpy.data.actions]
+    for sheet_name, action_name, frame_range in entries:
+        action = bpy.data.actions.get(action_name)
+        if action is None:
+            print(f"missing action {action_name}")
+            continue
+        render_sheet(scene, armature, action, int(counts.get(sheet_name, args.frames)),
+                     out_dir, tmp_dir, sheet_name, frame_range, args)
 
 
 main()
