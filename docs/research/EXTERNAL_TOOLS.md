@@ -103,6 +103,22 @@
 | ~~[Ghetto Enemy Character Pack](https://free-game-assets.itch.io/pixel-art-enemy-character-pack)~~ | 도적 3종(높이 48px), 공격·피격·쓰러짐 | 최소 $0.61 | 유료라 제외 |
 
 - 적대 생존자는 **Free Gangster**(공격·피격·쓰러짐이 확실) 또는 **Free Homeless**(분위기)를 먼저 내려받아 비교한다. 옷 색을 어둡게 바꾸고 무기를 둔기·칼 같은 근접 무기로 보이게 다듬는다.
+## 5-5. 주인공·동료도 같은 계열로 (2026-11-10)
+
+적 그림을 CraftPix 무료 팩에서 고르기로 했으므로, 플레이어가 쓰는 캐릭터도 **같은 제작사(CraftPix)의 도시 시리즈**에서 골라 느낌을 맞춘다. 모두 무료(원하는 만큼 지불에서 0 입력), 생성형 AI 미사용 표기, 옆모습 횡스크롤용이다. 프레임 크기는 페이지에 없으므로 내려받아 우리 캐릭터 높이(58px)와 비교한다.
+
+| 역할 | 팩 | 캐릭터 | 동작 |
+| --- | --- | --- | --- |
+| 주인공·동료 후보 | [Free Homeless](https://free-game-assets.itch.io/free-homeless-character-sprite-sheets-pixel-art) | 갈색 코트에 병을 든 남자, 초록 코트의 수염 난 남자, 칼을 든 여자 | 미표기(내려받아 확인) |
+| 주인공·동료 후보 | [Free Graffiti Artist](https://free-game-assets.itch.io/free-graffiti-artist-sprite-sheet-pixel-art-pack) | 거리 분위기의 인물 3명(여성) | 미표기 |
+| 주인공 후보(방망이) | [Free City Enemies](https://free-game-assets.itch.io/free-city-enemies-pixel-art-sprite-sheets) | **방망이를 든 남자**, 권총 남자, 스케이트보더, 드론(제외) | 공격·쓰러짐·피격·대기·걷기 |
+| 적대 생존자 | [Free Gangster](https://free-game-assets.itch.io/free-gangster-pixel-character-sprite-sheets-pack) | 사람 3명 | 대기·걷기·달리기·공격 1~3·피격·쓰러짐 |
+| 피폭체 | [Free 3 Zombies](https://free-game-assets.itch.io/free-zombie-sprite-sheet-pack-pixel-art) | 남·여·주황 스웨터 좀비 | 공격 3종·걷기·달리기·피격·쓰러짐·먹기 |
+| 피폭체 | [Free Urban Zombie](https://free-game-assets.itch.io/free-urban-zombie-sprite-sheet-pixel-art-pack) | 좀비 4명 | 대기·걷기·공격·피격·쓰러짐 |
+
+- **주인공**: 지금처럼 방망이를 쓰려면 City Enemies의 방망이 남자가 가장 가깝다. 지금의 노란 방호 후드 주인공을 유지할지, 이 시리즈로 바꿔 전체 느낌을 맞출지는 내려받은 그림을 나란히 놓고 정한다.
+- **동료**: Homeless의 칼 든 여자·수염 난 남자, Graffiti 인물이 방공호에서 모으는 동료로 어울린다.
+- [Free Characters With Melee Attack](https://free-game-assets.itch.io/free-characters-with-melee-attack-pixel-art)(남·여·사이보그)는 사이버펑크 계열이라 느낌이 달라 제외한다.
 ### 조사에서 나온 주의점
 
 - **CraftPix 계열(free-game-assets 포함)은 무료여도 원본 파일 재배포가 금지**다. 게임에 쓰는 것은 되지만, 과제 규칙대로 PNG를 공개 저장소에 올리면 충돌할 수 있다. 쓰려면 교수님께 "라이선스상 공개 저장소에 올릴 수 없는 리소스"의 처리 방법을 먼저 확인해야 한다.
