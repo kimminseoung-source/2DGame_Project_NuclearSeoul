@@ -88,8 +88,9 @@
      --model "assets/source3d/quaternius_base_characters/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf" \
      --anim-file "assets/source3d/quaternius_animation_library/Unreal-Godot/UAL1_Standard.glb" \
      --out assets/characters/base \
-     --map idle=Idle_Loop walk=Walk_Loop sneak=Crouch_Fwd_Loop swing=Sword_Attack hurt=Hit_Chest down=Death01 pickup=PickUp_Table \
-     --frames-for idle=4 walk=8 sneak=6 swing=6 hurt=3 down=5 pickup=4
+     --map idle=Idle_Loop walk=Walk_Loop sneak=Crouch_Fwd_Loop swing=Sword_Attack hurt=Hit_Chest down=Death01 pickup=Fixing_Kneeling@0-20 \
+     --frames-for idle=4 walk=8 sneak=6 swing=6 hurt=3 down=5 pickup=4 \
+     --head 1.7 --bulk 1.3 --flat 0.80,0.62,0.50 --bands 4 --outline
    ```
 4. **미리보기** — `tools/sprites/preview_sheets.ps1 -SheetDir <시트 폴더> -Out assets/characters/previews/<대상>_v<번호>.png -Title <제목>`으로 만들고 사용자에게 보여 준다.
 5. **기준 확정** — 미리보기를 보고 렌더 설정을 조정해 4절에 적는다. 이후 모든 캐릭터는 같은 설정을 쓴다.
@@ -108,7 +109,7 @@
 | swing | `Sword_Attack` | 6 | 칼 공격을 방망이 휘두르기로 사용 |
 | hurt | `Hit_Chest` | 3 | |
 | down | `Death01` | 5 | 마지막 칸 유지 |
-| pickup | `PickUp_Table` | 4 | 무릎 꿇는 동작이 아님(테이블 높이). 바닥 줍기는 추후 교체 검토 |
+| pickup | `Fixing_Kneeling` 0~20프레임 | 4 | v2부터. 무릎 꿇고 바닥에 손을 뻗는 구간만 사용(v1의 `PickUp_Table`은 테이블 높이라 교체) |
 
 ## 4. 렌더 설정
 
@@ -116,14 +117,17 @@
 | --- | --- | --- |
 | 칸 | 96×64, 오른쪽을 봄(모델을 Z축으로 90° 회전) | 확정 |
 | 비율 | 1.8m = 54px, 발 기준선 위에서 60px | 확정 |
-| 렌더 엔진 | Workbench, 텍스처 색, 안티앨리어싱 끔, 투명 배경 | 시험 중 |
-| 조명·외곽선 | 스튜디오 조명, 짙은 남색 외곽선 | 시험 중 — v1에서 외곽선이 거의 안 보임 |
-| 색 단계 | 채널당 6단계 | 시험 중 |
+| 렌더 엔진 | Workbench, 안티앨리어싱 끔, 투명 배경, 빈 구덩이 음영(cavity) 끔 | 확정(v2) |
+| 체형 | 머리 1.7배(`--head`), 몸통·팔·다리 굵기 1.3배(`--bulk`). 뼈 제약(Limit Scale)으로 고정해 동작이 덮어쓰지 않음 | v2 값, 옷을 입힌 뒤 다시 확인 |
+| 색 | 기본 몸은 단색 살색 0.80,0.62,0.50(`--flat`). 옷을 입힌 캐릭터는 재질 색 사용 | v2 |
+| 명암 | 스튜디오 조명을 세로축으로 70° 돌려 옆면에 밝은 면·어두운 면이 생기게 하고, 밝기를 4단계로 끊음(`--bands 4`, 셀 셰이딩) | v2 |
+| 외곽선 | 렌더 후 그림 둘레에 1px 짙은 남색 외곽선(`--outline`). Workbench 자체 외곽선은 작은 크기에서 거의 안 보여 쓰지 않음 | 확정(v2) |
 
 ## 5. 결과 이력
 
 | 버전 | 미리보기 | 결과 | 다음에 고칠 점 |
 | --- | --- | --- | --- |
+| 기본 몸 v2 (2026-11-10) | `previews/base_body_v2.png` | 머리가 커지고 몸이 굵어져 덜 왜소함. 외곽선이 또렷하고, 옆 조명으로 밝은 면·어두운 면이 구분됨. 줍기가 무릎 꿇고 바닥에 손을 뻗는 동작으로 바뀜 | ① 아직 지금 주인공보다 키가 크고 다리가 김(옷을 입힌 뒤 다시 판단) ② 쓰러짐 3~5칸에서 머리가 칸 왼쪽 밖으로 잘림 → 쓰러짐만 칸 안으로 당기는 처리 필요 ③ 휘두르기가 칼 동작이라 팔을 크게 벌림 → 방망이를 쥐여 보고 판단 |
 | 기본 몸 v1 (2026-11-10) | `previews/base_body_v1.png` | 동작 7종이 옆모습·같은 발 위치로 나옴. 걷기·공격·쓰러짐 동작이 자연스러움 | ① 체형이 길고 가늘어(Superhero 비율) 지금 주인공보다 왜소해 보임 → 머리·몸통을 키워 2~3등신 쪽으로 ② 외곽선이 약함 ③ 피부 질감이 작은 크기에서 얼룩처럼 보임 → 단색 위주로 ④ 줍기가 바닥 줍기가 아님 |
 
 ## 6. 작업 기록
@@ -135,3 +139,4 @@
 | 2026-11-10 | Blender 설치, 렌더 스크립트 작성 | 도형 시험에서 칸 크기·발 기준선 확인 |
 | 2026-11-10 | Quaternius 기본 몸·동작 팩 내려받기(CC0) | `assets/source3d/`에 정리, README에 출처 기록. 용량이 커 저장소에는 README만 올림 |
 | 2026-11-10 | 스크립트에 다른 파일 동작 붙이기·시트 이름 연결 추가, 회전 오류(glTF 쿼터니언) 수정 | 기본 몸 v1 동작 7종 렌더, 미리보기 작성 |
+| 2026-11-10 | v2(사용자 지시 "v2 진행"): 체형 조절(머리·굵기), 단색, 셀 셰이딩, 1px 외곽선, 옆 조명, 동작 구간 지정(`동작@시작-끝`), 떠 있는 보조 도형 제거 | `assets/characters/base/` 시트를 v2로 교체(v1 시트는 git 기록에 남음) |
