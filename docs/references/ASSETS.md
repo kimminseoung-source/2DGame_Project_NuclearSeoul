@@ -13,3 +13,9 @@
 방호복과 호흡 보호구는 모든 외부 방사선을 막지 않습니다. 보호 장비의 한계와 정보 확인을 반영합니다. 이동 경로·적·게이지·체력은 게임의 가상 규칙입니다.
 
 향후 추가하는 이미지·음원은 파일별 제작자·출처·이용 조건을 이 문서에 기록합니다.
+
+## 캐릭터 3D 원본 (2026-11-10)
+
+- Quaternius, Universal Base Characters [Standard], https://quaternius.itch.io/universal-base-characters , CC0 1.0. 기본 몸으로 사용.
+- Quaternius, Universal Animation Library [Standard], https://quaternius.itch.io/universal-animation-library , CC0 1.0. 대기·걷기·웅크려 걷기·공격·피격·쓰러짐·줍기 동작으로 사용.
+- 이 3D 원본을 Blender로 렌더해 만든 스프라이트 시트는 `assets/characters/` 아래에 있다. 원본 목록과 받는 방법은 `assets/source3d/README.md`.

@@ -13,3 +13,10 @@ dist/
 ~$*
 .DS_Store
 Thumbs.db
+
+# 3D source packs: large (over GitHub's 100MB file limit) and not needed to run the game.
+# What is in there and where it came from is recorded in assets/source3d/README.md.
+assets/source3d/*
+!assets/source3d/README.md
+# Per-frame renders kept only while building a sheet
+assets/characters/**/_frames/
