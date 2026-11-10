@@ -4,11 +4,13 @@ Every object put here has update() and draw(). Layers are drawn in order;
 objects on the GROUND layer are sorted by depth so farther ones are drawn first.
 """
 
+import screen_shake
 import ui
 
 
 # Layers, back to front. BOTTOM is the hotbar strip under the street.
 BACKGROUND, BOARD, GROUND, EFFECT, OVERLAY, HUD, POPUP, BOTTOM = range(8)
+SHAKEN = range(HUD)     # the street and what is drawn on it; the HUD and pop-ups stay put
 world = [[] for _ in range(BOTTOM + 1)]
 
 
@@ -45,8 +47,10 @@ def update():
 
 
 def render():
-    ui.begin_world()
+    ui.begin_world(*screen_shake.offset())
     for depth in range(BOTTOM):
+        if depth == HUD:
+            ui.begin_world()
         layer = world[depth]
         if depth == GROUND:
             layer = sorted(layer, key=lambda o: getattr(o, "y", 0), reverse=True)

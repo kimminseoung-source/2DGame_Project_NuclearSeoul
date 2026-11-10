@@ -126,13 +126,14 @@ SCREEN_WIDTH = 768
 SCREEN_HEIGHT = WORLD_HEIGHT + BOTTOM_HEIGHT
 
 
-def _region(top, height):
-    sdl2.SDL_RenderSetViewport(canvas.renderer, sdl2.SDL_Rect(0, top, SCREEN_WIDTH, height))
+def _region(top, height, left=0):
+    sdl2.SDL_RenderSetViewport(canvas.renderer, sdl2.SDL_Rect(left, top, SCREEN_WIDTH, height))
     canvas.canvas_height = height
 
 
-def begin_world():
-    _region(0, WORLD_HEIGHT)
+def begin_world(dx=0, dy=0):
+    """World region; dx, dy nudge it on screen (screen shake), right and up positive."""
+    _region(-dy, WORLD_HEIGHT, dx)
 
 
 def begin_bottom():

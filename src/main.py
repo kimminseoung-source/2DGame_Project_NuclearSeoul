@@ -19,7 +19,8 @@ import game_clock
 import game_world
 import ui
 from background import Background
-from bat import BAT_HITSTOP
+import hit_feel
+import screen_shake
 from combat import Combat, Fighter
 from combat_view import create_views
 from effects import Impact
@@ -117,6 +118,7 @@ def enter_area(in_shelter):
     global tile_map, player, zombie, exit_door, combat, exploration_views, combat_views
     game_world.clear()
     camera.reset()
+    screen_shake.reset()
     combat, combat_views = None, []
     state.in_shelter = in_shelter
     state.hitstop = 0.0
@@ -183,7 +185,8 @@ def handle_player_events():
             position = zombie.x, zombie.y
             if player.swing.hits(player, position) and zombie.knock_back(player.swing.dx):
                 show_impact(position)
-                state.hitstop = BAT_HITSTOP
+                # A shove in exploration deals no damage; it lands as a medium hit.
+                play_hit_feel(hit_feel.MEDIUM)
                 state.message = "감염자를 밀어냈습니다."
     player.events.clear()
 
@@ -210,6 +213,13 @@ def handle_zombie_event():
 def show_impact(position):
     game_world.add_object(Impact(*position), game_world.EFFECT)
     assets.bat_impact_sound.play()
+
+
+def play_hit_feel(hit_weight):
+    """Hit-stop and screen shake for one blow; the same for every attack (see hit_feel.py)."""
+    feel = hit_feel.feel(hit_weight)
+    state.hitstop = max(state.hitstop, feel.hitstop)
+    screen_shake.start(feel.shake, feel.shake_time)
 
 
 # Combat start and end ----------------------------------------------------------
@@ -261,9 +271,10 @@ def end_combat():
 
 
 def handle_combat_results():
-    for kind, x, y in combat.effects:
+    for kind, x, y, hit_weight in combat.effects:
         if kind == "impact":
             show_impact((x, y))
+            play_hit_feel(hit_weight)
     combat.effects.clear()
     if combat.finished():
         end_combat()
@@ -391,11 +402,12 @@ def update_world(frame_time):
     if state.settings_open or state.inventory_open:
         game_clock.frame_time = 0.0
         return
-    if combat is None:
-        # A bat hit freezes the scene for a moment (hit-stop).
-        frozen = min(state.hitstop, frame_time)
-        state.hitstop -= frozen
-        frame_time -= frozen
+    # The shake runs on real time, so it keeps going while a hit-stop freezes the scene.
+    screen_shake.update(frame_time)
+    # A landed blow freezes the scene for a moment (hit-stop), in exploration and in combat.
+    frozen = min(state.hitstop, frame_time)
+    state.hitstop -= frozen
+    frame_time -= frozen
     player.speed_multiplier = state.speed_percent / 100
     if zombie is not None:
         zombie.frozen = state.hitstop > 0

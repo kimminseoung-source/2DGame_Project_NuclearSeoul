@@ -11,6 +11,7 @@ import pico2d
 
 import game_clock
 import game_world
+import hit_feel
 import ui
 from combat import (
     BADGE_TIME, END_TURN_CENTER, END_TURN_RADIUS, ENEMY_COLOR, FOOT_RX, FOOT_RY,
@@ -463,6 +464,7 @@ class DamageRoll(CombatView):
     """
 
     RISE_PER_SECOND = 18
+    POP_TIME = 0.16          # the number appears oversized and settles within this time
     HIT_TEXT = HitWheel.HIT_TEXT
 
     def draw(self):
@@ -477,13 +479,14 @@ class DamageRoll(CombatView):
         if not record["hit"]:
             self.outlined(x, y + 6, "대실패" if record["fumble"] else "빗나감", ui.MISS, 18)
             return
-        number = f"-{record['damage']}"
-        if record["critical"]:
-            self.outlined(x, y + 28, "치명타!", ui.CRITICAL, 16)
-            self.outlined(x, y, number, ui.CRITICAL, 30)
-        else:
-            self.outlined(x, y + 28, "명중", self.HIT_TEXT, 16)
-            self.outlined(x, y, number, ui.DANGER, 26)
+        # Size, colour and pop come from the hit's weight, shared by every attack.
+        feel = hit_feel.feel(record["weight"])
+        grow = feel.pop * (1 - min(1.0, elapsed / self.POP_TIME)) ** 2
+        size = round(feel.number_size * (1 + grow))
+        color = ui.CRITICAL if record["critical"] else feel.number_color
+        label = ("치명타!", ui.CRITICAL) if record["critical"] else ("명중", self.HIT_TEXT)
+        self.outlined(x, y + feel.number_size + 2, *label, 16)
+        self.outlined(x, y - (size - feel.number_size) / 2, f"-{record['damage']}", color, size)
 
     @staticmethod
     def outlined(x, y, text, color, size):

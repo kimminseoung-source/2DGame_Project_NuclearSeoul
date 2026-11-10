@@ -3,6 +3,7 @@
 import random
 from collections import deque
 
+import hit_feel
 import ui
 from bat import BAT_DURATION, BatSwing
 from nav import PX_PER_M_Y, NavField, metres, path_length, point_along, truncate
@@ -641,16 +642,19 @@ class Combat:
         target.hp = max(0, target.hp - damage)
         label = "치명타!" if result["critical"] else "명중"
         color = (255, 214, 127) if result["critical"] else (255, 160, 130)
+        # How hard it lands depends only on the damage and the target, never on the weapon,
+        # so every attack (bat, later weapons and skills, enemy blows) feels the same way.
+        weight = hit_feel.weight(damage, target.max_hp, result["critical"], finishing=not target.alive)
         # The damage roll is a second, separate roll: d6 (twice on a critical) + bonus.
         self.damage_rolls.append({
             "target": target, "time": BADGE_TIME, "hit": True, "rolls": list(result["damage_rolls"]),
             "bonus": attacker.damage_bonus, "sides": attacker.damage_dice[1],
-            "damage": damage, "critical": result["critical"],
+            "damage": damage, "critical": result["critical"], "weight": weight,
         })
         self.record(f"{attacker.name} {kind}: {label} ({roll_text})", color)
         self.record(f"  {target.name} 피해 {damage} · 체력 {target.hp}/{target.max_hp}", TEXT_COLOR)
         self.log = f"{attacker.name} {label}: {target.name}에게 피해 {damage}"
-        self.effects.append(("impact", target.unit.x, target.unit.y))
+        self.effects.append(("impact", target.unit.x, target.unit.y, weight))
         if not target.alive:
             self.defeat(target)
 
