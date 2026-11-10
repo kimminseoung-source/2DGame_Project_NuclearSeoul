@@ -13,3 +13,5 @@ class ShelterMap(TileMap):
     has_wreck = False
     left_edge = 25
     right_edge = 746
+    floor_bottom = 28
+    floor_top = 126         # the shelter floor keeps its painted depth (about 6 m)

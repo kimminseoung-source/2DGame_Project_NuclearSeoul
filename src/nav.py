@@ -8,7 +8,6 @@ straight, so movement looks free like BG3 while the maths stays simple.
 import heapq
 from math import hypot
 
-from tile_map import FLOOR_BOTTOM, FLOOR_TOP
 
 
 # 1.5 m equals the old 48 px cell. The floor's depth axis is foreshortened 2:1,
@@ -76,8 +75,8 @@ class NavField:
         self.tile_map = tile_map
         self.left, self.right = left, right
         self.columns = int((right - left) // NODE_X)
-        self.y0 = FLOOR_BOTTOM + CLEARANCE
-        self.rows = int((FLOOR_TOP - CLEARANCE - self.y0) // NODE_Y) + 1
+        self.y0 = tile_map.floor_bottom + CLEARANCE
+        self.rows = int((tile_map.floor_top - CLEARANCE - self.y0) // NODE_Y) + 1
         self.static = {
             (c, r) for c in range(self.columns) for r in range(self.rows)
             if tile_map.can_stand(*self.position((c, r)), CLEARANCE)
