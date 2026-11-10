@@ -19,6 +19,7 @@ import game_clock
 import game_world
 import ui
 from background import Background
+from character_look import LegacyLook, SheetLook
 import hit_feel
 import screen_shake
 from combat import Combat, Fighter
@@ -35,6 +36,8 @@ from zombie import Zombie
 
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
+# Folder under assets/characters/ with the hero's sheets, or "legacy" for the first hand-drawn hero.
+PLAYER_LOOK = "base"
 MAX_HEALTH = 12
 DEFAULT_SPEED = 100
 MIN_SPEED = 50
@@ -58,10 +61,13 @@ class Assets:
     def __init__(self):
         self.shelter = ShelterMap(pico2d.load_image(str(ASSETS / "shelter_side.png")))
         self.street = TileMap(pico2d.load_image(str(ASSETS / "surface_side.png")))
-        self.player_sprites = {
-            action: pico2d.load_image(str(ASSETS / f"survivor_bat_{action}_side.png"))
-            for action in ("walk", "sneak", "action")
-        }
+        if PLAYER_LOOK == "legacy":
+            self.player_look = LegacyLook({
+                action: pico2d.load_image(str(ASSETS / f"survivor_bat_{action}_side.png"))
+                for action in ("walk", "sneak", "action")
+            })
+        else:
+            self.player_look = SheetLook(ASSETS / "characters" / PLAYER_LOOK)
         self.zombie_image = pico2d.load_image(str(ASSETS / "zombie_regular.png"))
         self.wreck_image = pico2d.load_image(str(ASSETS / "street_wreck.png"))
         self.bat_impact_sound = pico2d.load_wav(str(ASSETS / "bat_impact.wav"))
@@ -125,7 +131,7 @@ def enter_area(in_shelter):
     tile_map = assets.shelter if in_shelter else assets.street
     spawn, exit_at = (SHELTER_SPAWN, SHELTER_EXIT) if in_shelter else (SPAWN, EXIT)
 
-    player = Player(*spawn, tile_map, assets.player_sprites)
+    player = Player(*spawn, tile_map, assets.player_look)
     exit_door = ExitDoor(*exit_at, in_shelter)
     game_world.add_object(Background(tile_map), game_world.BACKGROUND)
     if tile_map.has_wreck:

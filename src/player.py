@@ -22,27 +22,22 @@ BASE_MOVEMENT_RATE = 0.7
 DASH_SPEED = 340
 DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
-MOVEMENT_FRAME_WIDTH = 77
-ACTION_FRAME_WIDTH = 97
-FRAME_HEIGHT = 58
 WALK_FRAME_TIME = 0.12
 SNEAK_FRAME_TIME = 0.15
-WALK_CYCLE = (1, 2, 3, 2)
-PICKUP_CROUCH = 0.12
 PICKUP_CONTACT = 0.28
-PICKUP_STAND = 0.46
 PICKUP_DURATION = 0.58
 FREE_STATES = ["IDLE", "WALK", "SNEAK"]
 
 
 class Player:
-    def __init__(self, x, y, tile_map, sprites):
+    def __init__(self, x, y, tile_map, look):
         self.x, self.y = x, y
         self.tile_map = tile_map
-        self.sprites = sprites
+        self.look = look         # character_look: draws poses, whatever the art
         self.sneaking = False
         self.direction = 1
         self.walk_time = 0.0
+        self.idle_time = 0.0
         self.dash_time = 0.0
         self.dash_cooldown = 0.0
         self.dash_direction = (0.0, 0.0)
@@ -136,7 +131,10 @@ class Player:
 
     def update(self):
         dt = game_clock.frame_time
-        if self.state == "COMBAT" or dt <= 0:
+        if dt <= 0:
+            return
+        self.idle_time += dt
+        if self.state == "COMBAT":
             return
         self.dash_cooldown = max(0.0, self.dash_cooldown - dt)
         step = game_clock.step()
@@ -215,32 +213,30 @@ class Player:
                 self.draw_body()
         elif self.state == "SWING":
             self.draw_swing(self.swing)
-        elif self.state == "PICKUP" and PICKUP_CROUCH <= self.pickup_time < PICKUP_STAND:
-            self.draw_frame("action", 0)
+        elif self.state == "PICKUP":
+            # Down to the floor and back up again.
+            progress = self.pickup_time / PICKUP_DURATION
+            self.draw_pose("pickup", 1 - abs(2 * progress - 1))
         elif self.state == "DASH":
             self.draw_dash()
         else:
             self.draw_body()
 
     def draw_swing(self, swing):
-        self.draw_frame("action", swing.frame)
+        self.draw_pose("swing", swing.elapsed / BAT_DURATION)
         swing.draw_trail(self, camera.x)
 
     def draw_dash(self):
         progress = 1 - self.dash_time / DASH_DURATION
-        if progress < 0.24:
-            self.draw_frame("sneak", 1)
-        else:
+        if progress >= 0.24:
             self.draw_dash_trail(1 - progress)
-            self.draw_frame("walk", 1 if progress < 0.65 else 3)
+        self.draw_pose("walk", progress * 0.36)
 
     def draw_body(self):
-        action = "sneak" if self.sneaking else "walk"
-        frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
-        frame = 0
-        if self.walk_time:
-            frame = WALK_CYCLE[int(self.walk_time / frame_time) % len(WALK_CYCLE)]
-        self.draw_frame(action, frame)
+        if not self.walk_time:
+            self.draw_pose("idle", self.idle_time)
+        else:
+            self.draw_pose("sneak" if self.sneaking else "walk", self.walk_time)
 
     def draw_dash_trail(self, strength):
         x, y = self.x - camera.x, self.y - 12
@@ -255,15 +251,7 @@ class Player:
 
     def portrait_clip(self):
         """Source rectangle of the right-facing idle frame, cropped to head and torso."""
-        image = self.sprites["walk"]
-        return image, 16, image.h - 2 * FRAME_HEIGHT + 20, 46, 38
+        return self.look.portrait_clip()
 
-    def draw_frame(self, action, frame):
-        row = int(self.direction > 0)
-        image = self.sprites[action]
-        width = ACTION_FRAME_WIDTH if action == "action" else MOVEMENT_FRAME_WIDTH
-        image.clip_draw(
-            frame * width, image.h - (row + 1) * FRAME_HEIGHT,
-            width, FRAME_HEIGHT,
-            self.x - camera.x, self.y - 12 + FRAME_HEIGHT / 2,
-        )
+    def draw_pose(self, pose, time):
+        self.look.draw(pose, time, self.x - camera.x, self.y - 12, self.direction)
