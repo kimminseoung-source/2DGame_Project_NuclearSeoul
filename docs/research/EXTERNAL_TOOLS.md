@@ -76,6 +76,21 @@
 - **지금 캐릭터를 유지하면** 배경은 Cataclysm Street나 CraftPix 배경, 적은 CraftPix 좀비 팩이 동작 구성이 맞다. 스프라이트 높이가 우리 58px와 다르면 확대·축소 후 도트가 뭉개지지 않는지 확인한다.
 - 방공호 내부(옆모습) 배경은 마땅한 후보를 찾지 못했다. 지금 그림을 유지하거나 방공호 타일(finuarts)로 다시 꾸민다.
 - 파일 내려받기와 유료 결제는 사용자가 직접 한다. 고른 파일을 `assets/` 아래에 넣어 주면 연결한다.
+## 5-3. 무료 한정 최종 후보 (2026-11-10, 예산 없음)
+
+| 용도 | 후보 | 내용 | 조건 |
+| --- | --- | --- | --- |
+| 적 종류 추가 | [Free Urban Zombie Sprite Sheet](https://free-game-assets.itch.io/free-urban-zombie-sprite-sheet-pixel-art-pack) (CraftPix) | 좀비 4종, 대기·걷기·공격·피격·쓰러짐, 생성형 AI 미사용 표기 | 무료, CraftPix 무료 라이선스(재배포 금지) |
+| 적 종류 추가 | [Free 3 Zombies](https://free-game-assets.itch.io/free-zombie-sprite-sheet-pack-pixel-art) (CraftPix) | 좀비 3종, 대기·걷기·달리기·점프·피격·쓰러짐 | 같음 |
+| 적 | [Zombie Pack 무료판](https://phewcumber.itch.io/zombie-pack) (phewcumber) | 좀비 1종 5동작, 몸 약 32px(확대 필요) | 무료판만, 재배포 금지 |
+| NPC 생존자 | [Free Homeless Sprite Sheets](https://free-game-assets.itch.io/free-homeless-character-sprite-sheets-pixel-art) (CraftPix) | 옆모습 인물 시트(동작 구성은 내려받아 확인) | 같음 |
+| 구간 2·3 배경 | [Free Post Apocalyptic Backgrounds](https://free-game-assets.itch.io/free-post-apocalyptic-pixel-art-backgrounds), [Free City Ruin Backgrounds](https://free-game-assets.itch.io/free-city-ruin-backgrounds-pixel-art) (CraftPix) | 1920×1080 배경과 분리 레이어. 우리 화면(768×480)에 맞게 줄이고 도로를 10m로 맞춰야 함 | 같음 |
+| 배경(CC0) | [city scrollable background](https://opengameart.org/content/city-scrollable-background-pixel-art) (OpenGameArt) | 패럴랙스 레이어 분리 도시 | CC0 |
+| 방공호 소품 | [Post-apocalyptic shelter](https://finuarts.itch.io/post-apocalyptic-shelter) (finuarts) | 16×16 횡스크롤 타일·가구 | 무료, 개인·상업 가능 |
+| 효과음 | Kenney 오디오(Impact Sounds 등), freesound CC0 | 타격 단계별 소리, 발소리, UI | CC0 |
+
+- **주인공(방망이)** 은 무료 중 옆모습 방망이 공격·피격·쓰러짐을 모두 갖춘 세트를 찾지 못했다. 지금 주인공 도트를 유지한다.
+- **추천 조합**: 주인공·지상 배경 유지 + CraftPix 무료 좀비로 적 종류 추가(유닛별 방어·명중으로 난이도 차이) + Kenney 효과음 + 구간 2·3은 CraftPix 무료 배경을 손봐서 사용.
 ### 조사에서 나온 주의점
 
 - **CraftPix 계열(free-game-assets 포함)은 무료여도 원본 파일 재배포가 금지**다. 게임에 쓰는 것은 되지만, 과제 규칙대로 PNG를 공개 저장소에 올리면 충돌할 수 있다. 쓰려면 교수님께 "라이선스상 공개 저장소에 올릴 수 없는 리소스"의 처리 방법을 먼저 확인해야 한다.
@@ -95,7 +110,7 @@
 
 - 맵 에디터: Tiled(추천) / LDtk
 - ~~라이선스 기준~~ → **결정(2026-11-10): 교육용 과제이므로 라이선스를 폭넓게 적용한다.** 위 표의 ⚠ 후보(CraftPix, Loovgames 등)도 사용할 수 있다. 사용하는 모든 에셋의 제작자·출처·라이선스를 [자료 및 출처](../references/ASSETS.md)와 e-Class 제출란에 적고, 재배포 금지 조건이 있는 파일은 문서에 따로 표시해 문제가 생기면 그 파일만 교체할 수 있게 한다.
-- 예산: 무료 도구·에셋만 / 유료(Aseprite, 유료 팩) 허용
+- ~~예산~~ → **결정(2026-11-10): 무료만.** 유료 팩(Loovgames, Cataclysm Street, phewcumber 유료판)과 Aseprite는 제외하고, 도트 편집은 Pixelorama를 쓴다.
 - 캐릭터: 지금 도트 유지 / 외부 캐릭터 팩으로 교체
 
 ## 출처
