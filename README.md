@@ -51,6 +51,8 @@ Tab으로 배낭을 열고 닫습니다. 방향키로 슬롯을 선택하고 Esc
 - [제출 확인 목록](docs/presentation/SUBMISSION_CHECKLIST.md)
 - [콘셉트 이미지 및 출처](docs/references/ASSETS.md)
 - [외부 도구·맵 에디터·에셋 활용 방안](docs/research/EXTERNAL_TOOLS.md)
+- [고품질 도트 캐릭터 제작 방식 조사](docs/research/CHARACTER_PIPELINE.md)
+- [처음 기획과 지금의 차이](docs/planning/ORIGINAL_VS_CURRENT.md)
 
 ## 게임의 흐름
 
