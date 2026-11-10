@@ -629,6 +629,11 @@ class Combat:
         roll_text = f"합 {result['total']}, 필요 {target.armor_class}"
         if not result["hit"]:
             label = "대실패" if result["fumble"] else "빗나감"
+            # A miss also shows over the target, so the swing visibly came to nothing.
+            self.damage_rolls.append({
+                "target": target, "time": BADGE_TIME, "hit": False, "fumble": result["fumble"],
+                "damage": 0, "critical": False,
+            })
             self.record(f"{attacker.name} {kind}: {label} ({roll_text})", ui.MISS)
             self.log = f"{attacker.name}의 {kind}이 빗나갔습니다."
             return
@@ -638,7 +643,7 @@ class Combat:
         color = (255, 214, 127) if result["critical"] else (255, 160, 130)
         # The damage roll is a second, separate roll: d6 (twice on a critical) + bonus.
         self.damage_rolls.append({
-            "target": target, "time": BADGE_TIME, "rolls": list(result["damage_rolls"]),
+            "target": target, "time": BADGE_TIME, "hit": True, "rolls": list(result["damage_rolls"]),
             "bonus": attacker.damage_bonus, "sides": attacker.damage_dice[1],
             "damage": damage, "critical": result["critical"],
         })

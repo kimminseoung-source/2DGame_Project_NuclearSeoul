@@ -455,14 +455,15 @@ class HitWheel(CombatView):
 
 
 class DamageRoll(CombatView):
-    """The damage that landed, as a plain number rising over the target.
+    """The attack's outcome rising over the target: "명중" with the damage, or "빗나감".
 
     The possible range (e.g. 3~8) is shown beforehand in the hover readout; the
-    dice behind the number stay in the combat log, so the screen only says how
-    much it hurt.
+    dice behind the number stay in the combat log, so the screen only says
+    whether it landed and how much it hurt.
     """
 
     RISE_PER_SECOND = 18
+    HIT_TEXT = HitWheel.HIT_TEXT
 
     def draw(self):
         for record in self.combat.damage_rolls:
@@ -473,11 +474,15 @@ class DamageRoll(CombatView):
         elapsed = BADGE_TIME - record["time"]
         x = self.sx(target.unit.x)
         y = target.unit.y + 74 + elapsed * self.RISE_PER_SECOND
+        if not record["hit"]:
+            self.outlined(x, y + 6, "대실패" if record["fumble"] else "빗나감", ui.MISS, 18)
+            return
         number = f"-{record['damage']}"
         if record["critical"]:
-            ui.text_center(x, y + 24, "치명타!", ui.CRITICAL, 16)
+            self.outlined(x, y + 28, "치명타!", ui.CRITICAL, 16)
             self.outlined(x, y, number, ui.CRITICAL, 30)
         else:
+            self.outlined(x, y + 28, "명중", self.HIT_TEXT, 16)
             self.outlined(x, y, number, ui.DANGER, 26)
 
     @staticmethod
