@@ -50,6 +50,7 @@ Tab으로 배낭을 열고 닫습니다. 방향키로 슬롯을 선택하고 Esc
 - [작업 회고와 학습 기록](docs/DEVELOPMENT_RETROSPECTIVE.md)
 - [제출 확인 목록](docs/presentation/SUBMISSION_CHECKLIST.md)
 - [콘셉트 이미지 및 출처](docs/references/ASSETS.md)
+- [외부 도구·맵 에디터·에셋 활용 방안](docs/research/EXTERNAL_TOOLS.md)
 
 ## 게임의 흐름
 
