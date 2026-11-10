@@ -53,6 +53,10 @@ def parse_args():
     parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
     parser.add_argument("--head", type=float, default=1.0, help="head size multiplier")
     parser.add_argument("--bulk", type=float, default=1.0, help="thickness multiplier for torso, arms and legs")
+    parser.add_argument("--legs", type=float, default=1.0,
+                        help="leg length multiplier; the body is lowered so the feet stay on the floor line")
+    parser.add_argument("--shift-for", nargs="*", default=None,
+                        help="sheet=px pairs moving that sheet's figure right, e.g. down=14 so a fall stays in the cell")
     parser.add_argument("--flat", default=None, help="one body colour as r,g,b in 0..1 (base mannequin)")
     parser.add_argument("--bands", type=int, default=0, help="light bands for cel shading (0 = off)")
     parser.add_argument("--outline", action="store_true", help="draw a 1 px dark outline around the figure")
@@ -110,15 +114,19 @@ def hold_scale(armature, bone, x, y, z):
     c.owner_space = "LOCAL"
 
 
-def shape_body(armature, head, bulk):
-    """Bone-local Y runs along the bone, so X/Z thicken it without making it longer."""
+def shape_body(armature, head, bulk, legs=1.0):
+    """Bone-local Y runs along the bone, so X/Z thicken it and Y lengthens or shortens it."""
     if armature is None:
         return
-    if bulk != 1.0:
-        # Children inherit scale, so thicken only where it does not double up.
-        for bone in ("pelvis", "thigh_l", "thigh_r", "upperarm_l", "upperarm_r"):
+    if bulk != 1.0 or legs != 1.0:
+        # Children inherit scale, so set it where it does not double up: the calf and foot
+        # follow the thigh, the forearm follows the upper arm.
+        for bone in ("thigh_l", "thigh_r"):
+            hold_scale(armature, bone, bulk, legs, bulk)
+        for bone in ("pelvis", "upperarm_l", "upperarm_r", "spine_02"):
             hold_scale(armature, bone, bulk, 1.0, bulk)
-        hold_scale(armature, "spine_02", bulk, 1.0, bulk)
+    # Shorter legs leave the feet in the air; snap_to_floor puts every frame back on the floor
+    # (lowering the body here instead would push lying poses below the cell).
     if head != 1.0:
         inherited = bulk if bulk != 1.0 else 1.0    # spine_02's thickness already reaches the head
         hold_scale(armature, "Head", head / inherited, head, head / inherited)
@@ -210,6 +218,26 @@ def finish_pixels(pixels, bands, outline):
     return px
 
 
+def snap_to_floor(px):
+    """Move the frame up or down so its lowest solid pixel sits on the floor line.
+
+    Whatever touches the ground (a foot while walking, the back while lying down) ends on
+    the same line, so a shortened body never floats or sinks through the floor.
+    """
+    row_len = CELL_W * 4
+    lowest = next((y for y in range(CELL_H) if any(px[y * row_len + x * 4 + 3] > 0 for x in range(CELL_W))), None)
+    target = FEET_FROM_BOTTOM                            # rows count from the bottom: row 59 from the top
+    if lowest is None or lowest == target:
+        return px
+    shift = target - lowest
+    out = [0.0] * len(px)
+    for y in range(CELL_H):
+        src = y - shift
+        if 0 <= src < CELL_H:
+            out[y * row_len:(y + 1) * row_len] = px[src * row_len:(src + 1) * row_len]
+    return out
+
+
 def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, frame_range, args):
     assign_action(armature, action)
     frames = frames_of(action, count, frame_range)
@@ -221,7 +249,7 @@ def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, f
         scene.render.filepath = path
         bpy.ops.render.render(write_still=True)
         image = bpy.data.images.load(path)
-        px = finish_pixels(image.pixels[:], args.bands, args.outline)
+        px = snap_to_floor(finish_pixels(image.pixels[:], args.bands, args.outline))
         for y in range(CELL_H):
             src = y * CELL_W * 4
             dst = (y * CELL_W * len(frames) + index * CELL_W) * 4
@@ -266,7 +294,7 @@ def main():
         if obj.parent is None and obj.type in ("ARMATURE", "MESH", "EMPTY"):
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
-    shape_body(armature, args.head, args.bulk)
+    shape_body(armature, args.head, args.bulk, args.legs)
     flat = tuple(float(v) for v in args.flat.split(",")) if args.flat else None
     setup_camera(scene)
     setup_render(scene, flat)
@@ -274,6 +302,7 @@ def main():
     tmp_dir = os.path.join(out_dir, "_frames")
     os.makedirs(tmp_dir, exist_ok=True)
     counts = dict(pair.split("=") for pair in (args.frames_for or []))
+    shifts = {k: float(v) for k, v in (pair.split("=") for pair in (args.shift_for or []))}
     if armature is None:
         scene.render.filepath = os.path.join(out_dir, "rest.png")
         bpy.ops.render.render(write_still=True)
@@ -286,6 +315,8 @@ def main():
         if action is None:
             print(f"missing action {action_name}")
             continue
+        # Moving the camera left moves the figure right in the cell.
+        scene.camera.location.x = -shifts.get(sheet_name, 0.0) * PERSON_HEIGHT_M / PERSON_HEIGHT_PX
         render_sheet(scene, armature, action, int(counts.get(sheet_name, args.frames)),
                      out_dir, tmp_dir, sheet_name, frame_range, args)
 
