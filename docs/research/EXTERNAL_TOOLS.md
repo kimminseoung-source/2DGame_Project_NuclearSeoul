@@ -91,6 +91,18 @@
 
 - **주인공(방망이)** 은 무료 중 옆모습 방망이 공격·피격·쓰러짐을 모두 갖춘 세트를 찾지 못했다. 지금 주인공 도트를 유지한다.
 - **추천 조합**: 주인공·지상 배경 유지 + CraftPix 무료 좀비로 적 종류 추가(유닛별 방어·명중으로 난이도 차이) + Kenney 효과음 + 구간 2·3은 CraftPix 무료 배경을 손봐서 사용.
+## 5-4. 적 그림 결정과 적대 생존자 후보 (2026-11-10)
+
+- **결정**: 피폭체는 무료 좀비 스프라이트(CraftPix 좀비 3종·도시 좀비 4종)를 Pixelorama로 잿빛·화상 색으로 바꿔 쓴다. 적대 생존자(사람 적)도 넣는다.
+
+| 후보 | 내용 | 가격 | 조건 |
+| --- | --- | --- | --- |
+| [Free Gangster Pixel Characters](https://free-game-assets.itch.io/free-gangster-pixel-character-sprite-sheets-pack) (CraftPix) | 사람 3종: 대기·걷기·달리기·공격 1~3·피격·쓰러짐(사격·장전도 있으나 총기는 확장 범위라 근접 공격만 사용). 생성형 AI 미사용 표기 | 무료 | CraftPix 무료 라이선스 |
+| [Free Homeless Sprite Sheets](https://free-game-assets.itch.io/free-homeless-character-sprite-sheets-pixel-art) (CraftPix) | 허름한 옷의 사람 캐릭터. 생존자 분위기에 가장 가깝지만 동작 구성은 내려받아 확인 | 무료 | 같음 |
+| [2D Stalker Assets](https://s3raphimm.itch.io/2d-stalker-assets) (s3raphimm) | 포스트 아포칼립스 태그의 캐릭터 1종. 동작 미표기 | 원하는 만큼 | 자유 사용(알려 주면 좋다고 함) |
+| ~~[Ghetto Enemy Character Pack](https://free-game-assets.itch.io/pixel-art-enemy-character-pack)~~ | 도적 3종(높이 48px), 공격·피격·쓰러짐 | 최소 $0.61 | 유료라 제외 |
+
+- 적대 생존자는 **Free Gangster**(공격·피격·쓰러짐이 확실) 또는 **Free Homeless**(분위기)를 먼저 내려받아 비교한다. 옷 색을 어둡게 바꾸고 무기를 둔기·칼 같은 근접 무기로 보이게 다듬는다.
 ### 조사에서 나온 주의점
 
 - **CraftPix 계열(free-game-assets 포함)은 무료여도 원본 파일 재배포가 금지**다. 게임에 쓰는 것은 되지만, 과제 규칙대로 PNG를 공개 저장소에 올리면 충돌할 수 있다. 쓰려면 교수님께 "라이선스상 공개 저장소에 올릴 수 없는 리소스"의 처리 방법을 먼저 확인해야 한다.
