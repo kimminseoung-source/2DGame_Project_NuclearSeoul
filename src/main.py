@@ -25,11 +25,10 @@ from combat_view import create_views
 from effects import Impact
 from exit_door import ExitDoor
 from hud import ExplorationBar, ExplorationHud, InventoryOverlay, SettingsOverlay
-from inventory import COLUMNS, SPARE_FILTER, Inventory
+from inventory import COLUMNS, Inventory
 from player import Player
-from shelter import SHELTER_EXIT, SHELTER_SPAWN, SHELTER_SUPPLY, ShelterMap
-from supply import FilterSupply
-from tile_map import EXIT, HEIGHT, SPAWN, SUPPLY, WIDTH, TileMap
+from shelter import SHELTER_EXIT, SHELTER_SPAWN, ShelterMap
+from tile_map import EXIT, HEIGHT, SPAWN, WIDTH, TileMap
 from wreck import Wreck
 from zombie import Zombie
 
@@ -83,7 +82,6 @@ class GameState:
         self.finished = False
         self.message = ""
         self.in_shelter = True
-        self.has_filter = False
         self.hitstop = 0.0
         self.aim_x = None
 
@@ -93,7 +91,6 @@ state = None
 tile_map = None
 player = None
 zombie = None
-supply = None
 exit_door = None
 combat = None
 exploration_views = []
@@ -117,27 +114,25 @@ def reset_world():
 
 
 def enter_area(in_shelter):
-    global tile_map, player, zombie, supply, exit_door, combat, exploration_views, combat_views
+    global tile_map, player, zombie, exit_door, combat, exploration_views, combat_views
     game_world.clear()
     camera.reset()
     combat, combat_views = None, []
     state.in_shelter = in_shelter
-    state.has_filter = False
     state.hitstop = 0.0
     tile_map = assets.shelter if in_shelter else assets.street
-    spawn, supply_at, exit_at = (SHELTER_SPAWN, SHELTER_SUPPLY, SHELTER_EXIT) if in_shelter else (SPAWN, SUPPLY, EXIT)
+    spawn, exit_at = (SHELTER_SPAWN, SHELTER_EXIT) if in_shelter else (SPAWN, EXIT)
 
     player = Player(*spawn, tile_map, assets.player_sprites)
-    supply = FilterSupply(*supply_at, player)
     exit_door = ExitDoor(*exit_at, in_shelter)
     game_world.add_object(Background(tile_map), game_world.BACKGROUND)
     if tile_map.has_wreck:
         game_world.add_object(Wreck(assets.wreck_image), game_world.GROUND)
-    game_world.add_objects([supply, player], game_world.GROUND)
+    game_world.add_object(player, game_world.GROUND)
     game_world.add_object(exit_door, game_world.EFFECT)
     zombie = None
     if in_shelter:
-        state.message = "방공호에서 예비 필터를 챙기세요."
+        state.message = "오른쪽 출입문에서 E를 눌러 지상으로 나가세요."
     else:
         zombie = Zombie(assets.zombie_image, tile_map, player)
         game_world.add_object(zombie, game_world.GROUND)
@@ -165,21 +160,15 @@ def face_cursor():
 def interact():
     if player.busy():
         return
-    if not state.has_filter and supply.near(player):
-        face_cursor()
-        player.start_pickup()
-        state.message = "필터를 줍는 중…"
-    elif exit_door.near(player):
-        if state.in_shelter and not state.has_filter:
-            state.message = "나가기 전에 필터를 챙기세요."
-        elif state.in_shelter:
+    if exit_door.near(player):
+        if state.in_shelter:
             enter_area(in_shelter=False)
         else:
             state.finished = True
             player.frozen = True
             state.message = "대피소 도착! R로 다시 시작"
     else:
-        state.message = "물자나 출구에 가까이 가세요."
+        state.message = "출구에 가까이 가세요."
 
 
 def can_surprise():
@@ -190,14 +179,7 @@ def can_surprise():
 
 def handle_player_events():
     for event in player.events:
-        if event == "pickup":
-            if state.inventory.add(SPARE_FILTER):
-                state.has_filter = True
-                game_world.remove_object(supply)
-                state.message = "필터를 주웠습니다. 출구로 이동하세요."
-            else:
-                state.message = "배낭이 가득 찼습니다. 필터는 바닥에 남아 있습니다."
-        elif event == "bat_contact" and zombie is not None:
+        if event == "bat_contact" and zombie is not None:
             position = zombie.x, zombie.y
             if player.swing.hits(player, position) and zombie.knock_back(player.swing.dx):
                 show_impact(position)

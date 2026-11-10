@@ -3,13 +3,12 @@
 import pico2d
 
 import ui
-from inventory import SPARE_FILTER, draw_inventory
-from item_ui import draw_filter_slot
+from inventory import draw_inventory
 from tile_map import HEIGHT, WIDTH
 
 
 class ExplorationHud:
-    """Top strip: current message, health and spare filters."""
+    """Top strip: current message and health."""
 
     def __init__(self, state):
         self.state = state
@@ -23,7 +22,6 @@ class ExplorationHud:
         color = (133, 231, 184) if state.finished else (245, 222, 169)
         ui.text(16, HEIGHT + 32, state.message, color)
         ui.text(500, HEIGHT + 18, f"체력 {state.health}/{state.max_health}", (238, 169, 149))
-        draw_filter_slot(WIDTH - 162, HEIGHT + 8, state.inventory.count(SPARE_FILTER), ui.font(16))
 
 
 class ExplorationBar:

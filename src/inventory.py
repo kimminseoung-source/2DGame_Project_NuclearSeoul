@@ -2,10 +2,7 @@
 
 import pico2d
 
-from item_ui import draw_filter_icon
 
-
-SPARE_FILTER = "Spare filter"
 SLOT_COUNT = 8
 COLUMNS = 4
 
@@ -41,7 +38,7 @@ class Inventory:
         if self.slots[self.selected] is None:
             self.message = "빈 슬롯입니다."
         else:
-            self.message = "아직 필터를 교체할 수 없습니다."
+            self.message = "아직 사용할 수 없는 물건입니다."
 
 
 def draw_inventory(inventory, font, width, height):
@@ -61,13 +58,12 @@ def draw_inventory(inventory, font, width, height):
         pico2d.draw_rectangle(left, bottom, left + 108, bottom + 64, *border)
         if slot:
             item, count = slot
-            draw_filter_icon(left + 23, bottom + 41)
             font.draw(left + 64, bottom + 38, f"{count}개", gold)
-            font.draw(left + 6, bottom + 12, "필터" if item == SPARE_FILTER else item, pale)
+            font.draw(left + 6, bottom + 12, item, pale)
         else:
             font.draw(left + 28, bottom + 26, "빈 슬롯", (130, 151, 163))
     if inventory.slots[inventory.selected]:
-        font.draw(x + 20, y + 81, "방독면에 사용하는 예비 필터입니다.", pale)
+        font.draw(x + 20, y + 81, inventory.slots[inventory.selected][0], pale)
     else:
         font.draw(x + 20, y + 81, "이 슬롯에는 아이템이 없습니다.", pale)
     font.draw(x + 20, y + 54, inventory.message, gold)
