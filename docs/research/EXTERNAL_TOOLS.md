@@ -58,6 +58,24 @@
 | Kenney 오디오 (예: Impact Sounds) | 타격·발소리·UI 효과음 | 무료 | CC0 | ✅ |
 | [freesound](https://freesound.org) | 효과음 검색 | 무료 | 파일마다 다름(CC0만 사용) | CC0만 ✅ |
 
+## 5-2. 넓힌 지상 도로(약 10m)에 맞춘 2차 후보 (2026-11-10)
+
+지상 도로를 약 10m로 넓힌 뒤, 바닥이 넓은 배경과 옆모습 좀비를 중심으로 다시 찾았다. 우리 캐릭터 프레임 높이는 58px이므로, 스프라이트 높이가 비슷한지도 함께 본다. 라이선스는 사용자 결정대로 폭넓게 쓰되 조건은 표시한다.
+
+| 후보 | 용도 | 내용 | 가격 | 조건 |
+| --- | --- | --- | --- | --- |
+| [Cataclysm Street](https://pixel-salvaje.itch.io/cataclysm-street-pixel-art-tileable) (pixel-salvaje) | 지상 배경 | 바닥이 넓은 게임용으로 만든 재난 거리 배경. 하늘·구름·거리 레이어 분리(패럴랙스), 이어 붙이기 가능. 크기 미표기, 지붕·전봇대 일부가 잘렸다는 댓글 있음 | $3 (할인가) | 상업 가능, 표기 불필요, 재배포·재판매 금지 |
+| [Post-Apocalyptic Pixel Art Asset Pack](https://loovgames.itch.io/apocalyptic-pixel-art-asset-pack-with-houses-characters-trees-tilesets) (Loovgames) | 배경·캐릭터 일괄 | 주인공·적의 전체 동작, 타일, 패럴랙스 배경, `.aseprite` 원본. 한 팩으로 화풍 통일 | $14.99 | 상업 가능, 재배포 금지 |
+| [Free Post Apocalyptic Pixel Art Backgrounds](https://free-game-assets.itch.io/free-post-apocalyptic-pixel-art-backgrounds) / [Free City Ruin Backgrounds](https://free-game-assets.itch.io/free-city-ruin-backgrounds-pixel-art) (CraftPix) | 지상 배경 | 1920×1080 배경과 분리 레이어 | 무료 | 상업 가능, 원본 재배포 금지 |
+| [Free Urban Zombie Sprite Sheet](https://free-game-assets.itch.io/free-urban-zombie-sprite-sheet-pixel-art-pack) / [Free 3 Zombies](https://free-game-assets.itch.io/free-zombie-sprite-sheet-pack-pixel-art) (CraftPix) | 적 종류 추가 | 좀비 3~4종, 대기·걷기·공격·피격·쓰러짐 | 무료 | 상업 가능, 원본 재배포 금지 |
+| [Zombie Pack](https://phewcumber.itch.io/zombie-pack) (phewcumber) | 적 | 무료판: 좀비 1종 대기·걷기·공격·피격·쓰러짐(64×64 시트, 몸 약 32px — 우리 캐릭터보다 작아 확대 필요). 유료판($5)은 달리기·기절·일어나기 등 9동작과 모자 25종 | 무료 / $5 | 상업 가능, 재배포·AI 학습 금지 |
+| [Streets of Fight](https://ansimuz.itch.io/streets-of-fight) (ansimuz) | 구조 참고 | 벨트 스크롤 액션 전체 팩(무대 높이 240px, 캐릭터 47px). 사이버펑크 밤거리라 테마는 다름 | 원하는 만큼 (추가팩 $5) | 개인·상업 사용 가능(라이선스명 미표기) |
+| Kenney Impact Sounds 등 | 효과음 | 타격·발소리·UI 효과음 | 무료 | CC0 |
+
+- **한 팩으로 통일하려면** Loovgames 팩이 배경과 캐릭터를 함께 줘서 가장 무난하다. 다만 캐릭터를 바꿀지(7절)부터 정해야 한다.
+- **지금 캐릭터를 유지하면** 배경은 Cataclysm Street나 CraftPix 배경, 적은 CraftPix 좀비 팩이 동작 구성이 맞다. 스프라이트 높이가 우리 58px와 다르면 확대·축소 후 도트가 뭉개지지 않는지 확인한다.
+- 방공호 내부(옆모습) 배경은 마땅한 후보를 찾지 못했다. 지금 그림을 유지하거나 방공호 타일(finuarts)로 다시 꾸민다.
+- 파일 내려받기와 유료 결제는 사용자가 직접 한다. 고른 파일을 `assets/` 아래에 넣어 주면 연결한다.
 ### 조사에서 나온 주의점
 
 - **CraftPix 계열(free-game-assets 포함)은 무료여도 원본 파일 재배포가 금지**다. 게임에 쓰는 것은 되지만, 과제 규칙대로 PNG를 공개 저장소에 올리면 충돌할 수 있다. 쓰려면 교수님께 "라이선스상 공개 저장소에 올릴 수 없는 리소스"의 처리 방법을 먼저 확인해야 한다.
