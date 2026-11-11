@@ -1,0 +1,10 @@
+The attached image is the street background of my 2D side-scrolling pixel-art game: a ruined Korean city after a nuclear disaster, at dusk, muted brown-grey palette, warm street lamp light.
+
+Draw the PLAYER CHARACTER that fits this background, as a single game sprite concept:
+- Pixel art in the same style and palette as the background: crisp square pixels, limited muted palette, a 1-pixel dark outline, soft light from the upper left. No anti-aliasing blur, no painterly rendering.
+- Strict side view, facing RIGHT, full body, standing idle pose, feet on the ground.
+- A young Korean civilian survivor (not a soldier, no armour, no sci-fi). Face clearly visible (no gas mask, no helmet covering the face).
+- One strong signature colour: a worn mustard-yellow protective work jacket, hood DOWN on the shoulders. Dark grey cargo trousers, black gloves, dark boots, a small olive backpack. Holding a wooden baseball bat in the right hand, resting down by the leg.
+- Clear readable silhouette at small size: the character should still be recognisable when shrunk to about 60 pixels tall.
+- Proportions: realistic but slightly stylised, about 6 heads tall.
+- Plain solid flat magenta background (#FF00FF) behind the character, nothing else in the image: no ground, no shadow, no text, no frame.

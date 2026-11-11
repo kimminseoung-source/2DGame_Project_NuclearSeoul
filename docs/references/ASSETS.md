@@ -4,6 +4,8 @@
 
 `survival_view_comparison.png`: 이 프로젝트 기획 대화에서 내장 AI 이미지 생성 도구로 제작한 콘셉트 이미지. 선택한 화면은 왼쪽 탑뷰이며 오른쪽은 비교 시안입니다. 실제 게임 스크린샷이나 게임용 스프라이트가 아닙니다. 이미지 내 상점 간판은 구현 시 창작 디자인으로 교체합니다.
 
+- `assets/characters/concepts/hero_concept_a.webp`: 2026-11-11 사용자가 Google Gemini 웹사이트(gemini.google.com)에서 생성한 주인공 콘셉트 이미지. 요청 문안은 `tools/gen/prompts/hero_a.txt`, 참고 이미지는 이 게임의 거리 배경. 오른쪽 아래 Gemini 표시는 정리 과정에서 지웠다. 게임용 스프라이트는 이 이미지를 정리한 `hero_concept_a_sprite.png`.
+
 ## 사실 확인 참고
 
 - CDC Radiation Safety: https://www.cdc.gov/radiation-health/safety/index.html
