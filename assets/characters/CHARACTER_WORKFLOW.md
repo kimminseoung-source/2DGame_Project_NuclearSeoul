@@ -20,6 +20,9 @@
 | `assets/characters/base/` | **기본 몸** 동작 시트 7종(`idle.png` … `pickup.png`) | 올림 |
 | `assets/characters/concepts/` | AI 콘셉트 이미지(원본)와 그것을 게임 크기로 정리한 스프라이트(`*_sprite.png`, `*_sprite_native.png`), 요청 기록(`*.txt`) | 올림 |
 | `tools/gen/gemini_image.py`, `tools/gen/prompts/` | Gemini API 이미지 요청 도구와 요청 문안(무료 등급은 이미지 한도 0이라 지금은 문안만 사용) | 올림 |
+| `assets/characters/rigs/<이름>.json` | 컷아웃 부품 위치·관절(부품 시트 픽셀 기준) | 올림 |
+| `tools/blender/export_pose2d.py` | Blender 동작에서 칸마다 관절의 화면 위치를 뽑음 | 올림 |
+| `tools/sprites/cutout_rig.py` | 시안 부품을 3D 동작의 관절 각도대로 조립해 시트로 | 올림 |
 | `tools/sprites/repaint.py` | 부위 구분 렌더 + 빛 렌더 → 시안 색으로 부위별 다시 칠하기(로토스코핑 A) | 올림 |
 | `tools/sprites/clean_concept.py` | 콘셉트 이미지 → 게임 크기 스프라이트(배경 제거·분홍 테두리 제거·축소·외곽선·96×64 칸) | 올림 |
 | `assets/characters/costumes/<이름>.json` | 캐릭터 의상 정의(몸·비율·부위 색·머리·소품). 5절 형식 | 올림 |
@@ -199,6 +202,16 @@
 
 결과(`previews/method_compare_a.png`): 시안과 같은 색 묶음으로 머리카락·피부·노란 재킷·어두운 바지·부츠·배낭·방망이가 또렷하게 나뉘고, 모든 동작이 같은 캐릭터로 나온다. 시안보다 명암이 단순하고 얼굴·주름 같은 세부는 없다.
 
+### 부품 + 3D 자세 각도 (2026-11-11, 지금 가장 시안에 가까운 방식)
+
+사용자 질문 "자세만 참고해서 그걸로 1번처럼 안 되나요?" → 사용자가 Gemini에서 부품 시트(`concepts/hero_parts_a.webp`: 머리·팔 없는 몸통·배낭·팔 5·주머니·다리 3·방망이)를 받아 옴.
+
+1. `blender -b -P tools/blender/export_pose2d.py -- --anim-file <동작 팩> --map <시트=동작> --frames-for <칸 수> --out poses.json` — 렌더와 같은 몸·회전·root 고정·카메라 기울기·칸 선택으로, 칸마다 관절의 화면 위치(m)를 저장.
+2. `assets/characters/rigs/hero_a.json` — 부품마다 시트 위 상자와 관절(어깨·팔꿈치·손목·쥐는 곳, 엉덩이·무릎·발목, 목·머리 끝, 방망이 손잡이·끝). 팔·다리는 팔꿈치·무릎에서 자르고 4px 겹침.
+3. `.venv\Scripts\python.exe tools/sprites/cutout_rig.py --rig assets/characters/rigs/hero_a.json --poses poses1.json poses2.json --out <폴더>` — 엉덩이에서부터 몸통 → 머리·팔·다리 → 방망이 순으로, 각 부품을 3D 동작의 **각도만** 따라 돌려 이어 붙인다(부품 길이·비율은 시안 그대로). 뒤팔·뒤다리는 뒤에 조금 어둡게. 게임 크기로 줄여 외곽선, 96×64 칸 바닥선.
+
+결과(`previews/method_compare_rig.png`, 원래 크기 `rig_fullsize.png`): 그림은 시안 그대로(얼굴·머리·재킷 질감·카고 바지·부츠), 움직임은 3D 그대로(무릎 굽힘·몸 기울기·팔과 방망이 궤적). 남은 점: 배낭이 시안보다 크게 보임, 칼 베기 A의 맞는 칸은 방망이가 위로 솟음(동작 자체의 특성).
+
 ## 7. 결과 이력
 
 | 버전 | 미리보기 | 결과 | 다음에 고칠 점 |
@@ -237,3 +250,4 @@
 | 2026-11-11 | 사용자 선택 "A로 시험" | 부위 구분·빛 렌더(`--pass id/light`)와 `repaint.py` 추가. 고친 버그 두 가지: ① 부위 색칠이 머리카락까지 피부색으로 덮음(간호사 머리가 밝게 보인 원인) → 몸 메시만 칠하게 ② 남자 몸 이름이 `SuperHero_Male`(대문자 H)이라 몸을 못 찾아 옷 부피 껍질이 안 입혀졌음 → 대소문자 무시. 비교 `previews/method_compare_a.png`, 게임 크기 `method_compare_a_game.png` |
 | 2026-11-11 | 사용자 결정 "생존자 느낌 나는 캐릭터로" | 노란 방호복 기준을 바꾸고, 새 시안 요청 문안 `tools/gen/prompts/hero_survivor.txt`(한 장에 4가지 안) 작성 |
 | 2026-11-11 | 사용자 지시 "캐릭터가 멋있게 나오게" | 요청 문안 `tools/gen/prompts/hero_survivor_cool.txt`: 강한 실루엣, 자신감 있는 자세, 얼굴 세부(흉터·눈매), 개조 무기, 테두리 빛 추가 |
+| 2026-11-11 | 사용자 부품 시트 전달 | 관절 위치 뽑기(`export_pose2d.py`), 조립(`cutout_rig.py`), 리그(`rigs/hero_a.json`) 추가. 버그: ① 카메라를 갱신하기 전에 읽어 좌표가 위에서 본 값으로 나옴 → 장면 갱신 후 읽기 ② 회전용 캔버스가 방망이 모양 그대로라 기울이면 끝이 잘림 → 정사각 캔버스. `render_sprites.py`는 다른 도구가 가져다 쓸 수 있게 `main()`을 직접 실행할 때만 돌게 함 |

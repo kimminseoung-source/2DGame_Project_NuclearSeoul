@@ -437,4 +437,5 @@ def main():
         render_sheet(scene, armature, segments, out_dir, tmp_dir, sheet_name, args)
 
 
-main()
+if __name__ == "__main__":                              # also importable (export_pose2d.py)
+    main()

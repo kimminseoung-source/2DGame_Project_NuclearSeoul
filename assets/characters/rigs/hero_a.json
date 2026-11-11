@@ -1,0 +1,20 @@
+{
+  "note": "Cut-out rig for concepts/hero_parts_a.webp (Gemini parts sheet of hero_concept_a). Boxes and joints are in sheet pixels.",
+  "sheet": "assets/characters/concepts/hero_parts_a.webp",
+  "px_per_m": 200,
+  "hip_spread": 6,
+  "parts": {
+    "head": {"box": [56, 41, 145, 160], "joints": {"neck": [100, 152], "top": [95, 44]}},
+    "torso": {"box": [184, 41, 290, 228], "joints": {"hip": [245, 222], "neck": [240, 58], "shoulder": [242, 86], "back_shoulder": [232, 84], "pack": [196, 112]}},
+    "backpack": {"box": [320, 58, 418, 185], "joints": {"attach": [412, 112]}},
+    "front_arm": {"box": [551, 54, 622, 245], "chain": ["shoulder", "elbow", "wrist"],
+                  "joints": {"shoulder": [583, 64], "elbow": [580, 130], "wrist": [600, 205], "grip": [603, 224]}},
+    "back_arm": {"box": [752, 54, 849, 241], "chain": ["shoulder", "elbow", "wrist"], "darken": 0.85,
+                 "joints": {"shoulder": [785, 64], "elbow": [795, 150], "wrist": [825, 200], "grip": [835, 222]}},
+    "front_leg": {"box": [316, 301, 396, 535], "chain": ["hip", "knee", "ankle"],
+                  "joints": {"hip": [350, 306], "knee": [350, 405], "ankle": [352, 480]}},
+    "back_leg": {"box": [645, 301, 712, 535], "chain": ["hip", "knee", "ankle"], "darken": 0.8,
+                 "joints": {"hip": [678, 306], "knee": [680, 420], "ankle": [678, 482]}},
+    "bat": {"box": [752, 383, 968, 411], "joints": {"grip": [775, 397], "tip": [965, 397]}}
+  }
+}
