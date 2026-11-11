@@ -200,7 +200,8 @@ def frames_of(action, count, frame_range=None):
         step = (end - start) / count                     # loop: the last frame equals the first
     else:
         step = (end - start) / (count - 1)               # one-shot or a cut: keep the final pose
-    return [round(start + i * step) for i in range(count)]
+    # Keep fractions: evenly spaced cells matter for walk cycles (the feet stay planted).
+    return [round(start + i * step, 3) for i in range(count)]
 
 
 def assign_action(armature, action, blend=None):
@@ -303,7 +304,7 @@ def render_sheet(scene, armature, segments, out_dir, tmp_dir, sheet_name, args):
             action, _, blend, _ = segments[seg_index]
             assign_action(armature, action, blend)
             current = seg_index
-        scene.frame_set(frame)
+        scene.frame_set(int(frame), subframe=frame - int(frame))
         path = os.path.join(tmp_dir, f"{sheet_name}_{index}.png")
         scene.render.filepath = path
         bpy.ops.render.render(write_still=True)

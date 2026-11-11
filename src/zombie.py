@@ -18,7 +18,7 @@ from tile_map import WRECK_HALF_DEPTH, WRECK_LEFT, WRECK_RIGHT, WRECK_Y
 
 ZOMBIE_RADIUS = 10
 ALERT_DISTANCE = 128
-CHASE_SPEED = 49              # px/s, about 70% of the player's walk (2.2 m/s = 70 px/s)
+CHASE_SPEED = 38              # px/s, about 70% of the player's walk (1.7 m/s = 54 px/s)
 ATTACK_REACH = 27
 ATTACK_DEPTH = 15
 WINDUP_TIME = 0.38

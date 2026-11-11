@@ -22,6 +22,8 @@ from pathlib import Path
 
 import pico2d
 
+from nav import PX_PER_M_X
+
 
 LOOPING = {"idle", "walk", "sneak", "sneak_idle"}
 # A pose a character's sheets lack falls back to a close one: (pose, fixed frame or None).
@@ -30,6 +32,7 @@ FALLBACK = {"sneak_idle": ("sneak", 0)}
 
 class SheetLook:
     CELL_W, CELL_H = 96, 64
+    SPRITE_PX_PER_M = 54 / 1.8       # render scale: a 1.8 m person is 54 px (CHARACTER_SPEC.md)
     FEET_FROM_BOTTOM = 4
     # Seconds per frame for looping poses.
     # Seconds per frame for looping poses that are not driven by distance (breathing idles).
@@ -51,7 +54,10 @@ class SheetLook:
         count = self.frame_count(pose)
         stride = self.meta.get(pose, {}).get("stride_m")
         if stride and distance is not None:
-            return int(distance / stride * count) % count
+            # stride_m is measured on the model; the world uses PX_PER_M_X, the sheet its own
+            # scale, so compare in pixels to keep the planted foot exactly still.
+            cycles = distance * PX_PER_M_X / (stride * self.SPRITE_PX_PER_M)
+            return int(cycles * count) % count
         if pose in LOOPING:
             return int(time / self.FRAME_TIME.get(pose, 0.12)) % count
         impact = self.meta.get(pose, {}).get("impact")

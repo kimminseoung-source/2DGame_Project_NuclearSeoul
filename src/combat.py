@@ -13,7 +13,7 @@ from zombie import STRIKE_TIME, WINDUP_TIME
 
 
 BANNER_TIME = 1.4
-MOVE_SPEED_M = 3.0          # metres per second while walking (legs follow the distance)
+MOVE_SPEED_M = 2.0          # metres per second while walking (legs follow the distance)
 ENEMY_PAUSE = 0.45
 SKIP_PAUSE = 0.9
 POPUP_TIME = 1.3

@@ -17,9 +17,10 @@ from nav import PX_PER_M_X, metres
 
 
 PLAYER_HALF_SIZE = 11
-# The walk sheet is a light jog covering 1.48 m per leg cycle and the sneak sheet 0.65 m,
-# so these speeds give about 1.5 leg cycles per second with the feet planted.
-WALK_SPEED_M = 2.2           # metres per second
+# Leg cycles cover 1.30 m (walk) and 1.09 m (sneak) of ground, measured from how fast the
+# planted foot slides back in Blender. At these speeds the legs play 1.7x and 1.2x as fast
+# as authored: a brisk walk and a careful sneak, both still natural, feet planted.
+WALK_SPEED_M = 1.7           # metres per second
 SNEAK_SPEED_M = 1.0
 DASH_SPEED = 340
 DASH_DURATION = 0.14
