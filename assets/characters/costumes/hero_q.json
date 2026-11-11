@@ -1,0 +1,308 @@
+{
+  "name": "주인공 (Quaternius 의상: Ranger 조끼·소매 + Peasant 바지 + Ranger 부츠, 시안 색)",
+  "role": "리더·감지",
+  "signature": "기본 몸과 동작 그대로, 무료 CC0 의상 부품을 입히고 시안 A 색으로 다시 칠함. 후드는 빼서 머리카락이 보임",
+  "body": "male",
+  "head": 1.15,
+  "bulk": 1.0,
+  "legs": 1.0,
+  "hair": [
+    "Hair_SimpleParted"
+  ],
+  "hair_color": [
+    0.12,
+    0.1,
+    0.09
+  ],
+  "outfit": [
+    "Male_Ranger_Body",
+    "Male_Ranger_Arms",
+    "Male_Peasant_Legs",
+    "Male_Ranger_Feet_Boots"
+  ],
+  "outfit_parts": {
+    "Belt": "belt",
+    "Bracer": "bracer",
+    "Ranger_Body": "vest",
+    "Ranger_Arms": "sleeves",
+    "Legs": "trousers",
+    "Boots": "boots",
+    "Hood": "hood"
+  },
+  "show_body": [
+    "head"
+  ],
+  "regions": {},
+  "props": [
+    {
+      "name": "bat",
+      "shape": "taper",
+      "bone": "hand_r",
+      "size": [
+        0.075,
+        0.075,
+        0.62
+      ],
+      "rotate": [
+        -55,
+        0,
+        0
+      ],
+      "offset": [
+        0,
+        0.253,
+        0.134
+      ],
+      "color": [
+        0.7,
+        0.45,
+        0.25
+      ]
+    },
+    {
+      "name": "backpack",
+      "shape": "rbox",
+      "bone": "spine_03",
+      "size": [
+        0.3,
+        0.36,
+        0.17
+      ],
+      "offset": [
+        0,
+        0.0,
+        -0.24
+      ],
+      "color": [
+        0.38,
+        0.4,
+        0.24
+      ]
+    }
+  ],
+  "repaint": {
+    "note": "Colour ramps [dark, mid, light] picked from concepts/hero_concept_a.webp; cuts = light-pass levels between bands",
+    "cuts": [
+      115,
+      160
+    ],
+    "ramps": {
+      "jacket": [
+        [
+          128,
+          82,
+          30
+        ],
+        [
+          178,
+          124,
+          44
+        ],
+        [
+          214,
+          160,
+          66
+        ]
+      ],
+      "hood": [
+        [
+          110,
+          70,
+          26
+        ],
+        [
+          150,
+          102,
+          38
+        ],
+        [
+          188,
+          136,
+          52
+        ]
+      ],
+      "trousers": [
+        [
+          38,
+          36,
+          34
+        ],
+        [
+          58,
+          56,
+          52
+        ],
+        [
+          82,
+          80,
+          74
+        ]
+      ],
+      "skin": [
+        [
+          150,
+          92,
+          62
+        ],
+        [
+          214,
+          152,
+          108
+        ],
+        [
+          234,
+          176,
+          132
+        ]
+      ],
+      "hair": [
+        [
+          28,
+          22,
+          20
+        ],
+        [
+          46,
+          38,
+          34
+        ],
+        [
+          66,
+          56,
+          50
+        ]
+      ],
+      "eyes": [
+        [
+          20,
+          16,
+          16
+        ],
+        [
+          20,
+          16,
+          16
+        ],
+        [
+          20,
+          16,
+          16
+        ]
+      ],
+      "backpack": [
+        [
+          52,
+          56,
+          32
+        ],
+        [
+          84,
+          90,
+          50
+        ],
+        [
+          112,
+          118,
+          66
+        ]
+      ],
+      "boots": [
+        [
+          24,
+          22,
+          20
+        ],
+        [
+          42,
+          36,
+          30
+        ],
+        [
+          64,
+          56,
+          46
+        ]
+      ],
+      "gloves": [
+        [
+          24,
+          24,
+          24
+        ],
+        [
+          40,
+          38,
+          38
+        ],
+        [
+          60,
+          58,
+          56
+        ]
+      ],
+      "bat": [
+        [
+          120,
+          70,
+          36
+        ],
+        [
+          170,
+          108,
+          58
+        ],
+        [
+          206,
+          146,
+          90
+        ]
+      ],
+      "belt": [
+        [
+          40,
+          28,
+          20
+        ],
+        [
+          64,
+          46,
+          32
+        ],
+        [
+          88,
+          64,
+          44
+        ]
+      ],
+      "bracer": [
+        [
+          30,
+          28,
+          26
+        ],
+        [
+          48,
+          44,
+          40
+        ],
+        [
+          70,
+          64,
+          58
+        ]
+      ]
+    },
+    "part_ramp": {
+      "head": "skin",
+      "hands": "gloves",
+      "skin": "skin",
+      "vest": "jacket",
+      "sleeves": "jacket",
+      "belt": "belt",
+      "bracer": "bracer",
+      "trousers": "trousers",
+      "boots": "boots",
+      "hood": "hood"
+    }
+  }
+}

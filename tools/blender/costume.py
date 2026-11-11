@@ -36,6 +36,7 @@ BODIES = {
     "female": f"{BASE_DIR}/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
 }
 HAIR_DIR = f"{BASE_DIR}/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)"
+OUTFIT_DIR = "assets/source3d/quaternius_outfits_fantasy/Exports/glTF (Godot-Unreal)/Modular Parts"
 COLOR_ATTR = "costume"
 
 DEFAULT_REGIONS = {
@@ -279,11 +280,74 @@ def add_shells(armature, costume):
         fill_color(obj.data, part_color(shell.get("name", "cloth"), shell.get("color", [0.5, 0.5, 0.5])))
 
 
+def outfit_part_name(obj_name, material_name, costume):
+    """Repaint part of an outfit face: skin materials become "skin", else a short name
+    from the costume's "outfit_parts" map (substring -> part), else the object name."""
+    if material_name and "regular" in material_name.lower():
+        return "skin"
+    for key, part in costume.get("outfit_parts", {}).items():
+        if key.lower() in obj_name.lower():
+            return part
+    return obj_name
+
+
+def add_outfit(armature, costume, root):
+    """Quaternius modular outfit parts (same rig as the base body): import each file,
+    skin its meshes to this armature, and hide the base body except the regions in
+    "show_body" (default: the head) so no skin pokes through the clothes."""
+    files = costume.get("outfit", [])
+    if not files:
+        return
+    for name in files:
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=os.path.join(root, OUTFIT_DIR, f"{name}.gltf"))
+        new = set(bpy.data.objects) - before
+        for obj in new:
+            if obj.type == "MESH" and any(m.type == "ARMATURE" for m in obj.modifiers):
+                obj.parent = armature
+                obj.matrix_parent_inverse.identity()
+                obj.matrix_basis.identity()
+                for m in obj.modifiers:
+                    if m.type == "ARMATURE":
+                        m.object = armature
+                obj["outfit"] = True
+                if _ids is not None:                    # ID mode: one colour per part (per material)
+                    attr = obj.data.color_attributes.new(COLOR_ATTR, "FLOAT_COLOR", "POINT")
+                    mats = [m.name if m else "" for m in obj.data.materials]
+                    vert_mat = {}
+                    for poly in obj.data.polygons:
+                        for vi in poly.vertices:
+                            vert_mat.setdefault(vi, mats[poly.material_index] if mats else "")
+                    for v in obj.data.vertices:
+                        part = outfit_part_name(obj.name, vert_mat.get(v.index, ""), costume)
+                        attr.data[v.index].color = (*part_color(part, [0.5, 0.5, 0.5]), 1.0)
+                    obj.data.color_attributes.active_color = attr
+        for obj in new:
+            if obj.type != "MESH" or obj.parent is not armature:
+                bpy.data.objects.remove(obj, do_unlink=True)
+    keep = set(costume.get("show_body", ["head"]))
+    for body in [o for o in armature.children if is_body(o)]:
+        names = {g.index: g.name for g in body.vertex_groups}
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        deform = bm.verts.layers.deform.verify()
+        drop = []
+        for v in bm.verts:
+            groups = v[deform]
+            bone = names.get(max(groups.items(), key=lambda kv: kv[1])[0], "spine_02") if groups else "spine_02"
+            if region_of(bone) not in keep:
+                drop.append(v)
+        bmesh.ops.delete(bm, geom=drop, context="VERTS")
+        bm.to_mesh(body.data)
+        bm.free()
+
+
 def apply(armature, costume, root, ids=False):
     """Hair, clothes, props and colours; call at rest pose, before actions and constraints."""
     global _ids
     _ids = {} if ids else None
     add_hair(armature, costume, root)
     paint_body(armature, costume)
+    add_outfit(armature, costume, root)
     add_shells(armature, costume)
     add_props(armature, costume)

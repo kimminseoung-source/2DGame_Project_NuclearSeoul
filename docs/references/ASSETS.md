@@ -8,6 +8,8 @@
 
 - Mixamo(Adobe), 캐릭터 Alex와 동작 Breathing Idle, Walking, Crouch Walk Forward, Standing Melee Attack Horizontal, Hit Reaction, Standing React Death Backward, Picking Up Object, https://www.mixamo.com . 2026-11-11 무료 계정으로 내려받음. 주인공 3D 바탕과 동작으로 사용하고, 시안 색으로 다시 칠해 도트 스프라이트로 렌더함. 원본 파일은 저장소에 올리지 않음.
 
+- Quaternius, Modular Character Outfits - Fantasy [Standard], https://quaternius.itch.io/modular-character-outfits-fantasy , CC0 1.0. 주인공 옷(Ranger 조끼·소매, Peasant 바지, Ranger 부츠)으로 사용하고 시안 색으로 다시 칠함.
+
 ## 사실 확인 참고
 
 - CDC Radiation Safety: https://www.cdc.gov/radiation-health/safety/index.html

@@ -416,8 +416,8 @@ def main():
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
     if outfit and armature is not None:
-        if args.render_pass != "tex":                   # the tex pass keeps the model's own texture
-            costumes.apply(armature, outfit, PROJECT_ROOT, ids=args.render_pass == "id")
+        # Every pass needs the same clothes and props; only the id pass repaints them.
+        costumes.apply(armature, outfit, PROJECT_ROOT, ids=args.render_pass == "id")
     if armature is not None and not args.keep_root:
         pin_root(armature)
     shape_body(armature, args.head, args.bulk, args.legs)
