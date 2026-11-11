@@ -88,7 +88,7 @@
      --model "assets/source3d/quaternius_base_characters/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf" \
      --anim-file "assets/source3d/quaternius_animation_library/Unreal-Godot/UAL1_Standard.glb" \
      --out assets/characters/base \
-     --map idle=Idle_Loop walk=Walk_Loop sneak=Crouch_Fwd_Loop swing=Sword_Attack hurt=Hit_Chest down=Death01 pickup=Fixing_Kneeling@0-20 \
+     --map idle=Idle_Loop walk=Walk_Loop "sneak=Walk_Loop+Crouch_Idle_Loop*0.4" swing=Sword_Attack hurt=Hit_Chest down=Death01 pickup=Fixing_Kneeling@0-20 \
      --frames-for idle=4 walk=8 sneak=6 swing=6 hurt=3 down=5 pickup=4 \
      --tilt 20 --head 1.15 --bulk 1.1 --legs 1.0 --shift-for down=16 \
      --flat 0.80,0.62,0.50 --bands 4 --outline
@@ -106,7 +106,7 @@
 | --- | --- | --- | --- |
 | idle | `Idle_Loop` | 4 | |
 | walk | `Walk_Loop` | 8 | |
-| sneak | `Crouch_Fwd_Loop` | 6 | 웅크려 걷기 |
+| sneak | `Walk_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음(`Walk_Loop+Crouch_Idle_Loop*0.4`) | 6 | v4b부터. 무료 팩의 `Crouch_Fwd_Loop`는 쪼그려 앉은 깊은 자세라 "몸을 낮추고 조심스럽게 걷기"로 안 읽힘. 섞을 때는 COMBINE(회전을 곱해 더함)을 써야 함. 단순 평균(REPLACE)은 다리가 뒤로 뒤집힘 |
 | swing | `Sword_Attack` | 6 | 칼 공격을 방망이 휘두르기로 사용 |
 | hurt | `Hit_Chest` | 3 | |
 | down | `Death01` | 5 | 마지막 칸 유지 |
@@ -130,7 +130,7 @@
 
 | 버전 | 미리보기 | 결과 | 다음에 고칠 점 |
 | --- | --- | --- | --- |
-| **기본 몸 v4 (2026-11-10, 현재 기준 캐릭터)** | `previews/base_body_v4.png`, 게임 화면 `previews/base_body_v4_ingame.png` | 카메라를 20° 위에서 내려다보게 하고 비율을 거의 원래대로(머리 1.15·몸 1.1·다리 1.0) 되돌림. 사용자 선택 "B가 제일 낫다". 서 있기·걷기·줍기·쓰러짐은 평범한 사람으로 읽힘 | 점검표 결과: ① 은신이 여전히 깊게 쪼그린 자세(무료 팩에 다른 웅크려 걷기가 없음) ② 휘두르기가 칼 찌르기처럼 팔을 벌려 방망이 공격으로 안 읽힘 ③ 지금 주인공보다 가늘고 조금 큼(옷·장비로 덩치를 만들 예정) |
+| **기본 몸 v4 (2026-11-10, 현재 기준 캐릭터)** | `previews/base_body_v4.png`, 게임 화면 `previews/base_body_v4_ingame.png` | 카메라를 20° 위에서 내려다보게 하고 비율을 거의 원래대로(머리 1.15·몸 1.1·다리 1.0) 되돌림. 사용자 선택 "B가 제일 낫다". 서 있기·걷기·줍기·쓰러짐은 평범한 사람으로 읽힘 | 점검표 결과: ① 은신이 깊게 쪼그린 자세 → v4b에서 해결 ② 휘두르기가 칼 찌르기처럼 팔을 벌려 방망이 공격으로 안 읽힘 ③ 지금 주인공보다 가늘고 조금 큼(옷·장비로 덩치를 만들 예정) |
 | 기본 몸 v3 (2026-11-10) | `previews/base_body_v3.png` | 다리를 0.8배로 줄여 키가 지금 주인공과 비슷해짐. 쓰러진 자세까지 모든 칸이 바닥선에 닿고 칸 밖으로 잘리지 않음 | ① 휘두르기는 칼 동작이라 팔을 크게 벌림(무기를 쥐여 보고 판단) ② 웅크려 걷기에서 손이 몸 앞으로 늘어짐 |
 | 기본 몸 v2 (2026-11-10) | `previews/base_body_v2.png` | 머리가 커지고 몸이 굵어져 덜 왜소함. 외곽선이 또렷하고, 옆 조명으로 밝은 면·어두운 면이 구분됨. 줍기가 무릎 꿇고 바닥에 손을 뻗는 동작으로 바뀜 | ① 아직 지금 주인공보다 키가 크고 다리가 김(옷을 입힌 뒤 다시 판단) ② 쓰러짐 3~5칸에서 머리가 칸 왼쪽 밖으로 잘림 → 쓰러짐만 칸 안으로 당기는 처리 필요 ③ 휘두르기가 칼 동작이라 팔을 크게 벌림 → 방망이를 쥐여 보고 판단 |
 | 기본 몸 v1 (2026-11-10) | `previews/base_body_v1.png` | 동작 7종이 옆모습·같은 발 위치로 나옴. 걷기·공격·쓰러짐 동작이 자연스러움 | ① 체형이 길고 가늘어(Superhero 비율) 지금 주인공보다 왜소해 보임 → 머리·몸통을 키워 2~3등신 쪽으로 ② 외곽선이 약함 ③ 피부 질감이 작은 크기에서 얼룩처럼 보임 → 단색 위주로 ④ 줍기가 바닥 줍기가 아님 |
@@ -150,3 +150,4 @@
 | 2026-11-10 | v3 비율 점검(`previews/base_body_v3_zoom.png`): 머리 1.7배로 뒤통수가 길쭉해지고 팔다리가 가늘어 좀비처럼 보임. 사용자 지시 "일단 지금 한 거 적용해 보고" | v3를 게임 주인공에 연결(`src/character_look.py`의 `SheetLook`, `main.py`의 `PLAYER_LOOK = "base"`). 게임 화면 `previews/base_body_v3_ingame.png`. 사용자 의견을 받아 v4에서 비율을 고칠 예정 |
 | 2026-11-10 | 사용자 지적 "아래에서 쳐다보는 느낌", "은신 자세도 이상함". 렌더 스크립트에 `--tilt`(카메라를 위에서 내려다보는 각도) 추가, 시험판 A(카메라만)·B(카메라+비율 되돌림 머리 1.15·몸 1.1·다리 1.0) 렌더 | 비교 `previews/base_body_v4_trial.png`. B가 가장 나음. 원인 분석과 점검표는 [ART_FEEDBACK.md](ART_FEEDBACK.md) |
 | 2026-11-10 | 사용자 선택 "B가 제일 낫다" | 동작 7종을 B 설정으로 다시 렌더해 `base/`를 v4로 교체, 게임에 바로 반영. 점검표로 남은 문제(은신·휘두르기)를 결과 이력에 적음 |
+| 2026-11-11 | 사용자 지시 "은신 먼저". 렌더 스크립트에 동작 섞기(`동작+다른동작*비율`) 추가. 첫 시도(REPLACE)는 다리가 뒤로 뒤집혀 실패, COMBINE으로 바꿔 해결. 시험판 비교 `previews/sneak_trial.png` | 사용자 선택 "B (40%)". `base/sneak.png` 교체(v4b), 게임 화면 `previews/sneak_v4b_ingame.png`. 남은 점: 걸음 중간 칸에서 고개가 조금 숙여짐, 팔이 늘어짐(방망이를 쥐이면 다시 판단) |

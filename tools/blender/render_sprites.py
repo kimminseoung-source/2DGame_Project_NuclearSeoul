@@ -186,13 +186,40 @@ def frames_of(action, count, frame_range=None):
     return [round(start + i * step) for i in range(count)]
 
 
-def assign_action(armature, action):
+def assign_action(armature, action, blend=None):
+    """Play one action, or mix a second one over it: blend = (action, weight 0..1).
+
+    Mixing lets a free pack make poses it lacks, e.g. sneak = walk with a little crouch.
+    The second action is stretched to the first one's length so both loops stay in step.
+    """
     data = armature.animation_data or armature.animation_data_create()
+    for track in list(data.nla_tracks):
+        data.nla_tracks.remove(track)
     data.action = action
     # Blender 4.4+ actions have slots; a borrowed action must be pointed at its slot.
     slots = getattr(action, "slots", None)
     if slots and getattr(data, "action_slot", None) is None:
         data.action_slot = slots[0]
+    if blend is None:
+        return
+    over, weight = blend
+    data.action = None
+    base_start, base_end = action.frame_range
+    over_start, over_end = over.frame_range
+    for act, influence in ((action, None), (over, weight)):
+        track = data.nla_tracks.new()
+        strip = track.strips.new(act.name, int(base_start), act)
+        if getattr(act, "slots", None) and hasattr(strip, "action_slot"):
+            strip.action_slot = act.slots[0]
+        strip.blend_type = "REPLACE"
+        if act is over:
+            # COMBINE adds the second pose on top with proper rotation maths (REPLACE mixes
+            # quaternions component by component and can flip a leg backwards).
+            strip.blend_type = "COMBINE"
+            strip.scale = (base_end - base_start) / max(1e-6, over_end - over_start)
+            strip.use_animated_influence = True
+            strip.influence = influence
+            strip.keyframe_insert("influence", frame=int(base_start))
 
 
 def finish_pixels(pixels, bands, outline):
@@ -242,8 +269,8 @@ def snap_to_floor(px):
     return out
 
 
-def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, frame_range, args):
-    assign_action(armature, action)
+def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, frame_range, args, blend=None):
+    assign_action(armature, action, blend)
     frames = frames_of(action, count, frame_range)
     sheet = bpy.data.images.new(f"sheet_{sheet_name}", CELL_W * len(frames), CELL_H, alpha=True)
     sheet_px = [0.0] * (CELL_W * len(frames) * CELL_H * 4)
@@ -267,14 +294,20 @@ def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, f
 
 
 def parse_map_entry(entry):
-    """'pickup=Fixing_Kneeling@0-30' -> ('pickup', 'Fixing_Kneeling', (0, 30))."""
+    """'pickup=Fixing_Kneeling@0-30' -> ('pickup', 'Fixing_Kneeling', (0, 30), None).
+    'sneak=Walk_Loop+Crouch_Fwd_Loop*0.4' -> ('sneak', 'Walk_Loop', None, ('Crouch_Fwd_Loop', 0.4))."""
     sheet_name, action_part = entry.split("=", 1)
     frame_range = None
+    blend = None
+    if "+" in action_part:
+        action_part, over = action_part.split("+", 1)
+        over_name, weight = over.split("*") if "*" in over else (over, "0.5")
+        blend = (over_name, float(weight))
     if "@" in action_part:
         action_part, span = action_part.split("@", 1)
         start, end = span.split("-")
         frame_range = (float(start), float(end))
-    return sheet_name, action_part, frame_range
+    return sheet_name, action_part, frame_range, blend
 
 
 def safe_name(name):
@@ -313,16 +346,22 @@ def main():
         print("saved rest pose only (no armature)")
         return
     entries = [parse_map_entry(e) for e in args.map] if args.map else \
-        [(safe_name(a.name), a.name, None) for a in bpy.data.actions]
-    for sheet_name, action_name, frame_range in entries:
+        [(safe_name(a.name), a.name, None, None) for a in bpy.data.actions]
+    for sheet_name, action_name, frame_range, blend in entries:
         action = bpy.data.actions.get(action_name)
         if action is None:
             print(f"missing action {action_name}")
             continue
+        if blend is not None:
+            over = bpy.data.actions.get(blend[0])
+            if over is None:
+                print(f"missing action {blend[0]}")
+                continue
+            blend = (over, blend[1])
         # Moving the camera left moves the figure right in the cell.
         scene.camera.location.x = -shifts.get(sheet_name, 0.0) * PERSON_HEIGHT_M / PERSON_HEIGHT_PX
         render_sheet(scene, armature, action, int(counts.get(sheet_name, args.frames)),
-                     out_dir, tmp_dir, sheet_name, frame_range, args)
+                     out_dir, tmp_dir, sheet_name, frame_range, args, blend)
 
 
 main()
