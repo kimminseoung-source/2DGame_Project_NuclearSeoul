@@ -47,6 +47,7 @@ Tab으로 배낭을 열고 닫습니다. 방향키로 슬롯을 선택하고 Esc
 - [개발 요구사항 원문](PRD.md)
 - [1차 발표 PDF (9장)](docs/presentation/부산까지_기획2_1차발표.pdf)
 - [개발 계획](PLAN.md)
+- [개발일지(날짜별)](docs/DEVLOG.md)
 - [작업 회고와 학습 기록](docs/DEVELOPMENT_RETROSPECTIVE.md)
 - [제출 확인 목록](docs/presentation/SUBMISSION_CHECKLIST.md)
 - [콘셉트 이미지 및 출처](docs/references/ASSETS.md)
