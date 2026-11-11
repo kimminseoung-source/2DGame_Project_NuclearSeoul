@@ -29,9 +29,14 @@ def to_display(c):
     return tuple(enc(v) for v in c)
 
 
-def repaint(id_img, light_img, ids, ramps, part_ramp, cuts):
+def repaint(id_img, light_img, ids, ramps, part_ramp, cuts, tex_img=None, splits=None):
+    """splits: part -> {"below": luminance, "ramp": name}: inside that part, pixels whose
+    own texture (tex pass) is darker than "below" take another ramp (a cap or hair on the
+    head region, gloves on the hands)."""
     w, h = id_img.size
     ip, lp = id_img.load(), light_img.load()
+    tp = tex_img.load() if tex_img is not None else None
+    splits = splits or {}
     shown = {part: to_display(c) for part, c in ids.items()}
     out = Image.new("RGBA", (w, h))
     op = out.load()
@@ -43,7 +48,13 @@ def repaint(id_img, light_img, ids, ramps, part_ramp, cuts):
             part = min(shown, key=lambda p: sum((u - v) ** 2 for u, v in zip(shown[p], (r, g, b))))
             light = lp[x, y][0]
             level = 0 if light < cuts[0] else 1 if light < cuts[1] else 2
-            ramp = ramps[part_ramp.get(part, part)]
+            name = part_ramp.get(part, part)
+            rule = splits.get(part)
+            if rule and tp is not None:
+                tr, tg, tb, _ = tp[x, y]
+                if 0.3 * tr + 0.59 * tg + 0.11 * tb < rule["below"]:
+                    name = rule["ramp"]
+            ramp = ramps[name]
             op[x, y] = (*ramp[level], 255)
     # 1 px outline around the figure.
     solid = [[op[x, y][3] > 0 for x in range(w)] for y in range(h)]
@@ -62,6 +73,7 @@ def main():
     parser.add_argument("--costume", required=True)
     parser.add_argument("--id", required=True)
     parser.add_argument("--light", required=True)
+    parser.add_argument("--tex", default=None, help="tex pass dir (model texture, flat light)")
     parser.add_argument("--out", required=True)
     parser.add_argument("sheets", nargs="*")
     args = parser.parse_args()
@@ -74,7 +86,9 @@ def main():
     for sheet in sheets:
         id_img = Image.open(Path(args.id) / f"{sheet}.png").convert("RGBA")
         light_img = Image.open(Path(args.light) / f"{sheet}.png").convert("RGBA")
-        repaint(id_img, light_img, ids, paint["ramps"], paint["part_ramp"], paint["cuts"]).save(out / f"{sheet}.png")
+        tex_img = Image.open(Path(args.tex) / f"{sheet}.png").convert("RGBA") if args.tex else None
+        repaint(id_img, light_img, ids, paint["ramps"], paint["part_ramp"], paint["cuts"],
+                tex_img, paint.get("splits")).save(out / f"{sheet}.png")
         print("saved", out / f"{sheet}.png")
 
 

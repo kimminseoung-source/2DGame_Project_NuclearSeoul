@@ -77,16 +77,42 @@ def load(path):
 
 
 def model_path(costume, root):
+    """The costume's own "model" file (e.g. a Mixamo character), else a base body."""
+    if costume.get("model"):
+        return os.path.join(root, costume["model"])
     return os.path.join(root, BODIES[costume.get("body", "male")])
 
 
 def is_body(obj):
-    """The base body mesh: "SuperHero_Male" or "Superhero_Female" (the packs differ in case)."""
-    return obj.type == "MESH" and obj.name.lower().startswith("superhero")
+    """The body mesh: the packs' "SuperHero_Male" / "Superhero_Female", or a Mixamo
+    character's single skinned mesh (any mesh with an Armature modifier and vertex groups
+    named mixamorig:...)."""
+    if obj.type != "MESH":
+        return False
+    if obj.name.lower().startswith("superhero"):
+        return True
+    return any(g.name.startswith("mixamorig:") for g in obj.vertex_groups)
+
+
+MIXAMO_REGIONS = {
+    "Head": "head", "HeadTop_End": "head", "Neck": "head",
+    "Hand": "hands", "ForeArm": "forearms", "Arm": "top", "Shoulder": "top",
+    "Spine": "top", "Spine1": "top", "Spine2": "top",
+    "Hips": "bottom", "UpLeg": "bottom", "Leg": "bottom",
+    "Foot": "shoes", "ToeBase": "shoes", "Toe_End": "shoes",
+}
 
 
 def region_of(bone):
-    """Which costume region a bone belongs to."""
+    """Which costume region a bone belongs to (Quaternius or Mixamo bone names)."""
+    if bone.startswith("mixamorig:"):
+        name = bone.split(":", 1)[1]
+        for side in ("Left", "Right"):
+            if name.startswith(side):
+                name = name[len(side):]
+        if name.startswith("Hand") or any(f in name for f in ("Thumb", "Index", "Middle", "Ring", "Pinky")):
+            return "hands"
+        return MIXAMO_REGIONS.get(name, "top")
     if bone in ("Head", "neck_01"):
         return "head"
     if bone.startswith(("hand_", "index_", "middle_", "pinky_", "ring_", "thumb_")):
@@ -206,6 +232,10 @@ def add_props(armature, costume):
         fill_color(obj.data, part_color(prop.get("name", prop["shape"]), prop.get("color", [0.5, 0.5, 0.5])))
         rot = Euler([math.radians(a) for a in prop.get("rotate", [0, 0, 0])]).to_matrix().to_4x4()
         rest = armature.matrix_world @ bone.matrix_local
+        # Position and turn only: a Mixamo armature is scaled 0.01 (centimetres), which would
+        # shrink every prop to nothing; sizes and offsets are always metres.
+        loc, turn, _ = rest.decompose()
+        rest = Matrix.Translation(loc) @ turn.to_matrix().to_4x4()
         target = rest @ Matrix.Translation(Vector(prop.get("offset", [0, 0, 0]))) @ rot
         obj.parent = armature
         obj.parent_type = "BONE"

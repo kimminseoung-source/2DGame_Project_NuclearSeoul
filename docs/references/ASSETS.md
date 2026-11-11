@@ -6,6 +6,8 @@
 
 - `assets/characters/concepts/hero_concept_a.webp`: 2026-11-11 사용자가 Google Gemini 웹사이트(gemini.google.com)에서 생성한 주인공 콘셉트 이미지. 요청 문안은 `tools/gen/prompts/hero_a.txt`, 참고 이미지는 이 게임의 거리 배경. 오른쪽 아래 Gemini 표시는 정리 과정에서 지웠다. 게임용 스프라이트는 이 이미지를 정리한 `hero_concept_a_sprite.png`.
 
+- Mixamo(Adobe), 캐릭터 Alex와 동작 Breathing Idle, Walking, Crouch Walk Forward, Standing Melee Attack Horizontal, Hit Reaction, Standing React Death Backward, Picking Up Object, https://www.mixamo.com . 2026-11-11 무료 계정으로 내려받음. 주인공 3D 바탕과 동작으로 사용하고, 시안 색으로 다시 칠해 도트 스프라이트로 렌더함. 원본 파일은 저장소에 올리지 않음.
+
 ## 사실 확인 참고
 
 - CDC Radiation Safety: https://www.cdc.gov/radiation-health/safety/index.html

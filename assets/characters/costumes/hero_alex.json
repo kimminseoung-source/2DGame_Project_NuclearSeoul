@@ -1,0 +1,252 @@
+{
+  "name": "주인공 (Mixamo Alex 바탕, 콘셉트 A 색)",
+  "role": "리더·감지",
+  "signature": "옷이 모델링된 Mixamo Alex(재킷·조끼·카고 바지·부츠)를 시안 A의 색으로 다시 칠함",
+  "model": "assets/source3d/mixamo/Alex.fbx",
+  "head": 1.0,
+  "bulk": 1.0,
+  "legs": 1.0,
+  "regions": {},
+  "props": [
+    {
+      "name": "bat",
+      "shape": "taper",
+      "bone": "mixamorig:RightHand",
+      "size": [
+        0.075,
+        0.075,
+        0.62
+      ],
+      "rotate": [
+        -90,
+        0,
+        -35
+      ],
+      "offset": [
+        0.134,
+        0.253,
+        0.0
+      ],
+      "color": [
+        0.7,
+        0.45,
+        0.25
+      ],
+      "note": "Mixamo hand: Y along the fingers, X to the front (Quaternius uses Z), so the bat is turned with [-90, 0, -35]"
+    },
+    {
+      "name": "backpack",
+      "shape": "rbox",
+      "bone": "mixamorig:Spine2",
+      "size": [
+        0.3,
+        0.36,
+        0.16
+      ],
+      "offset": [
+        0,
+        0.02,
+        -0.2
+      ],
+      "color": [
+        0.38,
+        0.4,
+        0.24
+      ]
+    }
+  ],
+  "repaint": {
+    "note": "Colour ramps [dark, mid, light] picked from concepts/hero_concept_a.webp; cuts = light-pass levels between bands",
+    "cuts": [
+      115,
+      160
+    ],
+    "ramps": {
+      "jacket": [
+        [
+          128,
+          82,
+          30
+        ],
+        [
+          178,
+          124,
+          44
+        ],
+        [
+          214,
+          160,
+          66
+        ]
+      ],
+      "hood": [
+        [
+          110,
+          70,
+          26
+        ],
+        [
+          150,
+          102,
+          38
+        ],
+        [
+          188,
+          136,
+          52
+        ]
+      ],
+      "trousers": [
+        [
+          38,
+          36,
+          34
+        ],
+        [
+          58,
+          56,
+          52
+        ],
+        [
+          82,
+          80,
+          74
+        ]
+      ],
+      "skin": [
+        [
+          150,
+          92,
+          62
+        ],
+        [
+          214,
+          152,
+          108
+        ],
+        [
+          234,
+          176,
+          132
+        ]
+      ],
+      "hair": [
+        [
+          28,
+          22,
+          20
+        ],
+        [
+          46,
+          38,
+          34
+        ],
+        [
+          66,
+          56,
+          50
+        ]
+      ],
+      "eyes": [
+        [
+          20,
+          16,
+          16
+        ],
+        [
+          20,
+          16,
+          16
+        ],
+        [
+          20,
+          16,
+          16
+        ]
+      ],
+      "backpack": [
+        [
+          52,
+          56,
+          32
+        ],
+        [
+          84,
+          90,
+          50
+        ],
+        [
+          112,
+          118,
+          66
+        ]
+      ],
+      "boots": [
+        [
+          24,
+          22,
+          20
+        ],
+        [
+          42,
+          36,
+          30
+        ],
+        [
+          64,
+          56,
+          46
+        ]
+      ],
+      "gloves": [
+        [
+          24,
+          24,
+          24
+        ],
+        [
+          40,
+          38,
+          38
+        ],
+        [
+          60,
+          58,
+          56
+        ]
+      ],
+      "bat": [
+        [
+          120,
+          70,
+          36
+        ],
+        [
+          170,
+          108,
+          58
+        ],
+        [
+          206,
+          146,
+          90
+        ]
+      ]
+    },
+    "part_ramp": {
+      "head": "skin",
+      "hands": "gloves",
+      "forearms": "jacket",
+      "top": "jacket",
+      "bottom": "trousers",
+      "shoes": "boots",
+      "hood_down": "hood"
+    },
+    "splits": {
+      "head": {
+        "below": 70,
+        "ramp": "hair"
+      }
+    }
+  }
+}

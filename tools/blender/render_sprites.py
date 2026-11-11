@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument("--costume", default=None,
                         help="costume JSON (assets/characters/costumes/): body, proportions, colours, hair, props")
     parser.add_argument("--out", required=True)
-    parser.add_argument("--anim-file", default=None,
+    parser.add_argument("--anim-file", nargs="*", default=None,
                         help="file whose actions are borrowed (same bone names), e.g. the animation library")
     parser.add_argument("--map", nargs="*", default=None,
                         help="sheet=action pairs, optionally with a frame range: pickup=Fixing_Kneeling@0-30")
@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
     parser.add_argument("--keep-root", action="store_true",
                         help="let the root bone travel (default: pinned so sprites stay on the spot)")
-    parser.add_argument("--pass", dest="render_pass", choices=["color", "id", "light"], default="color",
+    parser.add_argument("--pass", dest="render_pass", choices=["color", "id", "light", "tex"], default="color",
                         help="id: each costume part in a flat ID colour; light: white body, light only "
                              "(both for tools/sprites/repaint.py). Bands and outline are skipped for them.")
     parser.add_argument("--tilt", type=float, default=0.0,
@@ -93,9 +93,18 @@ def import_model(path):
 
 
 def import_animations(path):
-    """Import a file only for its actions; its own objects are removed again."""
+    """Import a file only for its actions; its own objects are removed again.
+
+    A file with one motion (a Mixamo download: every action is called "mixamo.com")
+    names its longest new action after the file, e.g. Walking.fbx -> action "Walking".
+    """
     before = set(bpy.data.objects)
+    old_actions = set(bpy.data.actions)
     import_model(path)
+    new = [a for a in bpy.data.actions if a not in old_actions]
+    if new and os.path.splitext(path)[1].lower() == ".fbx":
+        longest = max(new, key=lambda a: a.frame_range[1] - a.frame_range[0])
+        longest.name = os.path.splitext(os.path.basename(path))[0]
     for action in bpy.data.actions:
         action.use_fake_user = True
     for obj in set(bpy.data.objects) - before:
@@ -118,6 +127,17 @@ def hold_scale(armature, bone, x, y, z):
     """Fix a bone's local scale after the animation is applied (Limit Scale with min = max)."""
     pose_bone = armature.pose.bones.get(bone)
     if pose_bone is None:
+        hips = armature.pose.bones.get("mixamorig:Hips")
+        if hips is not None:
+            # Mixamo rigs have no root: hold the hips over their rest spot (world X and Y)
+            # but let them bob and crouch (world Z).
+            bpy.context.view_layer.update()
+            rest = armature.matrix_world @ hips.head
+            c = hips.constraints.new("LIMIT_LOCATION")
+            c.use_min_x = c.use_max_x = c.use_min_y = c.use_max_y = True
+            c.min_x = c.max_x = rest.x
+            c.min_y = c.max_y = rest.y
+            c.owner_space = "WORLD"
         return
     c = pose_bone.constraints.new("LIMIT_SCALE")
     c.use_min_x = c.use_max_x = c.use_min_y = c.use_max_y = c.use_min_z = c.use_max_z = True
@@ -192,6 +212,9 @@ def setup_render(scene, flat, painted=False, render_pass="color"):
     if render_pass == "id":
         shading.light = "FLAT"                          # pure part colours, no light
         shading.color_type = "VERTEX"
+    elif render_pass == "tex":
+        shading.light = "FLAT"                          # the model's own texture, no light
+        shading.color_type = "TEXTURE"
     elif render_pass == "light":
         shading.color_type = "SINGLE"                   # white everywhere: only the light shows
         shading.single_color = (1.0, 1.0, 1.0)
@@ -379,8 +402,8 @@ def main():
         raise SystemExit("--model or --costume is required")
     clear_scene()
     import_model(os.path.abspath(args.model))
-    if args.anim_file:
-        import_animations(os.path.abspath(args.anim_file))
+    for anim_file in args.anim_file or []:
+        import_animations(os.path.abspath(anim_file))
     if args.list:
         for action in bpy.data.actions:
             print(f"ACTION {action.name} {tuple(action.frame_range)}")
@@ -393,7 +416,8 @@ def main():
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
     if outfit and armature is not None:
-        costumes.apply(armature, outfit, PROJECT_ROOT, ids=args.render_pass == "id")
+        if args.render_pass != "tex":                   # the tex pass keeps the model's own texture
+            costumes.apply(armature, outfit, PROJECT_ROOT, ids=args.render_pass == "id")
     if armature is not None and not args.keep_root:
         pin_root(armature)
     shape_body(armature, args.head, args.bulk, args.legs)
