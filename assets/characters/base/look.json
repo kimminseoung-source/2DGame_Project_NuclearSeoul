@@ -1,4 +1,12 @@
 {
+  "walk": {
+    "stride_m": 1.22,
+    "note": "Walk_Loop: 0.61 m step, two steps per cycle"
+  },
+  "sneak": {
+    "stride_m": 0.57,
+    "note": "Walk_Loop + Crouch_Idle_Loop*0.4: 0.28 m step"
+  },
   "swing": {
     "impact": 3,
     "note": "Sword_Regular_A frame 6: arm swept forward"

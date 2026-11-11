@@ -5,7 +5,7 @@ from collections import deque
 
 import hit_feel
 import ui
-from bat import BAT_DURATION, BatSwing
+from bat import BatSwing
 from nav import PX_PER_M_Y, NavField, metres, path_length, point_along, truncate
 from nav import bodies_clash as nav_clash
 from tile_map import HEIGHT, WIDTH
@@ -13,7 +13,7 @@ from zombie import STRIKE_TIME, WINDUP_TIME
 
 
 BANNER_TIME = 1.4
-MOVE_SPEED_M = 4.5          # metres per second while walking
+MOVE_SPEED_M = 2.0          # metres per second while walking (legs follow the distance)
 ENEMY_PAUSE = 0.45
 SKIP_PAUSE = 0.9
 POPUP_TIME = 1.3
@@ -385,6 +385,7 @@ class Combat:
             unit.direction = 1 if target[0] > old[0] else -1
         unit.x, unit.y = new
         unit.walk_time += frame_time
+        unit.walk_distance += step
         fighter.moves_left = max(0.0, fighter.moves_left - step)
         if metres(new, target) < 1e-3:
             unit.x, unit.y = target
@@ -694,7 +695,7 @@ class Combat:
             swing = attack["swing"]
             if swing.update(frame_time):
                 self.resolve_attack(attacker, target)
-            if swing.elapsed >= BAT_DURATION:
+            if swing.done:
                 self.finish_attack()
             return
         zombie = attacker.unit

@@ -5,20 +5,17 @@ from math import cos, hypot, pi
 import pico2d
 
 
-BAT_CONTACT = 0.14
-BAT_FOLLOW_THROUGH = 0.20
-BAT_RECOVERY = 0.27
-BAT_DURATION = 0.34
+# Seconds from the start of the swing. A longer wind-up gathers weight before the blow;
+# the strike itself stays quick so the hit feels sharp.
+BAT_CONTACT = 0.30
+BAT_FOLLOW_THROUGH = 0.40
+BAT_DURATION = 0.60
 BAT_IMPACT_TIME = 0.18
-BAT_PLAYBACK_RATE = 0.7
 BAT_REACH = 40
 BAT_DEPTH_REACH = 20
 BAT_ARC = pi / 4
-# Offsets from the player to the right-facing bat tip and its trail.
-SWING_TRAIL = {
-    2: ((27, 16), (31, 18), (32, 22), (30, 27)),
-    3: ((-20, 7), (-24, 8), (-26, 11), (-26, 15)),
-}
+# Offsets from the player to the right-facing trail of the blow, drawn just after contact.
+SWING_TRAIL = ((27, 16), (31, 18), (32, 22), (30, 27))
 
 
 class BatSwing:
@@ -28,7 +25,7 @@ class BatSwing:
 
     def update(self, frame_time):
         previous_time = self.elapsed
-        self.elapsed += frame_time * BAT_PLAYBACK_RATE
+        self.elapsed += frame_time
         return previous_time < BAT_CONTACT <= self.elapsed
 
     def hits(self, player, target):
@@ -54,19 +51,13 @@ class BatSwing:
         return min(1.0, self.elapsed / BAT_DURATION)
 
     @property
-    def frame(self):
-        if self.elapsed < BAT_CONTACT:
-            return 1
-        if self.elapsed < BAT_FOLLOW_THROUGH:
-            return 2
-        if self.elapsed < BAT_RECOVERY:
-            return 3
-        return 4
+    def done(self):
+        return self.elapsed >= BAT_DURATION
 
     def draw_trail(self, player, camera_x):
-        trail = SWING_TRAIL.get(self.frame)
-        if trail is None:
+        if not BAT_CONTACT <= self.elapsed < BAT_FOLLOW_THROUGH:
             return
+        trail = SWING_TRAIL
         x = player.x - camera_x
         y = player.y
         for index, ((x1, y1), (x2, y2)) in enumerate(zip(trail, trail[1:])):

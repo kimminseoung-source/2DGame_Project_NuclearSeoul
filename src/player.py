@@ -12,18 +12,18 @@ from transitions import Machine
 
 import camera
 import game_clock
-from bat import BAT_DURATION, BatSwing
+from bat import BatSwing
+from nav import PX_PER_M_X, metres
 
 
 PLAYER_HALF_SIZE = 11
-WALK_SPEED = 150
-SNEAK_SPEED = 85
-BASE_MOVEMENT_RATE = 0.7
+# An unhurried walk: the legs of the walk sheet cover 1.22 m per cycle and the sneak sheet
+# 0.57 m, so these speeds give about one leg cycle per second with the feet planted.
+WALK_SPEED_M = 1.2           # metres per second
+SNEAK_SPEED_M = 0.55
 DASH_SPEED = 340
 DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
-WALK_FRAME_TIME = 0.12
-SNEAK_FRAME_TIME = 0.15
 PICKUP_CONTACT = 0.28
 PICKUP_DURATION = 0.58
 FREE_STATES = ["IDLE", "WALK", "SNEAK"]
@@ -36,7 +36,8 @@ class Player:
         self.look = look         # character_look: draws poses, whatever the art
         self.sneaking = False
         self.direction = 1
-        self.walk_time = 0.0
+        self.walk_time = 0.0     # seconds spent moving (0 while standing)
+        self.walk_distance = 0.0 # metres walked, drives the leg cycle so feet never slide
         self.idle_time = 0.0
         self.dash_time = 0.0
         self.dash_cooldown = 0.0
@@ -150,7 +151,7 @@ class Player:
         elif self.state == "SWING":
             if self.swing.update(step):
                 self.events.append("bat_contact")
-            if self.swing.elapsed >= BAT_DURATION:
+            if self.swing.done:
                 self.swing_end()
         elif not self.frozen:
             self.update_walking(step)
@@ -166,29 +167,24 @@ class Player:
 
     def update_walking(self, step):
         keys = sdl2.SDL_GetKeyboardState(None)
-        sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
-        if self.sneaking != sneaking:
-            # Keep the animation phase when switching between walk and sneak speeds.
-            previous_frame_time = SNEAK_FRAME_TIME if self.sneaking else WALK_FRAME_TIME
-            next_frame_time = SNEAK_FRAME_TIME if sneaking else WALK_FRAME_TIME
-            self.walk_time *= next_frame_time / previous_frame_time
-            self.sneaking = sneaking
+        self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         direction_x, direction_y = self.movement_direction(keys)
         if direction_x == direction_y == 0:
             if self.state != "IDLE":
                 self.stop()
-            self.sneaking = sneaking
             self.walk_time = 0.0
             return
-        if sneaking and self.state != "SNEAK":
+        if self.sneaking and self.state != "SNEAK":
             self.sneak()
-        elif not sneaking and self.state != "WALK":
+        elif not self.sneaking and self.state != "WALK":
             self.walk()
-        movement_time = step * BASE_MOVEMENT_RATE * self.speed_multiplier
-        speed = SNEAK_SPEED if sneaking else WALK_SPEED
+        movement_time = step * self.speed_multiplier
+        speed = (SNEAK_SPEED_M if self.sneaking else WALK_SPEED_M) * PX_PER_M_X
         distance_per_axis = speed * movement_time / hypot(direction_x, direction_y)
+        old = (self.x, self.y)
         if self.move(direction_x * distance_per_axis, direction_y * distance_per_axis):
             self.walk_time += movement_time
+            self.walk_distance += metres(old, (self.x, self.y))
         else:
             self.walk_time = 0.0
 
@@ -237,7 +233,8 @@ class Player:
             # Holding Shift crouches at once, even before moving.
             self.draw_pose("sneak_idle" if self.sneaking else "idle", self.idle_time)
         else:
-            self.draw_pose("sneak" if self.sneaking else "walk", self.walk_time)
+            self.draw_pose("sneak" if self.sneaking else "walk", self.walk_time,
+                           distance=self.walk_distance)
 
     def draw_dash_trail(self, strength):
         x, y = self.x - camera.x, self.y - 12
@@ -254,5 +251,6 @@ class Player:
         """Source rectangle of the right-facing idle frame, cropped to head and torso."""
         return self.look.portrait_clip()
 
-    def draw_pose(self, pose, time, contact=None):
-        self.look.draw(pose, time, self.x - camera.x, self.y - 12, self.direction, contact)
+    def draw_pose(self, pose, time, contact=None, distance=None):
+        self.look.draw(pose, time, self.x - camera.x, self.y - 12, self.direction,
+                       contact=contact, distance=distance)

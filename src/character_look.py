@@ -7,8 +7,10 @@ the same calls, so swapping a character's art never touches the unit's code.
 
 SheetLook reads the rendered sheets in assets/characters/<name>/ (see CHARACTER_SPEC.md):
 one row per action, 96x64 cells facing right, feet 4 px above the cell bottom.
-An optional look.json beside the sheets holds per-pose facts, for now the impact frame
-of an attack: {"swing": {"impact": 3}}. Given the attack's contact progress, the frames
+An optional look.json beside the sheets holds per-pose facts:
+- "stride_m": metres the legs cover in one cycle of a walking pose. Given the distance the
+  unit has walked, the leg cycle follows the ground, so feet never slide at any speed.
+- "impact": the frame of an attack where the blow lands: {"swing": {"impact": 3}}. Given the attack's contact progress, the frames
 before the impact play until the hit and the impact frame shows exactly when it lands
 (and stays during the hit-stop); the rest play after. Any attack of any unit uses this.
 
@@ -30,7 +32,8 @@ class SheetLook:
     CELL_W, CELL_H = 96, 64
     FEET_FROM_BOTTOM = 4
     # Seconds per frame for looping poses.
-    FRAME_TIME = {"idle": 0.22, "sneak_idle": 0.22, "walk": 0.09, "sneak": 0.13}
+    # Seconds per frame for looping poses that are not driven by distance (breathing idles).
+    FRAME_TIME = {"idle": 0.55, "sneak_idle": 0.6, "walk": 0.13, "sneak": 0.17}
     # Head and torso of the first idle frame: (left, bottom, width, height) in the cell.
     PORTRAIT = (25, 23, 46, 36)
 
@@ -44,8 +47,11 @@ class SheetLook:
     def frame_count(self, pose):
         return self.sheets[pose].w // self.CELL_W
 
-    def frame_of(self, pose, time, contact=None):
+    def frame_of(self, pose, time, contact=None, distance=None):
         count = self.frame_count(pose)
+        stride = self.meta.get(pose, {}).get("stride_m")
+        if stride and distance is not None:
+            return int(distance / stride * count) % count
         if pose in LOOPING:
             return int(time / self.FRAME_TIME.get(pose, 0.12)) % count
         impact = self.meta.get(pose, {}).get("impact")
@@ -57,14 +63,14 @@ class SheetLook:
             return min(count - 1, impact + int(after * (count - impact)))
         return min(count - 1, max(0, int(time * count)))
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None):
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None):
         fixed = None
         if pose not in self.sheets:
             pose, fixed = FALLBACK.get(pose, ("idle", None))
             if pose not in self.sheets:
                 pose, fixed = "idle", None
         image = self.sheets[pose]
-        frame = self.frame_of(pose, time, contact) if fixed is None else fixed
+        frame = self.frame_of(pose, time, contact, distance) if fixed is None else fixed
         y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
         flip = "" if facing > 0 else "h"
         image.clip_composite_draw(
@@ -82,7 +88,7 @@ class LegacyLook:
     MOVE_W, ACTION_W, FRAME_H = 77, 97, 58
     WALK_CYCLE = (1, 2, 3, 2)
     FRAME_TIME = {"walk": 0.12, "sneak": 0.15}
-    SWING_EDGES = (0.41, 0.59, 0.79)   # bat contact, follow-through, recovery as swing progress
+    SWING_EDGES = (0.5, 0.67, 0.8)     # wind-up, strike, follow-through, recovery as swing progress
 
     def __init__(self, sprites):
         self.sprites = sprites    # {"walk", "sneak", "action"} images
@@ -100,7 +106,7 @@ class LegacyLook:
             return "action", 0
         return "walk", 0
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None):
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None):
         sheet, frame = self.pick(pose, time)
         image = self.sprites[sheet]
         width = self.ACTION_W if sheet == "action" else self.MOVE_W

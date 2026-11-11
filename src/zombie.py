@@ -18,7 +18,7 @@ from tile_map import WRECK_HALF_DEPTH, WRECK_LEFT, WRECK_RIGHT, WRECK_Y
 
 ZOMBIE_RADIUS = 10
 ALERT_DISTANCE = 128
-CHASE_SPEED = 74
+CHASE_SPEED = 27              # px/s, about 70% of the player's walk (was 74 with a 105 px/s walk)
 ATTACK_REACH = 27
 ATTACK_DEPTH = 15
 WINDUP_TIME = 0.38
@@ -45,6 +45,7 @@ class Zombie:
         self.time_left = 0.0
         self.alerted = False
         self.walk_time = 0.0
+        self.walk_distance = 0.0     # metres walked; any unit's look can drive its legs with it
         self.detour = None
         self.in_combat = False
         self.frozen = False           # paused during a bat hit-stop
