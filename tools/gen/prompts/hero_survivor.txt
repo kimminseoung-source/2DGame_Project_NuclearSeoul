@@ -1,0 +1,14 @@
+The attached image is the street background of my 2D side-scrolling pixel-art game: a ruined Korean city after a nuclear disaster, at dusk, muted brown-grey palette, warm street lamp light.
+
+Draw 4 DIFFERENT design options for the PLAYER CHARACTER, side by side in one image, same scale, evenly spaced. The character is a SURVIVOR who has lasted weeks in the ruins: practical, worn, a little tired, but determined.
+
+For every option:
+- Pixel art in the same style and palette as the background: crisp square pixels, limited muted palette, 1-pixel dark outline, soft light from the upper left. No anti-aliasing blur, no painterly rendering.
+- Strict side view, facing RIGHT, full body, standing idle pose, feet on one shared baseline.
+- A young Korean civilian (not a soldier, no armour, no sci-fi, no gas mask). Face clearly visible.
+- Layered, worn, dirty clothes in muted colours (brown, olive, grey, faded navy), with patches, tape or frayed edges. Makeshift gear: a backpack with a rolled blanket or straps, fingerless gloves, bandage on a wrist.
+- Exactly ONE small accent colour that stands out against the dark street (for example a faded orange scarf, a red bandana, or a yellow tape band), different in each option.
+- Holding a makeshift melee weapon in the right hand, down by the leg: a baseball bat wrapped with tape, or a short steel pipe.
+- Readable silhouette even when shrunk to about 60 pixels tall.
+
+Plain solid flat magenta background (#FF00FF) behind all characters. No ground, no shadow, no text, no labels, no numbers, no frame.
