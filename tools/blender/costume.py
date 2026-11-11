@@ -15,6 +15,11 @@ Every character is the same rigged body and the same actions; only these change:
   bag, bat, pipe ...). They follow that bone in every action.
 
 All colours are flat; the render's light bands and outline give the pixel-art shading.
+
+ID mode (apply(..., ids=True)) paints every part in its own flat ID colour instead
+(regions, hair, eyes, each shell and prop by name). A render of that tells, per pixel,
+which part it is, so tools/sprites/repaint.py can repaint the frame with the concept
+art's colours part by part (rotoscoping, CHARACTER_WORKFLOW.md section 6).
 """
 
 import json
@@ -43,6 +48,29 @@ DEFAULT_REGIONS = {
 }
 
 
+ID_COLORS = [
+    (230, 25, 75), (60, 180, 75), (255, 225, 25), (0, 130, 200), (245, 130, 48), (145, 30, 180),
+    (70, 240, 240), (240, 50, 230), (210, 245, 60), (250, 190, 212), (0, 128, 128), (220, 190, 255),
+    (170, 110, 40), (255, 250, 200), (128, 0, 0), (170, 255, 195), (128, 128, 0), (255, 215, 180),
+]
+_ids = None                                             # name -> 0..1 rgb while in ID mode
+
+
+def part_color(name, rgb):
+    """The colour to paint a part: its costume colour, or its ID colour in ID mode."""
+    if _ids is None:
+        return rgb
+    if name not in _ids:
+        r, g, b = ID_COLORS[len(_ids) % len(ID_COLORS)]
+        _ids[name] = [r / 255, g / 255, b / 255]
+    return _ids[name]
+
+
+def id_map():
+    """name -> 0..255 rgb of the ID colours used, for repaint.py."""
+    return {k: [round(v * 255) for v in c] for k, c in (_ids or {}).items()}
+
+
 def load(path):
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -50,6 +78,11 @@ def load(path):
 
 def model_path(costume, root):
     return os.path.join(root, BODIES[costume.get("body", "male")])
+
+
+def is_body(obj):
+    """The base body mesh: "SuperHero_Male" or "Superhero_Female" (the packs differ in case)."""
+    return obj.type == "MESH" and obj.name.lower().startswith("superhero")
 
 
 def region_of(bone):
@@ -76,7 +109,7 @@ def fill_color(mesh, rgb):
 
 def paint_regions(obj, regions):
     """Colour each vertex by the bone that moves it most."""
-    colors = {**DEFAULT_REGIONS, **regions}
+    colors = {k: part_color(k, v) for k, v in {**DEFAULT_REGIONS, **regions}.items()}
     names = {g.index: g.name for g in obj.vertex_groups}
     mesh = obj.data
     attr = mesh.color_attributes.new(COLOR_ATTR, "FLOAT_COLOR", "POINT")
@@ -94,10 +127,12 @@ def paint_body(armature, costume):
         if obj.type != "MESH":
             continue
         if obj.name.startswith("Eyes"):
-            fill_color(obj.data, [0.08, 0.07, 0.07])
+            fill_color(obj.data, part_color("eyes", [0.08, 0.07, 0.07]))
         elif obj.name.startswith("Eyebrows"):
-            fill_color(obj.data, hair_rgb)
-        else:
+            fill_color(obj.data, part_color("hair", hair_rgb))
+        elif is_body(obj):
+            # Only the body: hair and clothes are children of the armature too and keep
+            # their own colour (painting them by region turned the hair skin-coloured).
             paint_regions(obj, regions)
 
 
@@ -122,7 +157,7 @@ def import_hair(armature, costume, path):
             for m in obj.modifiers:
                 if m.type == "ARMATURE":
                     m.object = armature
-            fill_color(obj.data, costume.get("hair_color", [0.15, 0.12, 0.10]))
+            fill_color(obj.data, part_color("hair", costume.get("hair_color", [0.15, 0.12, 0.10])))
     for obj in new:
         if obj.type != "MESH" or obj.parent is not armature:
             bpy.data.objects.remove(obj, do_unlink=True)
@@ -168,7 +203,7 @@ def add_props(armature, costume):
         obj = bpy.data.objects.new(f"prop_{i}_{prop.get('name', prop['shape'])}",
                                    primitive(prop["shape"], prop.get("size", [0.1, 0.1, 0.1])))
         bpy.context.scene.collection.objects.link(obj)
-        fill_color(obj.data, prop.get("color", [0.5, 0.5, 0.5]))
+        fill_color(obj.data, part_color(prop.get("name", prop["shape"]), prop.get("color", [0.5, 0.5, 0.5])))
         rot = Euler([math.radians(a) for a in prop.get("rotate", [0, 0, 0])]).to_matrix().to_4x4()
         rest = armature.matrix_world @ bone.matrix_local
         target = rest @ Matrix.Translation(Vector(prop.get("offset", [0, 0, 0]))) @ rot
@@ -181,7 +216,7 @@ def add_props(armature, costume):
 
 def add_shells(armature, costume):
     """Clothes with volume: copies of the body, cut to some regions and pushed outwards."""
-    body = next((o for o in armature.children if o.type == "MESH" and o.name.startswith("Superhero")), None)
+    body = next((o for o in armature.children if o.type == "MESH" and is_body(o)), None)
     if body is None:
         return
     for shell in costume.get("shells", []):
@@ -211,11 +246,13 @@ def add_shells(armature, costume):
         obj.modifiers.move(len(obj.modifiers) - 1, 0)
         for attr in list(obj.data.color_attributes):
             obj.data.color_attributes.remove(attr)
-        fill_color(obj.data, shell.get("color", [0.5, 0.5, 0.5]))
+        fill_color(obj.data, part_color(shell.get("name", "cloth"), shell.get("color", [0.5, 0.5, 0.5])))
 
 
-def apply(armature, costume, root):
+def apply(armature, costume, root, ids=False):
     """Hair, clothes, props and colours; call at rest pose, before actions and constraints."""
+    global _ids
+    _ids = {} if ids else None
     add_hair(armature, costume, root)
     paint_body(armature, costume)
     add_shells(armature, costume)

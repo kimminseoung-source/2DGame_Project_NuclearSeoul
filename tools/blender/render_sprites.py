@@ -59,6 +59,9 @@ def parse_args():
     parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
     parser.add_argument("--keep-root", action="store_true",
                         help="let the root bone travel (default: pinned so sprites stay on the spot)")
+    parser.add_argument("--pass", dest="render_pass", choices=["color", "id", "light"], default="color",
+                        help="id: each costume part in a flat ID colour; light: white body, light only "
+                             "(both for tools/sprites/repaint.py). Bands and outline are skipped for them.")
     parser.add_argument("--tilt", type=float, default=0.0,
                         help="degrees the camera looks down from above (0 = eye level)")
     parser.add_argument("--head", type=float, default=1.0, help="head size multiplier")
@@ -173,7 +176,7 @@ def setup_camera(scene, tilt_deg=0.0):
     scene.camera = cam
 
 
-def setup_render(scene, flat, painted=False):
+def setup_render(scene, flat, painted=False, render_pass="color"):
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.resolution_x = CELL_W
     scene.render.resolution_y = CELL_H
@@ -186,7 +189,13 @@ def setup_render(scene, flat, painted=False):
     shading.light = "STUDIO"
     # Light from the front-left of the figure so its side shows a lit and a shaded half.
     shading.studiolight_rotate_z = math.radians(LIGHT_TURN_DEG)
-    if painted:
+    if render_pass == "id":
+        shading.light = "FLAT"                          # pure part colours, no light
+        shading.color_type = "VERTEX"
+    elif render_pass == "light":
+        shading.color_type = "SINGLE"                   # white everywhere: only the light shows
+        shading.single_color = (1.0, 1.0, 1.0)
+    elif painted:
         shading.color_type = "VERTEX"                   # costume colours painted on the meshes
     elif flat:
         shading.color_type = "SINGLE"
@@ -384,16 +393,22 @@ def main():
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
     if outfit and armature is not None:
-        costumes.apply(armature, outfit, PROJECT_ROOT)
+        costumes.apply(armature, outfit, PROJECT_ROOT, ids=args.render_pass == "id")
     if armature is not None and not args.keep_root:
         pin_root(armature)
     shape_body(armature, args.head, args.bulk, args.legs)
     flat = tuple(float(v) for v in args.flat.split(",")) if args.flat else None
     setup_camera(scene, args.tilt)
-    setup_render(scene, flat, painted=bool(outfit))
+    setup_render(scene, flat, painted=bool(outfit), render_pass=args.render_pass)
+    if args.render_pass != "color":
+        args.bands, args.outline = 0, False             # repaint.py shades and outlines later
     out_dir = os.path.abspath(args.out)
     tmp_dir = os.path.join(out_dir, "_frames")
     os.makedirs(tmp_dir, exist_ok=True)
+    if args.render_pass == "id":
+        import json
+        with open(os.path.join(out_dir, "ids.json"), "w", encoding="utf-8") as f:
+            json.dump(costumes.id_map(), f, ensure_ascii=False, indent=2)
     counts = dict(pair.split("=") for pair in (args.frames_for or []))
     shifts = {k: float(v) for k, v in (pair.split("=") for pair in (args.shift_for or []))}
     if armature is None:

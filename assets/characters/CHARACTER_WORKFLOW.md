@@ -20,6 +20,7 @@
 | `assets/characters/base/` | **기본 몸** 동작 시트 7종(`idle.png` … `pickup.png`) | 올림 |
 | `assets/characters/concepts/` | AI 콘셉트 이미지(원본)와 그것을 게임 크기로 정리한 스프라이트(`*_sprite.png`, `*_sprite_native.png`), 요청 기록(`*.txt`) | 올림 |
 | `tools/gen/gemini_image.py`, `tools/gen/prompts/` | Gemini API 이미지 요청 도구와 요청 문안(무료 등급은 이미지 한도 0이라 지금은 문안만 사용) | 올림 |
+| `tools/sprites/repaint.py` | 부위 구분 렌더 + 빛 렌더 → 시안 색으로 부위별 다시 칠하기(로토스코핑 A) | 올림 |
 | `tools/sprites/clean_concept.py` | 콘셉트 이미지 → 게임 크기 스프라이트(배경 제거·분홍 테두리 제거·축소·외곽선·96×64 칸) | 올림 |
 | `assets/characters/costumes/<이름>.json` | 캐릭터 의상 정의(몸·비율·부위 색·머리·소품). 5절 형식 | 올림 |
 | `assets/characters/<캐릭터 이름>/` | 완성 캐릭터의 동작 시트와 `look.json`(예: `hero/`, `nurse/`, `worker/`) | 올림 |
@@ -188,6 +189,16 @@
 | --- | --- | --- |
 | `hero_concept_a` (2026-11-11) | 얼굴이 보이는 젊은 생존자, 겨자색 후드 재킷(후드 내림), 올리브 배낭, 어두운 카고 바지·장갑·부츠, 나무 방망이. 맵 색감과 잘 어울리고 1배에서도 알아봄(`previews/hero_concept_a_ingame.png`) | 몸이 살짝 3/4 방향. 동작(걷기·휘두르기 등) 그림이 아직 없음 |
 
+### 로토스코핑 A: Blender 자세 + 시안 색으로 다시 칠하기 (2026-11-11 시험)
+
+사용자 제안 "블렌더로 작업한 것을 누끼 따서 도트로 그리면 안 되나?" → 선택 "A로 시험".
+
+1. 같은 의상으로 두 번 렌더한다: `--pass id`(부위마다 다른 단색, 빛 없음. 어느 색이 어느 부위인지 `ids.json`에 저장)와 `--pass light`(흰 몸에 빛만).
+2. `tools/sprites/repaint.py --costume <의상> --id <id 폴더> --light <light 폴더> --out <폴더>`: 픽셀마다 부위를 찾고, 빛 밝기를 3단계로 끊어, 의상 파일 `repaint.ramps`의 그 부위 색(시안에서 고른 어두운·중간·밝은 색)으로 칠한 뒤 외곽선을 두른다.
+3. 시안 색은 `costumes/hero_b.json`의 `repaint`에 있다. 부위 → 색 묶음 연결은 `part_ramp`.
+
+결과(`previews/method_compare_a.png`): 시안과 같은 색 묶음으로 머리카락·피부·노란 재킷·어두운 바지·부츠·배낭·방망이가 또렷하게 나뉘고, 모든 동작이 같은 캐릭터로 나온다. 시안보다 명암이 단순하고 얼굴·주름 같은 세부는 없다.
+
 ## 7. 결과 이력
 
 | 버전 | 미리보기 | 결과 | 다음에 고칠 점 |
@@ -223,3 +234,4 @@
 | 2026-11-11 | 사용자 지시 "주인공 저거 버려 이상함. 우선 캐릭터 1개만 구성해서 만들자" | `costumes/hero.json`과 `hero/` 시트 삭제. 이후 캐릭터는 한 명씩, 설계를 먼저 맞추고 만든다([피드백](ART_FEEDBACK.md) 3-12·3-13) |
 | 2026-11-11 | 사용자 지시 "맵에 어울리는 캐릭터를 이미지부터 생성", 선택 "Gemini 웹사이트", "프롬프트만 주세요" | Gemini API는 무료 등급 이미지 한도 0(5개 모델 확인, 비용 없음). 사용자가 웹에서 생성한 `hero_concept_a`를 받아 `clean_concept.py`로 게임 크기 스프라이트로 정리. 첫 정리에서 분홍 테두리가 남아 마젠타 섞임 제거와 외곽선을 추가 |
 | 2026-11-11 | 사용자 질문 "블렌더로 만든 걸 스프라이트로 못 만드나?", "2D로 적용되면 좋겠다", "1, 2번 차이?", "둘 다 이미지로 보여 줄 수 있나요?" | 같은 5자세(서기·걷기 2·준비·맞는 순간)로 두 방식을 만들어 비교(`previews/method_compare.png`, 게임 크기 `method_compare_game.png`). ① 컷아웃(`tools/sprites/cutout_demo.py`): 시안 그림 그대로, 걷기는 자연스러우나 팔이 재킷에 그려져 있어 휘두르기에서 방망이만 떠서 돎. ② Blender(`costumes/hero_b.json`, 옷 부피 껍질 `shells` 추가): 몸 전체가 움직이지만 여전히 마네킹 느낌이고 머리카락이 렌더에 안 나옴(원인 미확인), 시안 팔레트로 바꾸면 색이 얼룩짐 |
+| 2026-11-11 | 사용자 선택 "A로 시험" | 부위 구분·빛 렌더(`--pass id/light`)와 `repaint.py` 추가. 고친 버그 두 가지: ① 부위 색칠이 머리카락까지 피부색으로 덮음(간호사 머리가 밝게 보인 원인) → 몸 메시만 칠하게 ② 남자 몸 이름이 `SuperHero_Male`(대문자 H)이라 몸을 못 찾아 옷 부피 껍질이 안 입혀졌음 → 대소문자 무시. 비교 `previews/method_compare_a.png`, 게임 크기 `method_compare_a_game.png` |
