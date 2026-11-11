@@ -53,12 +53,41 @@ def blender_pass(costume, out, render_pass, name):
             raise SystemExit(f"[{name}] render failed")
 
 
+EXPORT = ROOT / "tools" / "blender" / "export_pose2d.py"
+
+
+def export_poses(out, name):
+    """Screen joints of every frame of every sheet (same frames as the renders)."""
+    files = []
+    for index, (anim, mapping, counts, extra) in enumerate(PASSES):
+        target = out / f"poses_{index}.json"
+        cmd = [BLENDER, "-b", "-P", str(EXPORT), "--", "--anim-file", str(anim),
+               "--map", *mapping, "--frames-for", *counts, "--out", str(target)]
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if result.returncode or not target.exists():
+            print(result.stdout[-2000:], result.stderr[-2000:])
+            raise SystemExit(f"[{name}] pose export failed")
+        files.append(str(target))
+    return files
+
+
 def render(spec):
     """spec = "costume" or "costume:folder" (e.g. hero_q:hero writes assets/characters/hero/)."""
     name, _, folder = spec.partition(":")
     costume = ROOT / "assets" / "characters" / "costumes" / f"{name}.json"
     out = ROOT / "assets" / "characters" / (folder or name)
-    if "repaint" in json.loads(costume.read_text(encoding="utf-8")):
+    data = json.loads(costume.read_text(encoding="utf-8"))
+    if data.get("paint_clothes"):
+        # Rotoscoping with 2D drawing: the base body's part map and light, then the clothes
+        # are painted in pixels over every frame (tools/sprites/paint_clothes.py).
+        passes = out / "_passes"
+        for render_pass in ("id", "light"):
+            blender_pass(costume, passes / render_pass, render_pass, name)
+        poses = export_poses(passes, name)
+        subprocess.run([sys.executable, str(ROOT / "tools" / "sprites" / "paint_clothes.py"),
+                        "--id", str(passes / "id"), "--light", str(passes / "light"),
+                        "--poses", *poses, "--out", str(out)], check=True)
+    elif "repaint" in data:
         # Rotoscoping: part IDs, light and the clothes' own texture, then repaint with the
         # concept colours (tools/sprites/repaint.py). The passes stay out of git (_passes/).
         passes = out / "_passes"

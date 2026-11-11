@@ -32,7 +32,7 @@ def key_out(img, key, tolerance):
         for x in range(w):
             r, g, b, a = px[x, y]
             close = abs(r - key[0]) + abs(g - key[1]) + abs(b - key[2]) < tolerance
-            fringe = magenta and r - g > 45 and b - g > 45
+            fringe = magenta and r - g > 35 and b - g > 35   # pink edge pixels mixed with the key
             if close or fringe:
                 px[x, y] = (0, 0, 0, 0)
     return img

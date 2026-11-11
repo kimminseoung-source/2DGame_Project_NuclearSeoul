@@ -123,9 +123,12 @@ def paint_frame(part, light, pose, pack, bat):
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < w and part[ny][nx] is None:
                     put(nx, ny, "jacket", level(light, x, y))
+        # The jacket covers the hips: trouser pixels within 2 px of the torso (by distance,
+        # not height, so a body lying down keeps its trousers).
+        torso_set = set(torso)
         for x, y in cells(part, LEGS):
-            if y <= tbottom + 3:                    # the jacket covers the hips
-                put(x, y, "jacket", level(light, x, y) - 1 if y == tbottom + 3 else level(light, x, y))
+            if any((x + dx, y + dy) in torso_set for dx in range(-2, 3) for dy in range(-2, 3)):
+                put(x, y, "jacket", level(light, x, y))
         back = min(x for x, y in torso if y <= ttop + 2)
         for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1), (-1, 1), (2, 0)):
             put(back + dx - 1, ttop + dy - 1, "hood", 1)

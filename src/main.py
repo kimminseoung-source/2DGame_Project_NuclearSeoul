@@ -37,7 +37,7 @@ from zombie import Zombie
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 # Folder under assets/characters/ with the hero's sheets, or "legacy" for the first hand-drawn hero.
-PLAYER_LOOK = "base"
+PLAYER_LOOK = "hero"
 MAX_HEALTH = 12
 DEFAULT_SPEED = 100
 MIN_SPEED = 50
