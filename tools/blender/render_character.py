@@ -9,6 +9,7 @@ character shares the base body's actions). The action list and render settings l
 once, so all characters are made the same way (CHARACTER_WORKFLOW.md section 4).
 """
 
+import json
 import shutil
 import subprocess
 import sys
@@ -36,21 +37,38 @@ PASSES = [
 ]
 
 
-def render(name):
-    costume = ROOT / "assets" / "characters" / "costumes" / f"{name}.json"
-    out = ROOT / "assets" / "characters" / name
+def blender_pass(costume, out, render_pass, name):
+    """All sheets of one character for one render pass (color, or id/light/tex for repaint)."""
     out.mkdir(parents=True, exist_ok=True)
     for anim, mapping, counts, extra in PASSES:
+        settings = SETTINGS if render_pass == "color" else ["--tilt", "20", "--pass", render_pass]
         cmd = [BLENDER, "-b", "-P", str(SCRIPT), "--", "--costume", str(costume),
                "--anim-file", str(anim), "--out", str(out),
-               "--map", *mapping, "--frames-for", *counts, *SETTINGS, *extra]
+               "--map", *mapping, "--frames-for", *counts, *settings, *extra]
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
         saved = [line for line in result.stdout.splitlines() if line.startswith("saved")]
-        for line in saved:
-            print(f"[{name}] {line}")
+        print(f"[{name}:{render_pass}] {len(saved)} sheets")
         if result.returncode or len(saved) != len(mapping):
             print(result.stdout[-2000:], result.stderr[-2000:])
             raise SystemExit(f"[{name}] render failed")
+
+
+def render(spec):
+    """spec = "costume" or "costume:folder" (e.g. hero_q:hero writes assets/characters/hero/)."""
+    name, _, folder = spec.partition(":")
+    costume = ROOT / "assets" / "characters" / "costumes" / f"{name}.json"
+    out = ROOT / "assets" / "characters" / (folder or name)
+    if "repaint" in json.loads(costume.read_text(encoding="utf-8")):
+        # Rotoscoping: part IDs, light and the clothes' own texture, then repaint with the
+        # concept colours (tools/sprites/repaint.py). The passes stay out of git (_passes/).
+        passes = out / "_passes"
+        for render_pass in ("id", "light", "tex"):
+            blender_pass(costume, passes / render_pass, render_pass, name)
+        subprocess.run([sys.executable, str(ROOT / "tools" / "sprites" / "repaint.py"), "--costume", str(costume),
+                        "--id", str(passes / "id"), "--light", str(passes / "light"), "--tex", str(passes / "tex"),
+                        "--out", str(out)], check=True)
+    else:
+        blender_pass(costume, out, "color", name)
     shutil.copyfile(ROOT / "assets" / "characters" / "base" / "look.json", out / "look.json")
 
 

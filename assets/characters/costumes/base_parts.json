@@ -1,0 +1,10 @@
+{
+  "name": "2D 옷 그리기용 부위 지도 (기본 몸 v4)",
+  "note": "tools/sprites/paint_clothes.py uses the id pass of this costume",
+  "body": "male",
+  "head": 1.15,
+  "bulk": 1.1,
+  "legs": 1.0,
+  "split_sides": true,
+  "regions": {}
+}

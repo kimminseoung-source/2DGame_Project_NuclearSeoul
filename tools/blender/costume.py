@@ -134,16 +134,29 @@ def fill_color(mesh, rgb):
     mesh.color_attributes.active_color = attr
 
 
-def paint_regions(obj, regions):
-    """Colour each vertex by the bone that moves it most."""
-    colors = {k: part_color(k, v) for k, v in {**DEFAULT_REGIONS, **regions}.items()}
+def side_of(bone):
+    """"_r" (the right side, nearest the camera) or "_l", for limbs; "" for the trunk."""
+    name = bone.split(":", 1)[-1]
+    if name.endswith("_r") or name.startswith("Right"):
+        return "_r"
+    if name.endswith("_l") or name.startswith("Left"):
+        return "_l"
+    return ""
+
+
+def paint_regions(obj, regions, split_sides=False):
+    """Colour each vertex by the bone that moves it most. With split_sides the limb regions
+    are told apart by side (hands_r, forearms_l ...), so a 2D painter knows the near arm."""
+    colors = {**DEFAULT_REGIONS, **regions}
     names = {g.index: g.name for g in obj.vertex_groups}
     mesh = obj.data
     attr = mesh.color_attributes.new(COLOR_ATTR, "FLOAT_COLOR", "POINT")
     for v in mesh.vertices:
         best = max(v.groups, key=lambda g: g.weight, default=None)
         bone = names.get(best.group, "spine_02") if best else "spine_02"
-        attr.data[v.index].color = (*colors[region_of(bone)], 1.0)
+        region = region_of(bone)
+        name = region + side_of(bone) if split_sides and region in ("hands", "forearms", "bottom", "shoes") or             (split_sides and region == "top" and side_of(bone)) else region
+        attr.data[v.index].color = (*part_color(name, colors[region]), 1.0)
     mesh.color_attributes.active_color = attr
 
 
@@ -160,7 +173,7 @@ def paint_body(armature, costume):
         elif is_body(obj):
             # Only the body: hair and clothes are children of the armature too and keep
             # their own colour (painting them by region turned the hair skin-coloured).
-            paint_regions(obj, regions)
+            paint_regions(obj, regions, costume.get("split_sides", False))
 
 
 def add_hair(armature, costume, root):

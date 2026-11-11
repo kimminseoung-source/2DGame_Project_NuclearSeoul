@@ -20,3 +20,4 @@ assets/source3d/*
 !assets/source3d/README.md
 # Per-frame renders kept only while building a sheet
 assets/characters/**/_frames/
+assets/characters/**/_passes/
