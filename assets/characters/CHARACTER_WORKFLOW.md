@@ -99,7 +99,7 @@
      --model "assets/source3d/quaternius_base_characters/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf" \
      --anim-file "assets/source3d/quaternius_animation_library_2/Unreal-Godot/UAL2_Standard.glb" \
      --out assets/characters/base \
-     --map "swing=TreeChopping_Loop@0-20" --frames-for swing=6 \
+     --map "swing=Sword_Regular_A" --frames-for swing=6 \
      --tilt 20 --head 1.15 --bulk 1.1 --legs 1.0 --flat 0.80,0.62,0.50 --bands 4 --outline
    ```
    제자리 은신(`sneak_idle`)은 첫 명령의 `--map`에 `"sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.4"`, `--frames-for`에 `sneak_idle=4`를 더한다.
@@ -117,7 +117,7 @@
 | idle | `Idle_Loop` | 4 | |
 | walk | `Walk_Loop` | 8 | |
 | sneak | `Walk_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음(`Walk_Loop+Crouch_Idle_Loop*0.4`) | 6 | v4b부터. 무료 팩의 `Crouch_Fwd_Loop`는 쪼그려 앉은 깊은 자세라 "몸을 낮추고 조심스럽게 걷기"로 안 읽힘. 섞을 때는 COMBINE(회전을 곱해 더함)을 써야 함. 단순 평균(REPLACE)은 다리가 뒤로 뒤집힘 |
-| swing | `TreeChopping_Loop` 0~20프레임 (두 번째 팩 UAL2) | 6 | v4c부터. 똑바로 선 채 두 손을 뒤로 당겼다가 앞으로 휘두르고 돌아옴. 1팩의 `Sword_Attack`은 팔을 벌리고 뛰어드는 칼 동작이라 방망이로 안 읽혀 교체. 후보 비교 `previews/swing_trial.png` |
+| swing | `Sword_Regular_A` (두 번째 팩 UAL2) | 6 | 사용자 지시 "칼 베기 A로 해 보세요"(2026-11-11)로 시험 적용. 서 있다가 깊이 숙여 들어가며 아래에서 위로 베어 올림. 이전 후보 나무 베기는 `TreeChopping_Loop@0-20`. 후보 비교 `previews/swing_trial.png` |
 | sneak_idle | `Idle_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음 | 4 | Shift만 누르고 서 있을 때. 시트가 없는 캐릭터는 `sneak` 첫 칸으로 대신함(`character_look.FALLBACK`) |
 | hurt | `Hit_Chest` | 3 | |
 | down | `Death01` | 5 | 마지막 칸 유지 |
@@ -163,3 +163,4 @@
 | 2026-11-10 | 사용자 선택 "B가 제일 낫다" | 동작 7종을 B 설정으로 다시 렌더해 `base/`를 v4로 교체, 게임에 바로 반영. 점검표로 남은 문제(은신·휘두르기)를 결과 이력에 적음 |
 | 2026-11-11 | 사용자 지시 "은신 먼저". 렌더 스크립트에 동작 섞기(`동작+다른동작*비율`) 추가. 첫 시도(REPLACE)는 다리가 뒤로 뒤집혀 실패, COMBINE으로 바꿔 해결. 시험판 비교 `previews/sneak_trial.png` | 사용자 선택 "B (40%)". `base/sneak.png` 교체(v4b), 게임 화면 `previews/sneak_v4b_ingame.png`. 남은 점: 걸음 중간 칸에서 고개가 조금 숙여짐, 팔이 늘어짐(방망이를 쥐이면 다시 판단) |
 | 2026-11-11 | 사용자 지시 "Shift를 누르면 은신 상태로 바로 돌입, 그다음 휘두르기 고치기" | ① 은신 판정(좀비 감지 거리)은 원래 Shift 즉시였고 그림만 서 있는 자세였음 → 제자리 은신 `sneak_idle` 추가. ② 1팩에 방망이 동작이 없어 두 번째 무료 팩 Universal Animation Library 2 [Standard](CC0)를 받음. 후보 5종 중 나무 베기(양손)로 휘두르기 교체(v4c). 게임 화면 `previews/sneak_idle_swing_ingame.png`. 남은 점: 빨간 휘두르기 궤적선은 예전 주인공 기준 위치라 손과 조금 어긋남 |
+| 2026-11-11 | 사용자 지시 "칼 베기 A로 해 보세요" | 휘두르기를 `Sword_Regular_A`로 교체해 게임에 넣음. 게임 화면 `previews/swing_sword_a_ingame.png`. 점검표: ① 3칸째에 몸이 바닥 가까이 낮게 숙여짐 ② 마지막 칸이 팔을 치켜든 넓은 자세로 끝나 서 있기로 돌아올 때 툭 바뀜(팩의 `Sword_Regular_A_Rec` 복귀 동작은 아직 안 붙임) ③ 아래에서 위로 베어 올리는 동작이라 옆으로 휘두르기보다는 올려치기로 읽힘 |
