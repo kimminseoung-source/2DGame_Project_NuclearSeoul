@@ -29,6 +29,10 @@ import sys
 
 import bpy
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import costume as costumes                              # noqa: E402  (Blender adds no script dir)
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 CELL_W, CELL_H = 96, 64
 FEET_FROM_BOTTOM = 4            # px: the feet line is y = 60 from the top
 PERSON_HEIGHT_M = 1.8
@@ -40,7 +44,9 @@ LIGHT_TURN_DEG = 70             # studio light rotation around the vertical axis
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--model", default=None, help="body file; not needed with --costume")
+    parser.add_argument("--costume", default=None,
+                        help="costume JSON (assets/characters/costumes/): body, proportions, colours, hair, props")
     parser.add_argument("--out", required=True)
     parser.add_argument("--anim-file", default=None,
                         help="file whose actions are borrowed (same bone names), e.g. the animation library")
@@ -167,7 +173,7 @@ def setup_camera(scene, tilt_deg=0.0):
     scene.camera = cam
 
 
-def setup_render(scene, flat):
+def setup_render(scene, flat, painted=False):
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.resolution_x = CELL_W
     scene.render.resolution_y = CELL_H
@@ -180,7 +186,9 @@ def setup_render(scene, flat):
     shading.light = "STUDIO"
     # Light from the front-left of the figure so its side shows a lit and a shaded half.
     shading.studiolight_rotate_z = math.radians(LIGHT_TURN_DEG)
-    if flat:
+    if painted:
+        shading.color_type = "VERTEX"                   # costume colours painted on the meshes
+    elif flat:
         shading.color_type = "SINGLE"
         shading.single_color = flat
     else:
@@ -351,6 +359,15 @@ def safe_name(name):
 
 def main():
     args = parse_args()
+    outfit = costumes.load(args.costume) if args.costume else None
+    if outfit:
+        # The costume decides the body and its proportions.
+        args.model = args.model or costumes.model_path(outfit, PROJECT_ROOT)
+        args.head = outfit.get("head", args.head)
+        args.bulk = outfit.get("bulk", args.bulk)
+        args.legs = outfit.get("legs", args.legs)
+    if not args.model:
+        raise SystemExit("--model or --costume is required")
     clear_scene()
     import_model(os.path.abspath(args.model))
     if args.anim_file:
@@ -366,12 +383,14 @@ def main():
         if obj.parent is None and obj.type in ("ARMATURE", "MESH", "EMPTY"):
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
+    if outfit and armature is not None:
+        costumes.apply(armature, outfit, PROJECT_ROOT)
     if armature is not None and not args.keep_root:
         pin_root(armature)
     shape_body(armature, args.head, args.bulk, args.legs)
     flat = tuple(float(v) for v in args.flat.split(",")) if args.flat else None
     setup_camera(scene, args.tilt)
-    setup_render(scene, flat)
+    setup_render(scene, flat, painted=bool(outfit))
     out_dir = os.path.abspath(args.out)
     tmp_dir = os.path.join(out_dir, "_frames")
     os.makedirs(tmp_dir, exist_ok=True)

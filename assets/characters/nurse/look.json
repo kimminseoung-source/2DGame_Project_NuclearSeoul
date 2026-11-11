@@ -1,0 +1,14 @@
+{
+  "walk": {
+    "stride_m": 1.3,
+    "note": "Walk_Loop: planted foot slides back at 0.98 m/s over a 1.33 s cycle"
+  },
+  "sneak": {
+    "stride_m": 1.09,
+    "note": "Walk_Loop + Crouch_Idle_Loop*0.3: planted foot 0.82 m/s over 1.33 s"
+  },
+  "swing": {
+    "impact": 3,
+    "note": "Sword_Regular_A frame 6: arm swept forward"
+  }
+}
