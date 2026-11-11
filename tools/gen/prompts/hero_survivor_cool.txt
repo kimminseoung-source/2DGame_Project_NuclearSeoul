@@ -1,0 +1,15 @@
+The attached image is the street background of my 2D side-scrolling pixel-art game: a ruined Korean city after a nuclear disaster, at dusk, muted brown-grey palette, warm street lamp light.
+
+Draw 4 DIFFERENT design options for the PLAYER CHARACTER, side by side in one image, same scale, evenly spaced. The character is a COOL, CHARISMATIC SURVIVOR: someone who has survived weeks in the ruins and looks like the hero of the story. Gritty and worn, but stylish and confident, like a protagonist from a post-apocalyptic action game.
+
+For every option:
+- Pixel art in the same style and palette as the background: crisp square pixels, limited palette, 1-pixel dark outline. A warm rim light from the street lamp side outlines the figure. No anti-aliasing blur, no painterly rendering.
+- Strict side view, facing RIGHT, full body, feet on one shared baseline. A confident, heroic standing pose: chin up, sharp eyes looking ahead, weight on one leg.
+- A young Korean civilian (not a soldier, no armour, no sci-fi, no gas mask). Face clearly visible, with a sharp look and a small detail such as a scar or a bandage on the cheek.
+- Strong, memorable silhouette: for example a long worn coat or hooded jacket whose hem moves in the wind, a scarf with trailing ends, swept or messy hair. Layered, worn clothes in muted colours (charcoal, brown, olive, faded navy) with patches, tape and frayed edges.
+- Exactly ONE accent colour that pops against the dark street (a burnt-orange scarf, a red bandana, or a yellow tape band), different in each option.
+- A customised makeshift melee weapon: a baseball bat wrapped in tape with nails, or a steel pipe with a taped grip. Held low and ready by the leg, or resting on the shoulder.
+- Makeshift gear: a compact backpack with straps, fingerless gloves, a wrist bandage.
+- Readable and still cool when shrunk to about 60 pixels tall.
+
+Plain solid flat magenta background (#FF00FF) behind all characters. No ground, no shadow, no text, no labels, no numbers, no frame.
