@@ -18,4 +18,5 @@
 
 - Quaternius, Universal Base Characters [Standard], https://quaternius.itch.io/universal-base-characters , CC0 1.0. 기본 몸으로 사용.
 - Quaternius, Universal Animation Library [Standard], https://quaternius.itch.io/universal-animation-library , CC0 1.0. 대기·걷기·웅크려 걷기·공격·피격·쓰러짐·줍기 동작으로 사용.
+- Quaternius, Universal Animation Library 2 [Standard], https://opengameart.org/content/universal-animation-library-2 , CC0 1.0. 휘두르기(나무 베기 동작) 등으로 사용.
 - 이 3D 원본을 Blender로 렌더해 만든 스프라이트 시트는 `assets/characters/` 아래에 있다. 원본 목록과 받는 방법은 `assets/source3d/README.md`.

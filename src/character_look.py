@@ -15,14 +15,16 @@ from pathlib import Path
 import pico2d
 
 
-LOOPING = {"idle", "walk", "sneak"}
+LOOPING = {"idle", "walk", "sneak", "sneak_idle"}
+# A pose a character's sheets lack falls back to a close one: (pose, fixed frame or None).
+FALLBACK = {"sneak_idle": ("sneak", 0)}
 
 
 class SheetLook:
     CELL_W, CELL_H = 96, 64
     FEET_FROM_BOTTOM = 4
     # Seconds per frame for looping poses.
-    FRAME_TIME = {"idle": 0.22, "walk": 0.09, "sneak": 0.13}
+    FRAME_TIME = {"idle": 0.22, "sneak_idle": 0.22, "walk": 0.09, "sneak": 0.13}
     # Head and torso of the first idle frame: (left, bottom, width, height) in the cell.
     PORTRAIT = (25, 23, 46, 36)
 
@@ -41,10 +43,13 @@ class SheetLook:
         return min(count - 1, max(0, int(time * count)))
 
     def draw(self, pose, time, x, feet_y, facing):
+        fixed = None
         if pose not in self.sheets:
-            pose = "idle"
+            pose, fixed = FALLBACK.get(pose, ("idle", None))
+            if pose not in self.sheets:
+                pose, fixed = "idle", None
         image = self.sheets[pose]
-        frame = self.frame_of(pose, time)
+        frame = self.frame_of(pose, time) if fixed is None else fixed
         y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
         flip = "" if facing > 0 else "h"
         image.clip_composite_draw(
@@ -68,6 +73,8 @@ class LegacyLook:
         self.sprites = sprites    # {"walk", "sneak", "action"} images
 
     def pick(self, pose, time):
+        if pose == "sneak_idle":
+            return "sneak", 0
         if pose in ("walk", "sneak"):
             step = int(time / self.FRAME_TIME[pose]) % len(self.WALK_CYCLE)
             return pose, self.WALK_CYCLE[step]

@@ -6,8 +6,10 @@
 | --- | --- | --- | --- | --- |
 | `quaternius_base_characters/` | Universal Base Characters [Standard] — 리깅된 기본 몸(무료판은 Superhero 남·여), 머리 모양 | [quaternius.itch.io/universal-base-characters](https://quaternius.itch.io/universal-base-characters) (Quaternius) | CC0 1.0 (`License_Standard.txt`) | 2026-11-10 |
 | `quaternius_animation_library/` | Universal Animation Library [Standard] — 동작 43종(대기·걷기·웅크려 걷기·칼 공격·피격·쓰러짐·줍기 등) | [quaternius.itch.io/universal-animation-library](https://quaternius.itch.io/universal-animation-library) (Quaternius) | CC0 1.0 (`License.txt`) | 2026-11-10 |
-| `_downloads/` | 위 두 팩의 원본 압축 파일 | 같음 | 같음 | 2026-11-10 |
+| `quaternius_animation_library_2/` | Universal Animation Library 2 [Standard] — 근접 공격(칼 베기·훅·나무 베기), 좀비 걷기·할퀴기, 밀려남 등. 1팩과 같은 뼈대 | [opengameart.org/content/universal-animation-library-2](https://opengameart.org/content/universal-animation-library-2) (Quaternius) | CC0 1.0 (`License.txt`) | 2026-11-11 |
+| `_downloads/` | 위 팩들의 원본 압축 파일 | 같음 | 같음 | 2026-11-10 ~ 11 |
 
 - 기본 몸 파일: `quaternius_base_characters/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf`
 - 동작 파일: `quaternius_animation_library/Unreal-Godot/UAL1_Standard.glb` (루트 모션 없는 판. `_RM`은 루트 모션 포함판)
-- 두 팩은 같은 뼈 이름을 써서, 동작을 기본 몸에 그대로 붙일 수 있다.
+- 동작 파일 2: `quaternius_animation_library_2/Unreal-Godot/UAL2_Standard.glb`
+- 세 팩은 같은 뼈 이름을 써서, 동작을 기본 몸에 그대로 붙일 수 있다.

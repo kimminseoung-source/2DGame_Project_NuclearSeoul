@@ -234,7 +234,8 @@ class Player:
 
     def draw_body(self):
         if not self.walk_time:
-            self.draw_pose("idle", self.idle_time)
+            # Holding Shift crouches at once, even before moving.
+            self.draw_pose("sneak_idle" if self.sneaking else "idle", self.idle_time)
         else:
             self.draw_pose("sneak" if self.sneaking else "walk", self.walk_time)
 
