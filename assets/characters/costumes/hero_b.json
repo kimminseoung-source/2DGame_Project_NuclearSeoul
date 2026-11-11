@@ -1,0 +1,155 @@
+{
+  "name": "주인공 (콘셉트 A를 목표로 한 Blender 판)",
+  "role": "리더·감지",
+  "signature": "얼굴이 보이는 젊은 생존자, 겨자색 패딩 후드 재킷(후드 내림), 올리브 배낭, 어두운 카고 바지, 검은 장갑, 부츠, 나무 방망이",
+  "body": "male",
+  "head": 1.12,
+  "bulk": 1.0,
+  "legs": 1.0,
+  "hair": [
+    "Hair_SimpleParted"
+  ],
+  "hair_color": [
+    0.12,
+    0.1,
+    0.09
+  ],
+  "regions": {
+    "head": [
+      0.85,
+      0.66,
+      0.52
+    ],
+    "hands": [
+      0.1,
+      0.1,
+      0.11
+    ],
+    "forearms": [
+      0.78,
+      0.56,
+      0.18
+    ],
+    "top": [
+      0.78,
+      0.56,
+      0.18
+    ],
+    "bottom": [
+      0.27,
+      0.27,
+      0.25
+    ],
+    "shoes": [
+      0.17,
+      0.14,
+      0.12
+    ]
+  },
+  "shells": [
+    {
+      "name": "jacket",
+      "regions": [
+        "top",
+        "forearms"
+      ],
+      "inflate": 0.035,
+      "color": [
+        0.78,
+        0.56,
+        0.18
+      ]
+    },
+    {
+      "name": "trousers",
+      "regions": [
+        "bottom"
+      ],
+      "inflate": 0.02,
+      "color": [
+        0.27,
+        0.27,
+        0.25
+      ]
+    },
+    {
+      "name": "boots",
+      "regions": [
+        "shoes"
+      ],
+      "inflate": 0.025,
+      "color": [
+        0.17,
+        0.14,
+        0.12
+      ]
+    }
+  ],
+  "props": [
+    {
+      "name": "hood_down",
+      "shape": "sphere",
+      "bone": "neck_01",
+      "size": [
+        0.26,
+        0.12,
+        0.16
+      ],
+      "offset": [
+        0,
+        0.02,
+        -0.09
+      ],
+      "color": [
+        0.72,
+        0.51,
+        0.16
+      ]
+    },
+    {
+      "name": "backpack",
+      "shape": "rbox",
+      "bone": "spine_03",
+      "size": [
+        0.3,
+        0.38,
+        0.17
+      ],
+      "offset": [
+        0,
+        0.0,
+        -0.22
+      ],
+      "color": [
+        0.38,
+        0.4,
+        0.24
+      ]
+    },
+    {
+      "name": "bat",
+      "shape": "taper",
+      "bone": "hand_r",
+      "size": [
+        0.075,
+        0.075,
+        0.62
+      ],
+      "rotate": [
+        -55,
+        0,
+        0
+      ],
+      "offset": [
+        0,
+        0.253,
+        0.134
+      ],
+      "color": [
+        0.7,
+        0.45,
+        0.25
+      ]
+    }
+  ]
+}

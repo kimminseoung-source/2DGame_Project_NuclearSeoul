@@ -8,6 +8,9 @@ Every character is the same rigged body and the same actions; only these change:
   (head, hands, forearms, top, bottom, shoes), so a shirt, trousers and boots need no
   extra meshes and bend with the body;
 - hair: one of the free rigged hairstyles, recoloured;
+- shells: clothes with volume. A copy of the body keeps only the chosen regions and is
+  pushed out along its normals (a puffy jacket, baggy trousers, chunky boots); it is
+  skinned to the same bones, so it moves with the body in every action;
 - props: boxes, cylinders, spheres and cones fixed to a bone (hood, hard hat, backpack,
   bag, bat, pipe ...). They follow that bone in every action.
 
@@ -135,6 +138,9 @@ def primitive(shape, size):
         bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.5, radius2=0.5, depth=1.0)
     elif shape == "taper":                              # thin at -z, full at +z (a bat: handle to barrel)
         bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.22, radius2=0.5, depth=1.0)
+    elif shape == "rbox":                               # box with rounded edges (bags, backpacks)
+        bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.18, segments=2, affect="EDGES")
     elif shape == "cone":
         bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.5, radius2=0.0, depth=1.0)
     elif shape == "sphere":
@@ -173,8 +179,44 @@ def add_props(armature, costume):
         obj.matrix_world = target
 
 
+def add_shells(armature, costume):
+    """Clothes with volume: copies of the body, cut to some regions and pushed outwards."""
+    body = next((o for o in armature.children if o.type == "MESH" and o.name.startswith("Superhero")), None)
+    if body is None:
+        return
+    for shell in costume.get("shells", []):
+        obj = body.copy()
+        obj.data = body.data.copy()
+        obj.name = f"shell_{shell.get('name', 'cloth')}"
+        bpy.context.scene.collection.objects.link(obj)
+        names = {g.index: g.name for g in obj.vertex_groups}
+        keep = set(shell["regions"])
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        deform = bm.verts.layers.deform.verify()
+        drop = []
+        for v in bm.verts:
+            groups = v[deform]
+            bone = names.get(max(groups.items(), key=lambda kv: kv[1])[0], "spine_02") if groups else "spine_02"
+            if region_of(bone) not in keep:
+                drop.append(v)
+        bmesh.ops.delete(bm, geom=drop, context="VERTS")
+        bm.to_mesh(obj.data)
+        bm.free()
+        # Push out before skinning, so the thickness follows the body in every pose.
+        disp = obj.modifiers.new("inflate", "DISPLACE")
+        disp.direction = "NORMAL"
+        disp.mid_level = 0.0
+        disp.strength = shell.get("inflate", 0.02)
+        obj.modifiers.move(len(obj.modifiers) - 1, 0)
+        for attr in list(obj.data.color_attributes):
+            obj.data.color_attributes.remove(attr)
+        fill_color(obj.data, shell.get("color", [0.5, 0.5, 0.5]))
+
+
 def apply(armature, costume, root):
-    """Hair, props and colours; call at rest pose, before actions and shape constraints."""
+    """Hair, clothes, props and colours; call at rest pose, before actions and constraints."""
     add_hair(armature, costume, root)
     paint_body(armature, costume)
+    add_shells(armature, costume)
     add_props(armature, costume)
