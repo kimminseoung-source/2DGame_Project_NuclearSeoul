@@ -1,11 +1,11 @@
 {
   "walk": {
-    "stride_m": 1.22,
-    "note": "Walk_Loop: 0.61 m step, two steps per cycle"
+    "stride_m": 1.48,
+    "note": "Jog_Fwd_Loop: 0.74 m step, two steps per cycle"
   },
   "sneak": {
-    "stride_m": 0.57,
-    "note": "Walk_Loop + Crouch_Idle_Loop*0.4: 0.28 m step"
+    "stride_m": 0.65,
+    "note": "Walk_Loop + Crouch_Idle_Loop*0.3: 0.32 m step"
   },
   "swing": {
     "impact": 3,
