@@ -1,0 +1,8 @@
+The attached image is my game's player character. Make a KNOCKED DOWN sprite sheet of exactly this character.
+
+- 4 frames in ONE horizontal row, evenly spaced, every frame the same size.
+- 1 losing balance backwards; 2 falling, knees buckling; 3 hitting the ground on the back; 4 lying flat on the back on the ground, head to the LEFT, bat dropped beside. The lying frames stay inside the frame width.
+- Strict side view (profile), facing RIGHT, in every frame. Same face, hair, mustard-yellow hooded jacket (hood down), olive backpack, dark grey cargo trousers, black gloves, dark boots, wooden baseball bat in the right hand.
+- Feet on the SAME baseline in every frame; the character does not travel.
+- Same pixel-art style, palette, pixel size and 1-pixel dark outline as the attached image. Same character height in every frame (except where the pose is lower).
+- Plain solid flat magenta background (#FF00FF). No ground, no shadow, no text, no numbers, no frame borders.
