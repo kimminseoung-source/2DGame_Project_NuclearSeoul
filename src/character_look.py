@@ -7,9 +7,15 @@ the same calls, so swapping a character's art never touches the unit's code.
 
 SheetLook reads the rendered sheets in assets/characters/<name>/ (see CHARACTER_SPEC.md):
 one row per action, 96x64 cells facing right, feet 4 px above the cell bottom.
+An optional look.json beside the sheets holds per-pose facts, for now the impact frame
+of an attack: {"swing": {"impact": 3}}. Given the attack's contact progress, the frames
+before the impact play until the hit and the impact frame shows exactly when it lands
+(and stays during the hit-stop); the rest play after. Any attack of any unit uses this.
+
 LegacyLook wraps the first hand-drawn hero sheets so the old art keeps working.
 """
 
+import json
 from pathlib import Path
 
 import pico2d
@@ -32,24 +38,33 @@ class SheetLook:
         self.sheets = {}
         for path in Path(folder).glob("*.png"):
             self.sheets[path.stem] = pico2d.load_image(str(path))
+        meta = Path(folder) / "look.json"
+        self.meta = json.loads(meta.read_text(encoding="utf-8")) if meta.exists() else {}
 
     def frame_count(self, pose):
         return self.sheets[pose].w // self.CELL_W
 
-    def frame_of(self, pose, time):
+    def frame_of(self, pose, time, contact=None):
         count = self.frame_count(pose)
         if pose in LOOPING:
             return int(time / self.FRAME_TIME.get(pose, 0.12)) % count
+        impact = self.meta.get(pose, {}).get("impact")
+        if impact is not None and contact:
+            # Wind-up frames fill the time before the hit, the rest the time after it.
+            if time < contact:
+                return min(impact - 1, int(time / contact * impact))
+            after = (time - contact) / max(1e-6, 1 - contact)
+            return min(count - 1, impact + int(after * (count - impact)))
         return min(count - 1, max(0, int(time * count)))
 
-    def draw(self, pose, time, x, feet_y, facing):
+    def draw(self, pose, time, x, feet_y, facing, contact=None):
         fixed = None
         if pose not in self.sheets:
             pose, fixed = FALLBACK.get(pose, ("idle", None))
             if pose not in self.sheets:
                 pose, fixed = "idle", None
         image = self.sheets[pose]
-        frame = self.frame_of(pose, time) if fixed is None else fixed
+        frame = self.frame_of(pose, time, contact) if fixed is None else fixed
         y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
         flip = "" if facing > 0 else "h"
         image.clip_composite_draw(
@@ -85,7 +100,7 @@ class LegacyLook:
             return "action", 0
         return "walk", 0
 
-    def draw(self, pose, time, x, feet_y, facing):
+    def draw(self, pose, time, x, feet_y, facing, contact=None):
         sheet, frame = self.pick(pose, time)
         image = self.sprites[sheet]
         width = self.ACTION_W if sheet == "action" else self.MOVE_W

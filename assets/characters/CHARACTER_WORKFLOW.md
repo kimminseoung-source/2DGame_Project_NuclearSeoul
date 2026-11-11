@@ -99,14 +99,14 @@
      --model "assets/source3d/quaternius_base_characters/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf" \
      --anim-file "assets/source3d/quaternius_animation_library_2/Unreal-Godot/UAL2_Standard.glb" \
      --out assets/characters/base \
-     --map "swing=Sword_Regular_A" --frames-for swing=6 \
+     --map "swing=Sword_Regular_A,Sword_Regular_A_Rec@7-23" --frames-for swing=6,3 \
      --tilt 20 --head 1.15 --bulk 1.1 --legs 1.0 --flat 0.80,0.62,0.50 --bands 4 --outline
    ```
    제자리 은신(`sneak_idle`)은 첫 명령의 `--map`에 `"sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.4"`, `--frames-for`에 `sneak_idle=4`를 더한다.
 4. **미리보기** — 보여 주기 전에 [그림 작업 피드백과 교훈](ART_FEEDBACK.md)의 점검표를 반드시 통과시킨다. `tools/sprites/preview_sheets.ps1 -SheetDir <시트 폴더> -Out assets/characters/previews/<대상>_v<번호>.png -Title <제목>`으로 만들고 사용자에게 보여 준다.
 5. **기준 확정** — 미리보기를 보고 렌더 설정을 조정해 4절에 적는다. 이후 모든 캐릭터는 같은 설정을 쓴다.
 6. **주인공 만들기** — 기본 몸에 방호복·후드·방독면·공기통·방망이를 입혀 `assets/characters/hero/`에 렌더한다.
-7. **게임 연결** — 실제 화면에서 크기·발 위치·재생 속도를 확인한다. 시트 폴더 이름만 넘기면 `src/character_look.py`의 `SheetLook`이 동작 이름(idle·walk·sneak·swing·pickup·hurt·down)과 시간으로 칸을 골라 그린다. 주인공은 `main.py`의 `PLAYER_LOOK`에 폴더 이름을 적는다. 반복 동작의 칸 시간은 `SheetLook.FRAME_TIME`, 초상화 자르기 영역은 `SheetLook.PORTRAIT`.
+7. **게임 연결** — 실제 화면에서 크기·발 위치·재생 속도를 확인한다. 시트 폴더 이름만 넘기면 `src/character_look.py`의 `SheetLook`이 동작 이름(idle·walk·sneak·swing·pickup·hurt·down)과 시간으로 칸을 골라 그린다. 주인공은 `main.py`의 `PLAYER_LOOK`에 폴더 이름을 적는다. 반복 동작의 칸 시간은 `SheetLook.FRAME_TIME`, 초상화 자르기 영역은 `SheetLook.PORTRAIT`. 공격 동작은 시트 폴더의 `look.json`에 맞는 칸을 적는다(예: `{"swing": {"impact": 3}}`). 공격 객체가 판정 시점(`contact`, 0~1)을 알려 주면, 그 전에는 준비 칸들이, 판정 순간에는 맞는 칸이(히트스톱 동안 유지), 그 뒤에는 나머지 칸이 재생된다. 새 무기나 적의 공격도 맞는 칸만 적으면 같은 방식으로 맞춰진다.
 8. **변형 캐릭터** — 1절 특색 기준표를 채워 설계한 뒤 같은 방식으로 렌더한다.
 9. **기록** — 매 단계 결과·결정·문제를 6절 작업 기록에 남기고 커밋한다.
 
@@ -117,7 +117,7 @@
 | idle | `Idle_Loop` | 4 | |
 | walk | `Walk_Loop` | 8 | |
 | sneak | `Walk_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음(`Walk_Loop+Crouch_Idle_Loop*0.4`) | 6 | v4b부터. 무료 팩의 `Crouch_Fwd_Loop`는 쪼그려 앉은 깊은 자세라 "몸을 낮추고 조심스럽게 걷기"로 안 읽힘. 섞을 때는 COMBINE(회전을 곱해 더함)을 써야 함. 단순 평균(REPLACE)은 다리가 뒤로 뒤집힘 |
-| swing | `Sword_Regular_A` (두 번째 팩 UAL2) | 6 | 사용자 지시 "칼 베기 A로 해 보세요"(2026-11-11)로 시험 적용. 서 있다가 깊이 숙여 들어가며 아래에서 위로 베어 올림. 이전 후보 나무 베기는 `TreeChopping_Loop@0-20`. 후보 비교 `previews/swing_trial.png` |
+| swing | `Sword_Regular_A` 6칸 + 복귀 `Sword_Regular_A_Rec` 7~23프레임 3칸 (두 번째 팩 UAL2) | 9 | 사용자 결정 "칼 베기 A + 맞는 칸 맞추기 + 복귀"(2026-11-11). 크게 숙였다가 베어 올린 뒤 제자리로 돌아옴. 맞는 칸은 4번째 칸(인덱스 3)이고 `base/look.json`에 적음. 이전 후보 나무 베기는 `TreeChopping_Loop@0-20` |
 | sneak_idle | `Idle_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음 | 4 | Shift만 누르고 서 있을 때. 시트가 없는 캐릭터는 `sneak` 첫 칸으로 대신함(`character_look.FALLBACK`) |
 | hurt | `Hit_Chest` | 3 | |
 | down | `Death01` | 5 | 마지막 칸 유지 |
@@ -135,6 +135,8 @@
 | 칸 안 위치 | 쓰러짐은 뒤로 넘어가므로 그림을 오른쪽으로 16px 옮김(`--shift-for down=16`) | 확정(v3) |
 | 색 | 기본 몸은 단색 살색 0.80,0.62,0.50(`--flat`). 옷을 입힌 캐릭터는 재질 색 사용 | v2 |
 | 명암 | 스튜디오 조명을 세로축으로 70° 돌려 옆면에 밝은 면·어두운 면이 생기게 하고, 밝기를 4단계로 끊음(`--bands 4`, 셀 셰이딩) | v2 |
+| 제자리 고정 | 렌더할 때 root 뼈 위치를 항상 0으로 고정(`pin_root`, 끄려면 `--keep-root`). 두 번째 팩 동작은 root에 앞으로 나가는 이동이 들어 있어, 고정하지 않으면 끝난 뒤 뒤로 툭 튐. 1팩 동작(서 있기·걷기·쓰러짐)은 고정해도 결과가 같음을 확인 | 확정(2026-11-11) |
+| 동작 이어 붙이기 | `--map "시트=동작A,동작B@시작-끝"`, `--frames-for 시트=6,3`처럼 쉼표로 이어 붙이면 한 시트에 차례로 렌더. 공격 뒤에 복귀 동작을 붙일 때 씀 | 2026-11-11 |
 | 외곽선 | 렌더 후 그림 둘레에 1px 짙은 남색 외곽선(`--outline`). Workbench 자체 외곽선은 작은 크기에서 거의 안 보여 쓰지 않음 | 확정(v2) |
 
 ## 5. 결과 이력
@@ -164,3 +166,4 @@
 | 2026-11-11 | 사용자 지시 "은신 먼저". 렌더 스크립트에 동작 섞기(`동작+다른동작*비율`) 추가. 첫 시도(REPLACE)는 다리가 뒤로 뒤집혀 실패, COMBINE으로 바꿔 해결. 시험판 비교 `previews/sneak_trial.png` | 사용자 선택 "B (40%)". `base/sneak.png` 교체(v4b), 게임 화면 `previews/sneak_v4b_ingame.png`. 남은 점: 걸음 중간 칸에서 고개가 조금 숙여짐, 팔이 늘어짐(방망이를 쥐이면 다시 판단) |
 | 2026-11-11 | 사용자 지시 "Shift를 누르면 은신 상태로 바로 돌입, 그다음 휘두르기 고치기" | ① 은신 판정(좀비 감지 거리)은 원래 Shift 즉시였고 그림만 서 있는 자세였음 → 제자리 은신 `sneak_idle` 추가. ② 1팩에 방망이 동작이 없어 두 번째 무료 팩 Universal Animation Library 2 [Standard](CC0)를 받음. 후보 5종 중 나무 베기(양손)로 휘두르기 교체(v4c). 게임 화면 `previews/sneak_idle_swing_ingame.png`. 남은 점: 빨간 휘두르기 궤적선은 예전 주인공 기준 위치라 손과 조금 어긋남 |
 | 2026-11-11 | 사용자 지시 "칼 베기 A로 해 보세요" | 휘두르기를 `Sword_Regular_A`로 교체해 게임에 넣음. 게임 화면 `previews/swing_sword_a_ingame.png`. 점검표: ① 3칸째에 몸이 바닥 가까이 낮게 숙여짐 ② 마지막 칸이 팔을 치켜든 넓은 자세로 끝나 서 있기로 돌아올 때 툭 바뀜(팩의 `Sword_Regular_A_Rec` 복귀 동작은 아직 안 붙임) ③ 아래에서 위로 베어 올리는 동작이라 옆으로 휘두르기보다는 올려치기로 읽힘 |
+| 2026-11-11 | 사용자 결정 "진행"(칼 베기 A + 맞는 칸 맞추기 + 복귀 동작) | 렌더 스크립트에 동작 이어 붙이기와 root 고정 추가. 공용 맞는 칸 방식(`look.json`의 `impact`, 공격의 `contact`) 추가. 판정 순간에 베는 칸이 보이고 히트스톱 동안 유지됨을 게임 화면으로 확인(`previews/swing_impact_ingame.png`). 중간에 점검표에서 "끝나면 30픽셀 앞에서 끝나 뒤로 튐"을 발견해 root 고정으로 해결. 남은 점: 빨간 궤적선은 예전 주인공 기준이라 따라 휘두르는 칸에서 몸 뒤쪽에 그려짐 |

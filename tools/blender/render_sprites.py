@@ -51,6 +51,8 @@ def parse_args():
                         help="sheet=count pairs overriding --frames, e.g. walk=8 hurt=3")
     parser.add_argument("--list", action="store_true", help="only print the actions and stop")
     parser.add_argument("--turn", type=float, default=90.0, help="degrees to turn the model to face right")
+    parser.add_argument("--keep-root", action="store_true",
+                        help="let the root bone travel (default: pinned so sprites stay on the spot)")
     parser.add_argument("--tilt", type=float, default=0.0,
                         help="degrees the camera looks down from above (0 = eye level)")
     parser.add_argument("--head", type=float, default=1.0, help="head size multiplier")
@@ -113,6 +115,21 @@ def hold_scale(armature, bone, x, y, z):
     c.min_x = c.max_x = x
     c.min_y = c.max_y = y
     c.min_z = c.max_z = z
+    c.owner_space = "LOCAL"
+
+
+def pin_root(armature, bone="root"):
+    """Keep the root bone in place so every sheet is drawn on the spot.
+
+    Some actions carry their travel on the root (Sword_Regular_A steps about 1 m forward);
+    the game moves the character itself, so a travelling sprite would jump back at the end.
+    """
+    pose_bone = armature.pose.bones.get(bone)
+    if pose_bone is None:
+        return
+    c = pose_bone.constraints.new("LIMIT_LOCATION")
+    c.use_min_x = c.use_max_x = c.use_min_y = c.use_max_y = c.use_min_z = c.use_max_z = True
+    c.min_x = c.max_x = c.min_y = c.max_y = c.min_z = c.max_z = 0.0
     c.owner_space = "LOCAL"
 
 
@@ -269,12 +286,23 @@ def snap_to_floor(px):
     return out
 
 
-def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, frame_range, args, blend=None):
-    assign_action(armature, action, blend)
-    frames = frames_of(action, count, frame_range)
-    sheet = bpy.data.images.new(f"sheet_{sheet_name}", CELL_W * len(frames), CELL_H, alpha=True)
-    sheet_px = [0.0] * (CELL_W * len(frames) * CELL_H * 4)
-    for index, frame in enumerate(frames):
+def render_sheet(scene, armature, segments, out_dir, tmp_dir, sheet_name, args):
+    """Render one sheet from one or more segments played one after another.
+
+    segments: [(action, frame_range, blend, count)]. Several segments let an attack be
+    followed by its recovery, e.g. swing = Sword_Regular_A then Sword_Regular_A_Rec.
+    """
+    cells = []                                          # (segment index, action frame)
+    for seg_index, (action, frame_range, blend, count) in enumerate(segments):
+        cells += [(seg_index, f) for f in frames_of(action, count, frame_range)]
+    sheet = bpy.data.images.new(f"sheet_{sheet_name}", CELL_W * len(cells), CELL_H, alpha=True)
+    sheet_px = [0.0] * (CELL_W * len(cells) * CELL_H * 4)
+    current = None
+    for index, (seg_index, frame) in enumerate(cells):
+        if seg_index != current:
+            action, _, blend, _ = segments[seg_index]
+            assign_action(armature, action, blend)
+            current = seg_index
         scene.frame_set(frame)
         path = os.path.join(tmp_dir, f"{sheet_name}_{index}.png")
         scene.render.filepath = path
@@ -283,31 +311,37 @@ def render_sheet(scene, armature, action, count, out_dir, tmp_dir, sheet_name, f
         px = snap_to_floor(finish_pixels(image.pixels[:], args.bands, args.outline))
         for y in range(CELL_H):
             src = y * CELL_W * 4
-            dst = (y * CELL_W * len(frames) + index * CELL_W) * 4
+            dst = (y * CELL_W * len(cells) + index * CELL_W) * 4
             sheet_px[dst:dst + CELL_W * 4] = px[src:src + CELL_W * 4]
         bpy.data.images.remove(image)
     sheet.pixels[:] = sheet_px
     sheet.filepath_raw = os.path.join(out_dir, f"{sheet_name}.png")
     sheet.file_format = "PNG"
     sheet.save()
-    print(f"saved {sheet.filepath_raw} ({len(frames)} frames: {frames})")
+    print(f"saved {sheet.filepath_raw} ({len(cells)} frames: {[f for _, f in cells]})")
+
+
+def parse_segment(text):
+    """'Fixing_Kneeling@0-30' -> ('Fixing_Kneeling', (0, 30), None).
+    'Walk_Loop+Crouch_Fwd_Loop*0.4' -> ('Walk_Loop', None, ('Crouch_Fwd_Loop', 0.4))."""
+    frame_range = None
+    blend = None
+    if "+" in text:
+        text, over = text.split("+", 1)
+        over_name, weight = over.split("*") if "*" in over else (over, "0.5")
+        blend = (over_name, float(weight))
+    if "@" in text:
+        text, span = text.split("@", 1)
+        start, end = span.split("-")
+        frame_range = (float(start), float(end))
+    return text, frame_range, blend
 
 
 def parse_map_entry(entry):
-    """'pickup=Fixing_Kneeling@0-30' -> ('pickup', 'Fixing_Kneeling', (0, 30), None).
-    'sneak=Walk_Loop+Crouch_Fwd_Loop*0.4' -> ('sneak', 'Walk_Loop', None, ('Crouch_Fwd_Loop', 0.4))."""
+    """'swing=Sword_Regular_A,Sword_Regular_A_Rec' -> ('swing', [segment, segment]).
+    Segments are played in order; each is parsed by parse_segment."""
     sheet_name, action_part = entry.split("=", 1)
-    frame_range = None
-    blend = None
-    if "+" in action_part:
-        action_part, over = action_part.split("+", 1)
-        over_name, weight = over.split("*") if "*" in over else (over, "0.5")
-        blend = (over_name, float(weight))
-    if "@" in action_part:
-        action_part, span = action_part.split("@", 1)
-        start, end = span.split("-")
-        frame_range = (float(start), float(end))
-    return sheet_name, action_part, frame_range, blend
+    return sheet_name, [parse_segment(part) for part in action_part.split(",")]
 
 
 def safe_name(name):
@@ -331,6 +365,8 @@ def main():
         if obj.parent is None and obj.type in ("ARMATURE", "MESH", "EMPTY"):
             obj.rotation_mode = "XYZ"                    # glTF imports use quaternions; switch first
             obj.rotation_euler[2] += math.radians(args.turn)
+    if armature is not None and not args.keep_root:
+        pin_root(armature)
     shape_body(armature, args.head, args.bulk, args.legs)
     flat = tuple(float(v) for v in args.flat.split(",")) if args.flat else None
     setup_camera(scene, args.tilt)
@@ -345,23 +381,25 @@ def main():
         bpy.ops.render.render(write_still=True)
         print("saved rest pose only (no armature)")
         return
-    entries = [parse_map_entry(e) for e in args.map] if args.map else \
-        [(safe_name(a.name), a.name, None, None) for a in bpy.data.actions]
-    for sheet_name, action_name, frame_range, blend in entries:
-        action = bpy.data.actions.get(action_name)
-        if action is None:
-            print(f"missing action {action_name}")
+    entries = [parse_map_entry(e) for e in args.map] if args.map else         [(safe_name(a.name), [(a.name, None, None)]) for a in bpy.data.actions]
+    for sheet_name, parts in entries:
+        # --frames-for swing=6,3 gives each segment its own frame count.
+        sheet_counts = [int(c) for c in str(counts.get(sheet_name, args.frames)).split(",")]
+        segments = []
+        for seg_index, (action_name, frame_range, blend) in enumerate(parts):
+            action = bpy.data.actions.get(action_name)
+            over = bpy.data.actions.get(blend[0]) if blend else None
+            if action is None or (blend and over is None):
+                print(f"missing action {action_name if action is None else blend[0]}")
+                segments = None
+                break
+            count = sheet_counts[min(seg_index, len(sheet_counts) - 1)]
+            segments.append((action, frame_range, (over, blend[1]) if blend else None, count))
+        if not segments:
             continue
-        if blend is not None:
-            over = bpy.data.actions.get(blend[0])
-            if over is None:
-                print(f"missing action {blend[0]}")
-                continue
-            blend = (over, blend[1])
         # Moving the camera left moves the figure right in the cell.
         scene.camera.location.x = -shifts.get(sheet_name, 0.0) * PERSON_HEIGHT_M / PERSON_HEIGHT_PX
-        render_sheet(scene, armature, action, int(counts.get(sheet_name, args.frames)),
-                     out_dir, tmp_dir, sheet_name, frame_range, args, blend)
+        render_sheet(scene, armature, segments, out_dir, tmp_dir, sheet_name, args)
 
 
 main()

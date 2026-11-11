@@ -45,6 +45,14 @@ class BatSwing:
             for step in range(1, steps + 1)
         )
 
+    # Every attack exposes progress (0..1) and the progress at which it lands (contact), so a
+    # character's look can put its impact frame exactly on the hit (character_look.SheetLook).
+    contact = BAT_CONTACT / BAT_DURATION
+
+    @property
+    def progress(self):
+        return min(1.0, self.elapsed / BAT_DURATION)
+
     @property
     def frame(self):
         if self.elapsed < BAT_CONTACT:

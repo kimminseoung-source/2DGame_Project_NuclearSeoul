@@ -223,7 +223,7 @@ class Player:
             self.draw_body()
 
     def draw_swing(self, swing):
-        self.draw_pose("swing", swing.elapsed / BAT_DURATION)
+        self.draw_pose("swing", swing.progress, swing.contact)
         swing.draw_trail(self, camera.x)
 
     def draw_dash(self):
@@ -254,5 +254,5 @@ class Player:
         """Source rectangle of the right-facing idle frame, cropped to head and torso."""
         return self.look.portrait_clip()
 
-    def draw_pose(self, pose, time):
-        self.look.draw(pose, time, self.x - camera.x, self.y - 12, self.direction)
+    def draw_pose(self, pose, time, contact=None):
+        self.look.draw(pose, time, self.x - camera.x, self.y - 12, self.direction, contact)
