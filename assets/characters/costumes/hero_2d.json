@@ -7,5 +7,7 @@
   "legs": 1.0,
   "split_sides": true,
   "regions": {},
-  "paint_clothes": true
+  "paint_clothes": true,
+  "backpack": false,
+  "backpack_note": "2026-11-12 사용자: \"가방은 없는 게 좋을 것 같습니다\""
 }

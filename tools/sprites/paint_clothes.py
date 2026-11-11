@@ -200,6 +200,7 @@ def main():
     ap.add_argument("--light", required=True)
     ap.add_argument("--poses", nargs="+", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--no-pack", action="store_true", help="draw no backpack")
     ap.add_argument("sheets", nargs="*")
     a = ap.parse_args()
     ids = json.loads((Path(a.id) / "ids.json").read_text(encoding="utf-8"))
@@ -207,6 +208,8 @@ def main():
     for p in a.poses:
         poses.update(json.loads(Path(p).read_text(encoding="utf-8")))
     pack, bat = load_props()
+    if a.no_pack:
+        pack = None
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     for sheet in a.sheets or list(poses):
