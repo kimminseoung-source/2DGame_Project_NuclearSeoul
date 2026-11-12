@@ -10,8 +10,9 @@ The base body keeps its motion; this draws over every frame, pixel by pixel:
   mustard jacket over torso and arms (one pixel bulkier, covering the hips, with a hem line
   and a hood collar at the back of the neck), dark cargo trousers with a pocket mark, chunky
   boots, black gloves; far limbs one shade darker;
-- the concept's own backpack and bat pixel art (parts sheet), shrunk to game size: the pack
-  on the back following the torso tilt, the bat in the near hand at the action's angle
+- the concept's own backpack pixel art (parts sheet) on the back following the torso tilt,
+  and the weapon (tools/sprites/weapons.py: machete, bat ...) in the near hand at the
+  action's angle
   (tools/blender/export_pose2d.py), the near hand drawn over the handle;
 - a 1 px dark outline.
 """
@@ -26,12 +27,13 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 import clean_concept as cc  # noqa: E402
+import weapons  # noqa: E402
 from repaint import to_display  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 PARTS = ROOT / "assets/characters/concepts/hero_parts_a.webp"
-PACK_BOX, BAT_BOX = (320, 58, 418, 185), (752, 383, 968, 411)
-PACK_H, BAT_LEN = 15, 22                       # game pixels
+PACK_BOX = (320, 58, 418, 185)
+PACK_H = 15                                    # game pixels
 CUTS = (115, 160)
 OUTLINE = (16, 18, 26, 255)
 RAMPS = {
@@ -72,7 +74,7 @@ def level(light, x, y):
     return 0 if v < CUTS[0] else 1 if v < CUTS[1] else 2
 
 
-def paint_frame(part, light, pose, pack, bat):
+def paint_frame(part, light, pose, pack, weapon):
     h, w = len(part), len(part[0])
     paint = {}                                     # (x, y) -> (ramp, level, far)
 
@@ -169,13 +171,14 @@ def paint_frame(part, light, pose, pack, bat):
     frame.alpha_composite(layers[1])
     # Bat in the near hand at the action's angle; the near hand over the handle.
     near = cells(part, {"hands_r"})
-    if near and bat is not None:
+    if near and weapon is not None:
         gx = sum(x for x, _ in near) / len(near)
         gy = sum(y for _, y in near) / len(near)
         ang = math.degrees(math.atan2(pose["bat_dir"][1], pose["bat_dir"][0]))
-        big = Image.new("RGBA", (BAT_LEN * 3, BAT_LEN * 3))
-        grip = (BAT_LEN * 3 // 2, BAT_LEN * 3 // 2)
-        big.paste(bat, (grip[0] - 2, grip[1] - bat.height // 2), bat)
+        size = weapon.width * 3
+        big = Image.new("RGBA", (size, size))
+        grip = (size // 2, size // 2)
+        big.paste(weapon, (grip[0] - 2, grip[1] - weapon.height // 2), weapon)
         rot = big.rotate(-ang, resample=Image.NEAREST, center=grip)
         frame.alpha_composite(rot, (round(gx - grip[0]), round(gy - grip[1])))
         for x, y in near:
@@ -187,11 +190,8 @@ def load_props():
     sheet = cc.key_out(Image.open(PARTS).convert("RGBA"), [255, 0, 255], 150)
     pack = sheet.crop(PACK_BOX)
     pack = pack.resize((max(1, round(pack.width * PACK_H / pack.height)), PACK_H), Image.NEAREST)
-    bat = sheet.crop(BAT_BOX)
-    bat = bat.resize((BAT_LEN, max(2, round(bat.height * BAT_LEN / bat.width) + 1)), Image.NEAREST)
-    for img in (pack, bat):
-        img.putalpha(img.getchannel("A").point(lambda a: 255 if a >= 128 else 0))
-    return pack, bat
+    pack.putalpha(pack.getchannel("A").point(lambda a: 255 if a >= 128 else 0))
+    return pack
 
 
 def main():
@@ -201,13 +201,15 @@ def main():
     ap.add_argument("--poses", nargs="+", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-pack", action="store_true", help="draw no backpack")
+    ap.add_argument("--weapon", default="machete", choices=sorted(weapons.WEAPONS), help="weapon in the near hand")
     ap.add_argument("sheets", nargs="*")
     a = ap.parse_args()
     ids = json.loads((Path(a.id) / "ids.json").read_text(encoding="utf-8"))
     poses = {}
     for p in a.poses:
         poses.update(json.loads(Path(p).read_text(encoding="utf-8")))
-    pack, bat = load_props()
+    pack = load_props()
+    weapon = weapons.get(a.weapon)
     if a.no_pack:
         pack = None
     out = Path(a.out)
@@ -222,7 +224,7 @@ def main():
             part = part_map(id_img.crop(box), ids)
             light = light_img.crop(box).load()
             pose = poses[sheet][min(i, len(poses[sheet]) - 1)]
-            strip.alpha_composite(paint_frame(part, light, pose, pack, bat), (i * 96, 0))
+            strip.alpha_composite(paint_frame(part, light, pose, pack, weapon), (i * 96, 0))
         strip.save(out / f"{sheet}.png")
         print("saved", out / f"{sheet}.png", n, "frames")
 

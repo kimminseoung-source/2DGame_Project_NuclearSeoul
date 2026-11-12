@@ -9,5 +9,7 @@
   "regions": {},
   "paint_clothes": true,
   "backpack": false,
-  "backpack_note": "2026-11-12 사용자: \"가방은 없는 게 좋을 것 같습니다\""
+  "backpack_note": "2026-11-12 사용자: \"가방은 없는 게 좋을 것 같습니다\"",
+  "weapon": "machete",
+  "weapon_note": "2026-11-12 사용자: 주무기는 방망이가 아니라 마체테"
 }

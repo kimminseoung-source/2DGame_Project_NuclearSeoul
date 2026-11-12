@@ -87,7 +87,8 @@ def render(spec):
         subprocess.run([sys.executable, str(ROOT / "tools" / "sprites" / "paint_clothes.py"),
                         "--id", str(passes / "id"), "--light", str(passes / "light"),
                         "--poses", *poses, "--out", str(out),
-                        *([] if data.get("backpack", True) else ["--no-pack"])], check=True)
+                        *([] if data.get("backpack", True) else ["--no-pack"]),
+                        "--weapon", data.get("weapon", "machete")], check=True)
     elif "repaint" in data:
         # Rotoscoping: part IDs, light and the clothes' own texture, then repaint with the
         # concept colours (tools/sprites/repaint.py). The passes stay out of git (_passes/).
