@@ -285,6 +285,10 @@ class Player:
         """Source rectangle of the right-facing idle frame, cropped to head and torso."""
         return self.look.portrait_clip()
 
+    def pose_anchor(self):
+        """Screen point the look draws the feet at; effects tied to the sprite use it too."""
+        return self.x - camera.x, self.y - 12
+
     def draw_pose(self, pose, time, contact=None, distance=None):
-        self.look.draw(pose, time, self.x - camera.x, self.y - 12, self.direction,
+        self.look.draw(pose, time, *self.pose_anchor(), self.direction,
                        contact=contact, distance=distance)

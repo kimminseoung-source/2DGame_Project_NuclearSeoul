@@ -172,8 +172,7 @@ def paint_frame(part, light, pose, pack, weapon):
     # Bat in the near hand at the action's angle; the near hand over the handle.
     near = cells(part, {"hands_r"})
     if near and weapon is not None:
-        gx = sum(x for x, _ in near) / len(near)
-        gy = sum(y for _, y in near) / len(near)
+        gx, gy = grip_point(near)
         ang = math.degrees(math.atan2(pose["bat_dir"][1], pose["bat_dir"][0]))
         size = weapon.width * 3
         big = Image.new("RGBA", (size, size))
@@ -184,6 +183,24 @@ def paint_frame(part, light, pose, pack, weapon):
         for x, y in near:
             frame.putpixel((x, y), (*RAMPS["gloves"][level(light, x, y)], 255))
     return cc.outline(frame, OUTLINE[:3])
+
+
+def grip_point(near_hand):
+    """Where the weapon is held: the middle of the near hand's pixels."""
+    return (sum(x for x, _ in near_hand) / len(near_hand), sum(y for _, y in near_hand) / len(near_hand))
+
+
+def blade_line(part, pose, weapon):
+    """The weapon in one cell as [grip x, grip y, tip x, tip y] (cell pixels, y down), or None.
+    The game draws the swing trail along this line, so the trail follows the blade."""
+    near = cells(part, {"hands_r"})
+    if not near or weapon is None:
+        return None
+    gx, gy = grip_point(near)
+    dx, dy = pose["bat_dir"]
+    norm = math.hypot(dx, dy) or 1
+    length = weapon.width - 2
+    return [round(gx, 1), round(gy, 1), round(gx + dx / norm * length, 1), round(gy + dy / norm * length, 1)]
 
 
 def load_props():
@@ -214,19 +231,26 @@ def main():
         pack = None
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    blade_path = out / "blade.json"
+    blades = json.loads(blade_path.read_text(encoding="utf-8")) if blade_path.exists() else {}
     for sheet in a.sheets or list(poses):
         id_img = Image.open(Path(a.id) / f"{sheet}.png").convert("RGBA")
         light_img = Image.open(Path(a.light) / f"{sheet}.png").convert("RGBA")
         n = id_img.width // 96
         strip = Image.new("RGBA", (96 * n, 64))
+        lines = []
         for i in range(n):
             box = (i * 96, 0, i * 96 + 96, 64)
             part = part_map(id_img.crop(box), ids)
             light = light_img.crop(box).load()
             pose = poses[sheet][min(i, len(poses[sheet]) - 1)]
             strip.alpha_composite(paint_frame(part, light, pose, pack, weapon), (i * 96, 0))
+            lines.append(blade_line(part, pose, weapon))
         strip.save(out / f"{sheet}.png")
+        if any(lines):
+            blades[sheet] = lines
         print("saved", out / f"{sheet}.png", n, "frames")
+    blade_path.write_text(json.dumps(blades, indent=1) + chr(10), encoding="utf-8")
 
 
 if __name__ == "__main__":

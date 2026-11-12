@@ -13,6 +13,8 @@ An optional look.json beside the sheets holds per-pose facts:
 - "impact": the frame of an attack where the blow lands: {"swing": {"impact": 3}}. Given the attack's contact progress, the frames
 before the impact play until the hit and the impact frame shows exactly when it lands
 (and stays during the hit-stop); the rest play after. Any attack of any unit uses this.
+An optional blade.json (written by tools/sprites/paint_clothes.py) holds the weapon in every
+frame as [grip x, grip y, tip x, tip y] in cell pixels, so swing trails follow the blade.
 
 LegacyLook wraps the first hand-drawn hero sheets so the old art keeps working.
 """
@@ -46,6 +48,8 @@ class SheetLook:
             self.sheets[path.stem] = pico2d.load_image(str(path))
         meta = Path(folder) / "look.json"
         self.meta = json.loads(meta.read_text(encoding="utf-8")) if meta.exists() else {}
+        blades = Path(folder) / "blade.json"
+        self.blades = json.loads(blades.read_text(encoding="utf-8")) if blades.exists() else {}
 
     def frame_count(self, pose):
         return self.sheets[pose].w // self.CELL_W
@@ -68,6 +72,22 @@ class SheetLook:
             after = (time - contact) / max(1e-6, 1 - contact)
             return min(count - 1, impact + int(after * (count - impact)))
         return min(count - 1, max(0, int(time * count)))
+
+    def blade_lines(self, pose, x, feet_y, facing):
+        """The weapon in every frame of a pose as (grip, tip) screen points (None where the
+        frame shows no weapon), or None when the sheets have no blade data for the pose."""
+        lines = self.blades.get(pose)
+        if not lines:
+            return None
+        centre_y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
+
+        def screen(px, py):
+            return x + (px - self.CELL_W / 2) * facing, centre_y + self.CELL_H / 2 - py
+
+        return [(screen(*line[:2]), screen(*line[2:])) if line else None for line in lines]
+
+    def impact_of(self, pose):
+        return self.meta.get(pose, {}).get("impact")
 
     def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None):
         fixed = None
