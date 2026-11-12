@@ -25,8 +25,8 @@ MACHETE = Weapon(
     name="마체테",
     swings=(
         # 1st and 2nd: quick, light blows; 3rd: the big rising cut with a real wind-up.
-        Swing("swing", 0.40, 0.12, 2, 42, 20, pi / 3, 110, 0.65, False),    # quick sweep
-        Swing("swing2", 0.40, 0.12, 2, 44, 20, pi / 3, 110, 0.65, False),   # quick thrust
+        Swing("swing", 0.40, 0.12, 2, 44, 20, pi / 3, 110, 0.65, False),    # quick thrust
+        Swing("swing2", 0.40, 0.12, 2, 42, 20, pi / 3, 110, 0.65, False),   # quick sweep
         Swing("swing3", 0.66, 0.26, 6, 50, 24, pi / 3, 320, 0.74, True),    # big rising cut
     ),
     combo_window=0.25,
