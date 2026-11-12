@@ -234,6 +234,8 @@ def setup_render(scene, flat, painted=False, render_pass="color"):
 
 def frames_of(action, count, frame_range=None):
     start, end = frame_range or action.frame_range
+    if end is None:                                      # 'A@4-': from frame 4 to the end
+        end = action.frame_range[1]
     if count <= 1:
         return [int(start)]
     if frame_range is None and action.name.endswith("_Loop"):
@@ -363,7 +365,7 @@ def render_sheet(scene, armature, segments, out_dir, tmp_dir, sheet_name, args):
 
 
 def parse_segment(text):
-    """'Fixing_Kneeling@0-30' -> ('Fixing_Kneeling', (0, 30), None).
+    """'Fixing_Kneeling@0-30' -> ('Fixing_Kneeling', (0, 30), None); 'A@4-' runs to A's end.
     'Walk_Loop+Crouch_Fwd_Loop*0.4' -> ('Walk_Loop', None, ('Crouch_Fwd_Loop', 0.4))."""
     frame_range = None
     blend = None
@@ -374,7 +376,7 @@ def parse_segment(text):
     if "@" in text:
         text, span = text.split("@", 1)
         start, end = span.split("-")
-        frame_range = (float(start), float(end))
+        frame_range = (float(start), float(end) if end else None)
     return text, frame_range, blend
 
 

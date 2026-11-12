@@ -32,9 +32,12 @@ PASSES = [
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo: A, B and C (A and B end with their recovery, used when the combo stops).
-     ["swing=Sword_Regular_A,Sword_Regular_A_Rec@7-23", "swing2=Sword_Regular_B,Sword_Regular_B_Rec",
-      "swing3=Sword_Regular_C"],
-     ["swing=6,3", "swing2=6,3", "swing3=9"],
+     # Machete combo (user order 2026-11-12): 1st a quick sweep (B, wind-up cut off), 2nd a
+     # quick thrust (the front of C, its end as the recovery), 3rd the big rising cut (A from its
+     # crouch on: the standing first frames read as a pause between hits).
+     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_C@0-18,Sword_Regular_C@30-48",
+      "swing3=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23"],
+     ["swing=4,3", "swing2=4,3", "swing3=6,3"],
      []),
 ]
 

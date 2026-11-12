@@ -8,15 +8,15 @@
     "note": "Walk_Loop + Crouch_Idle_Loop*0.3: planted foot 0.82 m/s over 1.33 s"
   },
   "swing": {
-    "impact": 3,
-    "note": "Sword_Regular_A frame 6: arm swept forward"
+    "impact": 1,
+    "note": "Sword_Regular_B@2-13: the quick sweep crosses the front"
   },
   "swing2": {
-    "impact": 2,
-    "note": "Sword_Regular_B: the backhand sweep crosses the front"
+    "impact": 1,
+    "note": "Sword_Regular_C@0-18: the quick thrust reaches forward"
   },
   "swing3": {
-    "impact": 1,
-    "note": "Sword_Regular_C: the lunge's blade reaches forward"
+    "impact": 2,
+    "note": "Sword_Regular_A@4-: crouched wind-up, the blade rises past the front"
   }
 }

@@ -129,7 +129,9 @@
 | idle | `Idle_Loop` | 4 | |
 | walk | `Walk_Loop` | 12 | 2026-11-11 가볍게 뛰기(`Jog_Fwd_Loop`)를 잠깐 썼으나 실제로 약 6m/s 달리기 동작이라 걷기로 되돌림. 1.7m/s에서 원본의 1.7배 속도로 재생. 8→12칸으로 늘려 땅에 닿은 발이 덜 밀림 |
 | sneak | `Walk_Loop` 위에 `Crouch_Idle_Loop`를 30% 얹음(`Walk_Loop+Crouch_Idle_Loop*0.3`) | 12 | 2026-11-11 30%로 조정(처음 40%), 6→12칸. 섞을 때는 COMBINE(회전을 곱해 더함)을 써야 함. 단순 평균(REPLACE)은 다리가 뒤로 뒤집힘 |
-| swing | `Sword_Regular_A` 6칸 + 복귀 `Sword_Regular_A_Rec` 7~23프레임 3칸 (두 번째 팩 UAL2) | 9 | 사용자 결정 "칼 베기 A + 맞는 칸 맞추기 + 복귀"(2026-11-11). 크게 숙였다가 베어 올린 뒤 제자리로 돌아옴. 맞는 칸은 4번째 칸(인덱스 3)이고 `base/look.json`에 적음. 이전 후보 나무 베기는 `TreeChopping_Loop@0-20` |
+| swing (1타) | `Sword_Regular_B@2-13` 4칸 + 복귀 `Sword_Regular_B_Rec` 3칸 (두 번째 팩 UAL2) | 7 | 2026-11-12 연타 리듬 지시: 준비 동작을 잘라 빠른 가로 베기. 맞는 칸 인덱스 1 |
+| swing2 (2타) | `Sword_Regular_C@0-18` 4칸 + `Sword_Regular_C@30-48` 3칸 | 7 | 빠른 내지르기(C의 앞부분, 끝부분을 복귀로). 맞는 칸 인덱스 1 |
+| swing3 (3타) | `Sword_Regular_A@4-` 6칸 + 복귀 `Sword_Regular_A_Rec@7-23` 3칸 | 9 | 크게 숙였다가 베어 올리는 마무리. 처음 서 있는 칸은 타와 타 사이가 멈춘 것처럼 보여 뺌(`@4-`는 4프레임부터 끝까지). 맞는 칸 인덱스 2. 2026-11-11에는 이 동작이 1타(`swing`)였음 |
 | sneak_idle | `Idle_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음 | 4 | Shift만 누르고 서 있을 때. 시트가 없는 캐릭터는 `sneak` 첫 칸으로 대신함(`character_look.FALLBACK`) |
 | hurt | `Hit_Chest` | 3 | |
 | down | `Death01` | 5 | 마지막 칸 유지 |
@@ -284,3 +286,4 @@
 | 2026-11-12 | 사용자 지시 "가방은 없는 게 좋을 것 같습니다" | `hero_2d.json`에 `"backpack": false`, `paint_clothes.py --no-pack` 추가. 동작 8종을 배낭 없이 다시 그림(`previews/hero_2d_v2.png`, 게임 화면 `hero_2d_v2_ingame.png`) |
 | 2026-11-12 | 사용자 결정 "마체테로 하죠, 우선 해 볼까요?" | 무기 그림을 바꿔 끼우는 `tools/sprites/weapons.py`(마체테: 손잡이·가드·칼등·날을 픽셀로 직접 그림, 방망이: 시안 부품) 추가. `paint_clothes.py --weapon`, 의상 파일 `"weapon": "machete"`. 동작 8종을 마체테로 다시 그림(`previews/hero_machete_ingame.png`). 게임 코드의 방망이 이름(BatSwing, 타격음 등)은 실시간 전투 작업 때 무기 데이터로 바꾼다 |
 | 2026-11-12 | 실시간 전투 "시작" | 마체테 3연타 시트(`swing`=칼 베기 A+복귀, `swing2`=B+복귀, `swing3`=C)를 `render_character.py`에 추가하고 다시 그림. 맞는 칸: swing 3, swing2 2, swing3 1(`look.json`). 게임 화면 `previews/realtime_combo.png` |
+| 2026-11-12 | 사용자 지시 "1, 2타는 빠르게, 3타 때 동작이 크게" → "첫 번째를 마지막으로" | 1타 B(준비 잘라냄), 2타 C 앞부분, 3타 A(숙이기부터 끝까지)로 바꿔 다시 그림. 맞는 칸 1·1·2. 점검: ① 1·2타가 바로 칼을 내밀어 빨라 보임 ② 3타 처음에 서 있는 칸이 있어 멈칫해 보임 → `@4-`로 숙인 자세부터 시작하게 고침 ③ 2타 C 중간에 몸이 비틀리며 칼이 위로 가는 칸이 있으나 0.1초 남짓이라 넘어감. 게임 화면 `previews/combo_pacing_ingame.png` |

@@ -11,11 +11,12 @@ from math import cos, hypot, pi
 
 import pico2d
 
-Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from")
+Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from heavy")
 # sheet: animation sheet (character_look pose); duration and contact in seconds;
 # damage in hit points; reach and depth in px; arc in radians around the facing direction;
 # push: knockback speed in px/s; recover_from: progress where the swing's own recovery
-# starts, so a follow-up swing can cut in there instead of waiting for it.
+# starts, so a follow-up swing can cut in there instead of waiting for it; heavy: a big blow
+# (combo finisher) that lands one feel class harder (hit-stop, shake, number; see hit_feel).
 
 Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier")
 # combo_window: seconds after a swing's recovery starts in which a click continues the combo.
@@ -23,9 +24,10 @@ Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier")
 MACHETE = Weapon(
     name="마체테",
     swings=(
-        Swing("swing", 0.50, 0.24, 3, 42, 20, pi / 3, 150, 0.62),     # rising cut
-        Swing("swing2", 0.48, 0.20, 3, 44, 20, pi / 3, 150, 0.62),    # backhand sweep
-        Swing("swing3", 0.62, 0.22, 5, 48, 22, pi / 3, 260, 0.75),    # lunging finisher
+        # 1st and 2nd: quick, light blows; 3rd: the big rising cut with a real wind-up.
+        Swing("swing", 0.32, 0.10, 2, 42, 20, pi / 3, 110, 0.65, False),    # quick sweep
+        Swing("swing2", 0.34, 0.10, 2, 44, 20, pi / 3, 110, 0.65, False),   # quick thrust
+        Swing("swing3", 0.66, 0.26, 6, 50, 24, pi / 3, 320, 0.74, True),    # big rising cut
     ),
     combo_window=0.25,
     sneak_multiplier=3,

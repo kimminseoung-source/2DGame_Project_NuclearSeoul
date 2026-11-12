@@ -215,7 +215,8 @@ def handle_player_events():
             sneak = player.swing.sneak
             damage = swing.damage * (player.weapon.sneak_multiplier if sneak else 1)
             zombie.hurt(damage, player.swing.dx, swing.push)
-            weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak, finishing=not zombie.alive)
+            weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak, finishing=not zombie.alive,
+                                    heavy=swing.heavy)
             show_impact(position)
             play_hit_feel(weight)
             game_world.add_object(DamageNumber(zombie.x, zombie.y, damage, weight), game_world.EFFECT)

@@ -28,14 +28,17 @@ FEELS = {
 }
 
 
-def weight(damage, target_max_hp, critical=False, finishing=False):
-    """Weight class of one hit: critical and finishing blows always land the hardest."""
+def weight(damage, target_max_hp, critical=False, finishing=False, heavy=False):
+    """Weight class of one hit: critical and finishing blows always land the hardest;
+    a heavy blow (a combo finisher, any weapon) lands one class above its damage share."""
     if critical or finishing:
         return CRUSHING
     share = damage / max(1, target_max_hp)
     if share >= HEAVY_SHARE:
-        return HEAVY
-    return MEDIUM if share >= MEDIUM_SHARE else LIGHT
+        base = HEAVY
+    else:
+        base = MEDIUM if share >= MEDIUM_SHARE else LIGHT
+    return min(CRUSHING, base + heavy)
 
 
 def feel(hit_weight):
