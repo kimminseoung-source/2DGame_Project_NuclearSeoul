@@ -49,7 +49,7 @@ class ExplorationBar:
         ui.panel(x - width / 2, y - radius - 2, x + width / 2, y - radius + 16, ui.PARTY)
         ui.text_center(x, y - radius + 7, label, ui.TEXT, 14)
         ui.text(124, 70, "WASD 이동   Shift 은신   E 상호작용   Space 대시", ui.MUTED, 14)
-        ui.text(124, 44, "좌클릭 공격 · 들키기 전에 가까이서 좌클릭하면 기습", ui.MUTED, 14)
+        ui.text(124, 44, "좌클릭 마체테(연타 3번) · ! 뜨면 Space로 피하기 · 들키기 전 공격은 기습", ui.MUTED, 14)
         ui.text(124, 18, "Tab 배낭   F1 설정   Esc 종료", ui.DIM, 14)
 
 

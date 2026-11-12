@@ -1,8 +1,8 @@
 """A regular infected as a state machine (course LEC12 style, transitions.Machine).
 
-Exploration AI: idle -> chase -> windup -> strike -> recover -> chase, with
-knockback and stunned after a bat blow. During a turn-based fight the combat
-sets the pose directly with transition() and the AI below is paused.
+Real-time AI: idle -> chase -> windup ("!", the tell to dodge) -> strike -> recover -> chase,
+with knockback and stunned after a blow, and dead when its health runs out. (The archived
+turn-based fight could set the pose directly with transition() and pause the AI.)
 """
 
 from math import hypot
@@ -21,7 +21,10 @@ ALERT_DISTANCE = 128
 CHASE_SPEED = 38              # px/s, about 70% of the player's walk (1.7 m/s = 54 px/s)
 ATTACK_REACH = 27
 ATTACK_DEPTH = 15
-WINDUP_TIME = 0.38
+WINDUP_TIME = 0.55            # long enough to see the "!" and dash away
+MAX_HP = 9
+DAMAGE = 2                    # hit points one claw takes from the hero
+DEATH_TIME = 0.6
 STRIKE_TIME = 0.18
 SWIPE_VISIBLE_TIME = 0.075
 WALK_CYCLE = (3, 4, 5, 4)
@@ -31,7 +34,7 @@ KNOCKBACK_TIME = 0.24
 KNOCKBACK_SPEED = 220
 STAGGER_TIME = 0.38
 WRECK_STUN_TIME = 1.65
-STATES = ["idle", "chase", "windup", "strike", "recover", "knockback", "stunned"]
+STATES = ["idle", "chase", "windup", "strike", "recover", "knockback", "stunned", "dead"]
 
 
 class Zombie:
@@ -48,8 +51,11 @@ class Zombie:
         self.walk_distance = 0.0     # metres walked; any unit's look can drive its legs with it
         self.detour = None
         self.in_combat = False
-        self.frozen = False           # paused during a bat hit-stop
-        self.event = None             # "player_hit" or "wreck_hit", read by the play loop
+        self.frozen = False           # paused during a hit-stop
+        self.event = None             # "player_hit", "wreck_hit" or "gone", read by the play loop
+        self.max_hp = MAX_HP
+        self.hp = MAX_HP
+        self.push_speed = KNOCKBACK_SPEED
 
         self.machine = Machine(
             model=self,
@@ -62,6 +68,7 @@ class Zombie:
                 {"trigger": "resume", "source": ["recover", "stunned"], "dest": "chase"},
                 {"trigger": "shoved", "source": "*", "dest": "knockback"},
                 {"trigger": "stun", "source": "knockback", "dest": "stunned"},
+                {"trigger": "die", "source": "*", "dest": "dead"},
             ],
             initial="idle",
             auto_transitions=False,
@@ -81,6 +88,9 @@ class Zombie:
     def on_enter_knockback(self):
         self.time_left = KNOCKBACK_TIME
 
+    def on_enter_dead(self):
+        self.time_left = DEATH_TIME
+
     def transition(self, state, duration=0):
         """Set a pose directly (used by the turn-based fight)."""
         self.machine.set_state(state)
@@ -88,8 +98,26 @@ class Zombie:
 
     # Exploration behaviour ----------------------------------------------------
 
+    @property
+    def alive(self):
+        return self.state != "dead"
+
+    def hurt(self, damage, direction, push_speed):
+        """A blow from any weapon: lose health, then fall or get pushed back."""
+        self.hp = max(0, self.hp - damage)
+        self.alerted = True
+        self.direction = -direction
+        if not self.hp:
+            self.push_direction = direction
+            self.die()
+            return
+        self.push_speed = push_speed
+        self.push_direction = direction
+        self.detour = None
+        self.shoved()
+
     def knock_back(self, direction):
-        if self.state in ("knockback", "stunned"):
+        if self.state in ("knockback", "stunned", "dead"):
             return False
         self.push_direction = direction
         self.alerted = True
@@ -157,6 +185,12 @@ class Zombie:
             return
         self.event = None
         dt = game_clock.step()
+        if self.state == "dead":
+            self.time_left -= dt
+            self.push(self.push_direction * 40 * dt)
+            if self.time_left <= 0:
+                self.event = "gone"
+            return
         dx, dy = self.target.x - self.x, self.target.y - self.y
         if self.state == "idle":
             alert_distance = ALERT_DISTANCE * (0.45 if self.target.sneaking else 1)
@@ -184,7 +218,7 @@ class Zombie:
             if not self.time_left:
                 self.recover_now()
         elif self.state == "knockback":
-            if self.push(self.push_direction * KNOCKBACK_SPEED * step):
+            if self.push(self.push_direction * self.push_speed * step):
                 self.stun()
                 self.time_left = WRECK_STUN_TIME
                 self.event = "wreck_hit"
@@ -208,10 +242,17 @@ class Zombie:
             frame = 6 if self.time_left > STRIKE_TIME - SWIPE_VISIBLE_TIME else 7
         elif self.state == "chase":
             frame = WALK_CYCLE[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_CYCLE)]
-        elif self.state == "stunned":
+        elif self.state in ("stunned", "dead"):
             frame = 2
         else:
             frame = 0
+        if self.state == "dead":
+            # Topple backwards and fade by blinking.
+            if int(self.time_left * 20) % 2 == 0:
+                tilt = (1 - self.time_left / DEATH_TIME) * 1.4 * self.push_direction
+                self.image.clip_composite_draw(frame * 84, 0, 84, 58, -tilt, "h" if self.direction < 0 else "",
+                                               x, self.y - 12 + 29 - 14 * (1 - self.time_left / DEATH_TIME), 84, 58)
+            return
         self.image.clip_composite_draw(
             frame * 84, 0, 84, 58, 0, "h" if self.direction < 0 else "",
             x, self.y - 12 + 29, 84, 58,

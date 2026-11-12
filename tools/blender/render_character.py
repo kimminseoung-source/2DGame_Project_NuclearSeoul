@@ -31,8 +31,10 @@ PASSES = [
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "hurt=3", "down=5", "pickup=4"],
      ["--shift-for", "down=16"]),
     (LIB2,
-     ["swing=Sword_Regular_A,Sword_Regular_A_Rec@7-23"],
-     ["swing=6,3"],
+     # Machete combo: A, B and C (A and B end with their recovery, used when the combo stops).
+     ["swing=Sword_Regular_A,Sword_Regular_A_Rec@7-23", "swing2=Sword_Regular_B,Sword_Regular_B_Rec",
+      "swing3=Sword_Regular_C"],
+     ["swing=6,3", "swing2=6,3", "swing3=9"],
      []),
 ]
 

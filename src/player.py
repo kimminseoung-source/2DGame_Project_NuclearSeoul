@@ -1,7 +1,8 @@
 """The player character as a state machine (course LEC12 style, transitions.Machine).
 
-States: IDLE, WALK, SNEAK, DASH, PICKUP, SWING, and COMBAT while the turn-based
-fight moves the character. update() changes state and position, draw() only draws.
+States: IDLE, WALK, SNEAK, DASH, PICKUP, SWING (the weapon's combo, real-time), and
+COMBAT, kept for the archived turn-based fight. update() changes state and position,
+draw() only draws.
 """
 
 from math import hypot
@@ -12,7 +13,7 @@ from transitions import Machine
 
 import camera
 import game_clock
-from bat import BatSwing
+import weapon
 from nav import PX_PER_M_X, metres
 
 
@@ -27,6 +28,8 @@ DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
 PICKUP_CONTACT = 0.28
 PICKUP_DURATION = 0.58
+HURT_TIME = 0.3              # seconds the hit reaction shows
+HURT_PUSH = 90               # px/s the blow pushes the hero back while hurt
 FREE_STATES = ["IDLE", "WALK", "SNEAK"]
 
 
@@ -44,11 +47,15 @@ class Player:
         self.dash_cooldown = 0.0
         self.dash_direction = (0.0, 0.0)
         self.pickup_time = 0.0
-        self.swing = None
+        self.swing = None        # the MeleeAttack in progress
+        self.weapon = weapon.MACHETE
+        self.combo_queued = False
+        self.hurt_time = 0.0
+        self.hurt_direction = 0
         self.speed_multiplier = 1.0
         self.frozen = False      # set when the run is over
         self.combat = None       # the fight that moves this character, if any
-        self.events = []         # "pickup" and "bat_contact", read by the play loop
+        self.events = []         # "pickup" and "attack_contact", read by the play loop
 
         self.machine = Machine(
             model=self,
@@ -61,7 +68,7 @@ class Player:
                 {"trigger": "dash_end", "source": "DASH", "dest": "IDLE"},
                 {"trigger": "pick_up", "source": FREE_STATES, "dest": "PICKUP"},
                 {"trigger": "pickup_end", "source": "PICKUP", "dest": "IDLE"},
-                {"trigger": "swing_bat", "source": FREE_STATES, "dest": "SWING"},
+                {"trigger": "attack", "source": FREE_STATES, "dest": "SWING"},
                 {"trigger": "swing_end", "source": "SWING", "dest": "IDLE"},
                 {"trigger": "enter_combat", "source": "*", "dest": "COMBAT"},
                 {"trigger": "leave_combat", "source": "COMBAT", "dest": "IDLE"},
@@ -87,11 +94,13 @@ class Player:
         self.walk_time = 0.0
 
     def on_enter_SWING(self):
-        self.swing = BatSwing((self.direction, 0))
+        self.swing = weapon.MeleeAttack(self.weapon.swings[0], (self.direction, 0), 0)
+        self.combo_queued = False
         self.walk_time = 0.0
 
     def on_exit_SWING(self):
         self.swing = None
+        self.combo_queued = False
 
     def on_enter_COMBAT(self):
         self.dash_time = 0.0
@@ -119,8 +128,21 @@ class Player:
             self.pick_up()
 
     def start_swing(self):
+        """Attack, or queue the combo's next swing if one is already under way."""
         if self.state in FREE_STATES:
-            self.swing_bat()
+            self.attack()
+        elif self.state == "SWING" and self.swing.combo_index + 1 < len(self.weapon.swings)                 and self.swing.elapsed >= self.swing.swing.contact * 0.5:
+            self.combo_queued = True
+
+    @property
+    def invulnerable(self):
+        """A dash slips through blows."""
+        return self.state == "DASH"
+
+    def take_hit(self, from_direction):
+        """Show the hit reaction and slide back a little; the play loop takes the health."""
+        self.hurt_time = HURT_TIME
+        self.hurt_direction = from_direction
 
     @staticmethod
     def movement_direction(keys):
@@ -151,11 +173,19 @@ class Player:
                 self.pickup_end()
         elif self.state == "SWING":
             if self.swing.update(step):
-                self.events.append("bat_contact")
-            if self.swing.done:
+                self.events.append("attack_contact")
+            index = self.swing.combo_index
+            if self.combo_queued and self.swing.recovering and index + 1 < len(self.weapon.swings):
+                # Cut the recovery short and go straight into the next swing of the combo.
+                self.swing = weapon.MeleeAttack(self.weapon.swings[index + 1], (self.direction, 0), index + 1)
+                self.combo_queued = False
+            elif self.swing.done:
                 self.swing_end()
         elif not self.frozen:
             self.update_walking(step)
+        if self.hurt_time > 0:
+            self.hurt_time = max(0.0, self.hurt_time - step)
+            self.move(self.hurt_direction * HURT_PUSH * step, 0)
 
     def update_dash(self, step):
         step_time = min(step, self.dash_time)
@@ -216,11 +246,14 @@ class Player:
             self.draw_pose("pickup", 1 - abs(2 * progress - 1))
         elif self.state == "DASH":
             self.draw_dash()
+        elif self.hurt_time > 0:
+            self.draw_pose("hurt", 1 - self.hurt_time / HURT_TIME)
         else:
             self.draw_body()
 
     def draw_swing(self, swing):
-        self.draw_pose("swing", swing.progress, swing.contact)
+        sheet = getattr(getattr(swing, "swing", None), "sheet", "swing")   # MeleeAttack or archived BatSwing
+        self.draw_pose(sheet, swing.progress, swing.contact)
         swing.draw_trail(self, camera.x)
 
     def draw_dash(self):

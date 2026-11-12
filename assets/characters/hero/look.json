@@ -10,5 +10,13 @@
   "swing": {
     "impact": 3,
     "note": "Sword_Regular_A frame 6: arm swept forward"
+  },
+  "swing2": {
+    "impact": 2,
+    "note": "Sword_Regular_B: the backhand sweep crosses the front"
+  },
+  "swing3": {
+    "impact": 1,
+    "note": "Sword_Regular_C: the lunge's blade reaches forward"
   }
 }

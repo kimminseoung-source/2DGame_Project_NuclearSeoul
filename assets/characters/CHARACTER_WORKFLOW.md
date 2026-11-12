@@ -283,3 +283,4 @@
 | 2026-11-12 | 사용자 결정 "A로 게임에 넣기"(3D는 움직임만, 그림은 2D) | `render_character.py`에 2D 옷 그리기 단계(`hero_2d.json`의 `paint_clothes`) 연결, 동작 8종 그려 게임 주인공으로 교체. 버그: 쓰러져 누우면 다리까지 재킷 색 → "엉덩이 덮기"를 높이 대신 몸통과의 거리(2px)로 판단. 배낭 분홍 테두리 → 마젠타 섞임 판정 완화. 탐색 흐름·타격감 점검 통과 |
 | 2026-11-12 | 사용자 지시 "가방은 없는 게 좋을 것 같습니다" | `hero_2d.json`에 `"backpack": false`, `paint_clothes.py --no-pack` 추가. 동작 8종을 배낭 없이 다시 그림(`previews/hero_2d_v2.png`, 게임 화면 `hero_2d_v2_ingame.png`) |
 | 2026-11-12 | 사용자 결정 "마체테로 하죠, 우선 해 볼까요?" | 무기 그림을 바꿔 끼우는 `tools/sprites/weapons.py`(마체테: 손잡이·가드·칼등·날을 픽셀로 직접 그림, 방망이: 시안 부품) 추가. `paint_clothes.py --weapon`, 의상 파일 `"weapon": "machete"`. 동작 8종을 마체테로 다시 그림(`previews/hero_machete_ingame.png`). 게임 코드의 방망이 이름(BatSwing, 타격음 등)은 실시간 전투 작업 때 무기 데이터로 바꾼다 |
+| 2026-11-12 | 실시간 전투 "시작" | 마체테 3연타 시트(`swing`=칼 베기 A+복귀, `swing2`=B+복귀, `swing3`=C)를 `render_character.py`에 추가하고 다시 그림. 맞는 칸: swing 3, swing2 2, swing3 1(`look.json`). 게임 화면 `previews/realtime_combo.png` |

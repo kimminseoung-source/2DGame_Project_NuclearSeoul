@@ -24,7 +24,7 @@ import hit_feel
 import screen_shake
 from combat import Combat, Fighter
 from combat_view import create_views
-from effects import Impact
+from effects import DamageNumber, Impact
 from exit_door import ExitDoor
 from hud import ExplorationBar, ExplorationHud, InventoryOverlay, SettingsOverlay
 from inventory import COLUMNS, Inventory
@@ -32,6 +32,7 @@ from player import Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, ShelterMap
 from tile_map import EXIT, HEIGHT, SPAWN, WIDTH, TileMap
 from wreck import Wreck
+import zombie as zombie_rules
 from zombie import Zombie
 
 
@@ -185,30 +186,68 @@ def can_surprise():
     return hypot(zombie.x - player.x, zombie.y - player.y) <= SURPRISE_RANGE
 
 
+def attack_click():
+    """Left click in real-time play: attack, or queue the combo's next swing.
+
+    A first swing that starts before the infected has noticed the hero is a sneak attack,
+    decided now (by the time the blow lands it may have turned around)."""
+    if player.state == "SWING":
+        player.start_swing()
+        return
+    if player.busy():
+        return
+    face_cursor()
+    unseen = can_surprise()
+    player.start_swing()
+    if player.state == "SWING" and unseen:
+        player.swing.sneak = True
+
+
 def handle_player_events():
     for event in player.events:
-        if event == "bat_contact" and zombie is not None:
+        if event == "attack_contact" and zombie is not None and zombie.alive:
             position = zombie.x, zombie.y
-            if player.swing.hits(player, position) and zombie.knock_back(player.swing.dx):
-                show_impact(position)
-                # A shove in exploration deals no damage; it lands as a medium hit.
-                play_hit_feel(hit_feel.MEDIUM)
-                state.message = "감염자를 밀어냈습니다."
+            if not player.swing.hits(player, position):
+                continue
+            swing = player.swing.swing
+            # Real-time melee: any weapon's swing data decides damage and push. A blow before
+            # the infected notices the hero is a sneak attack (the weapon's multiplier).
+            sneak = player.swing.sneak
+            damage = swing.damage * (player.weapon.sneak_multiplier if sneak else 1)
+            zombie.hurt(damage, player.swing.dx, swing.push)
+            weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak, finishing=not zombie.alive)
+            show_impact(position)
+            play_hit_feel(weight)
+            game_world.add_object(DamageNumber(zombie.x, zombie.y, damage, weight), game_world.EFFECT)
+            if not zombie.alive:
+                state.message = "피폭체를 쓰러뜨렸습니다."
+            elif sneak:
+                state.message = "기습! 큰 피해를 줬습니다."
     player.events.clear()
 
 
 def handle_zombie_event():
+    global zombie
     if zombie is None or combat is not None:
         return
-    if zombie.alerted:
-        start_combat(surprise=False)
+    if zombie.event == "gone":
+        game_world.remove_object(zombie)
+        zombie = None
+        state.message = "길이 열렸습니다. 출구로 이동하세요."
         return
     if zombie.event == "wreck_hit":
         game_world.add_object(Impact(zombie.x, zombie.y), game_world.EFFECT)
         state.message = "폐차에 충돌했습니다. 지금 지나가세요."
+    elif zombie.event == "player_hit" and player.invulnerable:
+        state.message = "회피!"
     elif zombie.event == "player_hit":
-        state.health -= 1
-        state.message = "감염자에게 맞았습니다. 거리를 벌리세요."
+        damage = zombie_rules.DAMAGE
+        state.health = max(0, state.health - damage)
+        player.take_hit(zombie.direction)
+        weight = hit_feel.weight(damage, state.max_health, finishing=state.health == 0)
+        play_hit_feel(weight)
+        game_world.add_object(DamageNumber(player.x, player.y, damage, weight, ui.PARTY), game_world.EFFECT)
+        state.message = "피폭체에게 맞았습니다. \"!\"가 뜨면 Space로 피하세요."
         if state.health == 0:
             state.finished = True
             player.frozen = True
@@ -314,12 +353,10 @@ def handle_events():
                     combat.click(x, y)
                 else:
                     combat.click_bottom(x, y)
-            elif not (state.inventory_open or state.settings_open or state.finished or player.busy()):
-                face_cursor()
-                if can_surprise():
-                    start_combat(surprise=True)
-                else:
-                    player.start_swing()
+            elif not (state.inventory_open or state.settings_open or state.finished):
+                # Real-time melee (the turn-based fight is archived): a click attacks, and a
+                # click during a swing queues the combo's next swing.
+                attack_click()
         if event.type == sdl2.SDL_KEYDOWN and not handle_key(event.key):
             return False
     return True
