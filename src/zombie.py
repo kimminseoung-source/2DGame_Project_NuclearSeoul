@@ -11,6 +11,7 @@ import pico2d
 from transitions import Machine
 
 import camera
+import dodge
 import game_clock
 import ui
 from tile_map import WRECK_HALF_DEPTH, WRECK_LEFT, WRECK_RIGHT, WRECK_Y
@@ -52,7 +53,7 @@ class Zombie:
         self.detour = None
         self.in_combat = False
         self.frozen = False           # paused during a hit-stop
-        self.event = None             # "player_hit", "wreck_hit" or "gone", read by the play loop
+        self.event = None             # "player_hit", "player_dodged", "wreck_hit" or "gone" (play loop)
         self.max_hp = MAX_HP
         self.hp = MAX_HP
         self.push_speed = KNOCKBACK_SPEED
@@ -214,6 +215,8 @@ class Zombie:
                 self.swipe()
                 if self.in_reach(dx, dy) and dx * self.direction >= 0:
                     self.event = "player_hit"
+                elif dodge.is_perfect(self.target, dx, dy, ATTACK_REACH, ATTACK_DEPTH):
+                    self.event = "player_dodged"
         elif self.state == "strike":
             if not self.time_left:
                 self.recover_now()

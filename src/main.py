@@ -15,6 +15,7 @@ import sdl2
 from pico2d import pico2d as canvas
 
 import camera
+import dodge
 import game_clock
 import game_world
 import ui
@@ -24,7 +25,7 @@ import hit_feel
 import screen_shake
 from combat import Combat, Fighter
 from combat_view import create_views
-from effects import DamageNumber, Impact
+from effects import DamageNumber, DodgeFlash, Impact
 from exit_door import ExitDoor
 from hud import ExplorationBar, ExplorationHud, InventoryOverlay, SettingsOverlay
 from inventory import COLUMNS, Inventory
@@ -91,6 +92,7 @@ class GameState:
         self.message = ""
         self.in_shelter = True
         self.hitstop = 0.0
+        self.slow_motion = 0.0   # real seconds left of the perfect-dodge slow motion
         self.aim_x = None
 
 
@@ -129,6 +131,7 @@ def enter_area(in_shelter):
     combat, combat_views = None, []
     state.in_shelter = in_shelter
     state.hitstop = 0.0
+    state.slow_motion = 0.0
     tile_map = assets.shelter if in_shelter else assets.street
     spawn, exit_at = (SHELTER_SPAWN, SHELTER_EXIT) if in_shelter else (SPAWN, EXIT)
 
@@ -213,10 +216,13 @@ def handle_player_events():
             # Real-time melee: any weapon's swing data decides damage and push. A blow before
             # the infected notices the hero is a sneak attack (the weapon's multiplier).
             sneak = player.swing.sneak
+            counter = player.counter_time > 0
             damage = swing.damage * (player.weapon.sneak_multiplier if sneak else 1)
+            damage *= dodge.COUNTER_MULTIPLIER if counter else 1
+            player.counter_time = 0.0
             zombie.hurt(damage, player.swing.dx, swing.push)
-            weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak, finishing=not zombie.alive,
-                                    heavy=swing.heavy)
+            weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak or counter,
+                                    finishing=not zombie.alive, heavy=swing.heavy)
             show_impact(position)
             play_hit_feel(weight)
             game_world.add_object(DamageNumber(zombie.x, zombie.y, damage, weight), game_world.EFFECT)
@@ -224,6 +230,8 @@ def handle_player_events():
                 state.message = "피폭체를 쓰러뜨렸습니다."
             elif sneak:
                 state.message = "기습! 큰 피해를 줬습니다."
+            elif counter:
+                state.message = "반격!"
     player.events.clear()
 
 
@@ -239,8 +247,8 @@ def handle_zombie_event():
     if zombie.event == "wreck_hit":
         game_world.add_object(Impact(zombie.x, zombie.y), game_world.EFFECT)
         state.message = "폐차에 충돌했습니다. 지금 지나가세요."
-    elif zombie.event == "player_hit" and player.invulnerable:
-        state.message = "회피!"
+    elif zombie.event == "player_dodged" or (zombie.event == "player_hit" and player.invulnerable):
+        perfect_dodge()
     elif zombie.event == "player_hit":
         damage = zombie_rules.DAMAGE
         state.health = max(0, state.health - damage)
@@ -254,6 +262,14 @@ def handle_zombie_event():
             player.frozen = True
             state.message = "쓰러졌습니다. R로 다시 시작"
     zombie.event = None
+
+
+def perfect_dodge():
+    """Slow the scene for a beat and open the counter window (rules in dodge.py)."""
+    state.slow_motion = dodge.SLOW_TIME
+    player.counter_time = dodge.COUNTER_TIME
+    game_world.add_object(DodgeFlash(player.x, player.y), game_world.EFFECT)
+    state.message = "완벽 회피! 바로 공격하면 반격"
 
 
 def show_impact(position):
@@ -452,6 +468,9 @@ def update_world(frame_time):
     frozen = min(state.hitstop, frame_time)
     state.hitstop -= frozen
     frame_time -= frozen
+    if state.slow_motion > 0:
+        state.slow_motion -= frame_time
+        frame_time *= dodge.SLOW_SCALE
     player.speed_multiplier = state.speed_percent / 100
     if zombie is not None:
         zombie.frozen = state.hitstop > 0

@@ -46,6 +46,8 @@ class Player:
         self.dash_time = 0.0
         self.dash_cooldown = 0.0
         self.dash_direction = (0.0, 0.0)
+        self.dash_age = float("inf")   # seconds since the last dash started (perfect dodge)
+        self.counter_time = 0.0        # a landed blow is a counter while this runs (dodge.py)
         self.pickup_time = 0.0
         self.swing = None        # the MeleeAttack in progress
         self.weapon = weapon.MACHETE
@@ -84,6 +86,7 @@ class Player:
         self.sneaking = False
 
     def on_enter_DASH(self):
+        self.dash_age = 0.0
         self.dash_time = DASH_DURATION
         self.dash_cooldown = DASH_COOLDOWN
         self.sneaking = False
@@ -161,6 +164,8 @@ class Player:
         if self.state == "COMBAT":
             return
         self.dash_cooldown = max(0.0, self.dash_cooldown - dt)
+        self.dash_age += dt
+        self.counter_time = max(0.0, self.counter_time - dt)
         step = game_clock.step()
         if self.state == "DASH":
             self.update_dash(step)

@@ -1,5 +1,7 @@
 """Short-lived visual effects that remove themselves from the game world."""
 
+import pico2d
+
 import camera
 import game_clock
 import game_world
@@ -22,6 +24,28 @@ class Impact:
 
     def draw(self):
         draw_impact(self.x - camera.x, self.y + 5, max(0.0, self.time_left))
+
+
+class DodgeFlash:
+    """A white ring bursting from the hero on a perfect dodge."""
+
+    LIFE = 0.3
+
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+        self.age = 0.0
+
+    def update(self):
+        self.age += game_clock.frame_time
+        if self.age >= self.LIFE:
+            game_world.remove_object(self)
+
+    def draw(self):
+        progress = self.age / self.LIFE
+        alpha = round(230 * (1 - progress))
+        for extra in (0, 1):
+            pico2d.draw_circle(self.x - camera.x, self.y + 14, round(10 + 34 * progress) + extra,
+                               255, 255, 255, alpha)
 
 
 class DamageNumber:
