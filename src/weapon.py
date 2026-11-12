@@ -25,9 +25,9 @@ MACHETE = Weapon(
     name="마체테",
     swings=(
         # 1st and 2nd: quick, light blows; 3rd: the big rising cut with a real wind-up.
-        Swing("swing", 0.40, 0.12, 2, 44, 20, pi / 3, 110, 0.65, False),    # quick thrust
-        Swing("swing2", 0.40, 0.12, 2, 42, 20, pi / 3, 110, 0.65, False),   # quick sweep
-        Swing("swing3", 0.66, 0.26, 6, 50, 24, pi / 3, 320, 0.74, True),    # big rising cut
+        Swing("swing", 0.50, 0.20, 2, 44, 20, pi / 3, 110, 0.70, False),    # quick thrust
+        Swing("swing2", 0.46, 0.14, 2, 42, 20, pi / 3, 110, 0.72, False),   # quick sweep
+        Swing("swing3", 0.66, 0.26, 6, 50, 24, pi / 3, 320, 0.76, True),    # big rising cut
     ),
     combo_window=0.25,
     sneak_multiplier=3,
@@ -102,9 +102,13 @@ class MeleeAttack:
             return
         shown = look.frame_of(sheet, self.progress, self.contact)
         before = lines[max(0, impact - 1)] or lines[impact]
-        draw_stroke(before, lines[impact], fade, blow=True)
-        if shown > impact and impact + 1 < len(lines) and lines[impact + 1]:
-            draw_stroke(lines[impact], lines[impact + 1], fade)
+        moved_on = shown > impact
+        # While the impact frame shows, the whole blow; once the sprite moves on, a cut's arc
+        # stays only as a fading after-image and a thrust's streak (tied to the blade) goes.
+        draw_stroke(before, lines[impact], fade * (0.45 if moved_on else 1), MAX_BLOW_TURN,
+                    streak=not moved_on)
+        if moved_on and impact + 1 < len(lines) and lines[impact + 1]:
+            draw_stroke(lines[impact], lines[impact + 1], fade, MAX_FOLLOW_TURN)
 
     def draw_arc_trail(self, x, y, fade):
         for (x1, y1), (x2, y2) in zip(TRAIL, TRAIL[1:]):
@@ -120,17 +124,17 @@ MAX_FOLLOW_TURN = 1.75
 RINGS = ((1.0, 255), (0.93, 235), (0.86, 205), (0.75, 150), (0.62, 90))   # radius, alpha
 
 
-def draw_stroke(before, at, fade, blow=False):
+def draw_stroke(before, at, fade, max_turn, streak=False):
     """Trail of a blade moving from `before` to `at` ((grip, tip) screen pairs): a crescent
-    when it turns, a straight streak behind the tip when it turns too far for a cut (a
-    thrust or a backhand flip; only drawn for the blow itself)."""
+    when it turns at most max_turn, otherwise (a thrust or a backhand flip) a straight streak
+    behind the tip if streak is set, or nothing."""
     (g0, t0), (g1, t1) = before, at
     a0 = atan2(t0[1] - g0[1], t0[0] - g0[0])
     a1 = atan2(t1[1] - g1[1], t1[0] - g1[0])
     turn = (a1 - a0 + pi) % (2 * pi) - pi          # the short way round
-    if abs(turn) <= (MAX_BLOW_TURN if blow else MAX_FOLLOW_TURN):
+    if abs(turn) <= max_turn:
         draw_sweep(before, at, a0, turn, fade)
-    elif blow:
+    elif streak:
         draw_streak(at, fade)
 
 

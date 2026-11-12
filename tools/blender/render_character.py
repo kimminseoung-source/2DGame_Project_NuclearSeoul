@@ -36,7 +36,7 @@ PASSES = [
      # recovery), 2nd a quick sweep (B, wind-up cut off; swapped with the thrust because the
      # thrust's trail read poorly as the 2nd hit), 3rd the big rising cut (A from its
      # crouch on: the standing first frames read as a pause between hits).
-     ["swing=Sword_Regular_C@0-18,Sword_Regular_C@30-48", "swing2=Sword_Regular_B@2-13,Sword_Regular_B_Rec",
+     ["swing=Sword_Regular_C@0-8,Sword_Regular_C@30-48", "swing2=Sword_Regular_B@2-13,Sword_Regular_B_Rec",
       "swing3=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23"],
      ["swing=4,3", "swing2=4,3", "swing3=6,3"],
      []),

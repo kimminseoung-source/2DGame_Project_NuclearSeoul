@@ -13,6 +13,8 @@ An optional look.json beside the sheets holds per-pose facts:
 - "impact": the frame of an attack where the blow lands: {"swing": {"impact": 3}}. Given the attack's contact progress, the frames
 before the impact play until the hit and the impact frame shows exactly when it lands
 (and stays during the hit-stop); the rest play after. Any attack of any unit uses this.
+  "hold": share of the time after the hit that the impact frame stays (default 0), so a fast
+  blow is still seen landing: {"swing": {"impact": 2, "hold": 0.35}}.
 An optional blade.json (written by tools/sprites/paint_clothes.py) holds the weapon in every
 frame as [grip x, grip y, tip x, tip y] in cell pixels, so swing trails follow the blade.
 
@@ -70,7 +72,11 @@ class SheetLook:
             if time < contact:
                 return min(impact - 1, int(time / contact * impact))
             after = (time - contact) / max(1e-6, 1 - contact)
-            return min(count - 1, impact + int(after * (count - impact)))
+            hold = self.meta.get(pose, {}).get("hold", 0)
+            if after < hold or impact + 1 >= count:
+                return impact
+            rest = (after - hold) / (1 - hold)
+            return min(count - 1, impact + 1 + int(rest * (count - impact - 1)))
         return min(count - 1, max(0, int(time * count)))
 
     def blade_lines(self, pose, x, feet_y, facing):
