@@ -95,7 +95,7 @@ class SheetLook:
     def impact_of(self, pose):
         return self.meta.get(pose, {}).get("impact")
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None):
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0):
         fixed = None
         if pose not in self.sheets:
             pose, fixed = FALLBACK.get(pose, ("idle", None))
@@ -105,10 +105,14 @@ class SheetLook:
         frame = self.frame_of(pose, time, contact, distance) if fixed is None else fixed
         y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
         flip = "" if facing > 0 else "h"
+        if alpha < 1:
+            image.opacify(alpha)
         image.clip_composite_draw(
             frame * self.CELL_W, 0, self.CELL_W, self.CELL_H, 0, flip,
             x, y, self.CELL_W, self.CELL_H,
         )
+        if alpha < 1:
+            image.opacify(1.0)
 
     def portrait_clip(self):
         return (self.sheets["idle"], *self.PORTRAIT)
@@ -138,7 +142,7 @@ class LegacyLook:
             return "action", 0
         return "walk", 0
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None):
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0):
         sheet, frame = self.pick(pose, time)
         image = self.sprites[sheet]
         width = self.ACTION_W if sheet == "action" else self.MOVE_W

@@ -48,6 +48,7 @@ class Player:
         self.dash_direction = (0.0, 0.0)
         self.dash_age = float("inf")   # seconds since the last dash started (perfect dodge)
         self.counter_time = 0.0        # a landed blow is a counter while this runs (dodge.py)
+        self.counter_target = None     # the enemy whose blow was perfectly dodged
         self.pickup_time = 0.0
         self.swing = None        # the MeleeAttack in progress
         self.weapon = weapon.MACHETE
@@ -177,6 +178,9 @@ class Player:
             if self.pickup_time >= PICKUP_DURATION:
                 self.pickup_end()
         elif self.state == "SWING":
+            lunge_x, lunge_y = self.swing.lunge_step(step)
+            if lunge_x or lunge_y:
+                self.move(lunge_x, lunge_y)
             if self.swing.update(step):
                 self.events.append("attack_contact")
             index = self.swing.combo_index
@@ -258,6 +262,8 @@ class Player:
 
     def draw_swing(self, swing):
         sheet = getattr(getattr(swing, "swing", None), "sheet", "swing")   # MeleeAttack or archived BatSwing
+        if getattr(swing, "lunge_from", None):
+            self.draw_lunge_ghosts(swing, sheet)
         self.draw_pose(sheet, swing.progress, swing.contact)
         swing.draw_trail(self, camera.x)
 
@@ -285,6 +291,20 @@ class Player:
                 start_x, start_y, start_x - dx * length * strength,
                 start_y - dy * length * strength, shade, shade - 10, shade - 22,
             )
+
+    LUNGE_GHOST_TIME = 0.16    # s after the lunge starts that its after-images stay
+
+    def draw_lunge_ghosts(self, swing, sheet):
+        """Faded copies of the hero along a counter's lunge, so the jump reads as speed."""
+        fade = 1 - swing.elapsed / self.LUNGE_GHOST_TIME
+        if fade <= 0:
+            return
+        from_x, from_y = swing.lunge_from
+        for share, alpha in ((0.0, 0.35), (0.5, 0.55)):
+            x = from_x + (self.x - from_x) * share
+            y = from_y + (self.y - from_y) * share
+            self.look.draw(sheet, swing.progress, x - camera.x, y - 12, self.direction,
+                           contact=swing.contact, alpha=alpha * fade)
 
     def portrait_clip(self):
         """Source rectangle of the right-facing idle frame, cropped to head and torso."""

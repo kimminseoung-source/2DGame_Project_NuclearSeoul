@@ -200,10 +200,15 @@ def attack_click():
     if player.busy():
         return
     face_cursor()
+    target = player.counter_target if player.counter_time > 0 else None
+    if target is not None and target.alive:
+        player.direction = 1 if target.x >= player.x else -1     # a counter turns to its target
     unseen = can_surprise()
     player.start_swing()
     if player.state == "SWING" and unseen:
         player.swing.sneak = True
+    if player.state == "SWING" and target is not None and target.alive:
+        player.swing.start_lunge(player, dodge.lunge(player, target, player.swing.swing.reach))
 
 
 def handle_player_events():
@@ -220,6 +225,7 @@ def handle_player_events():
             damage = swing.damage * (player.weapon.sneak_multiplier if sneak else 1)
             damage *= dodge.COUNTER_MULTIPLIER if counter else 1
             player.counter_time = 0.0
+            player.counter_target = None
             zombie.hurt(damage, player.swing.dx, swing.push)
             weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak or counter,
                                     finishing=not zombie.alive, heavy=swing.heavy)
@@ -248,7 +254,7 @@ def handle_zombie_event():
         game_world.add_object(Impact(zombie.x, zombie.y), game_world.EFFECT)
         state.message = "폐차에 충돌했습니다. 지금 지나가세요."
     elif zombie.event == "player_dodged" or (zombie.event == "player_hit" and player.invulnerable):
-        perfect_dodge()
+        perfect_dodge(zombie)
     elif zombie.event == "player_hit":
         damage = zombie_rules.DAMAGE
         state.health = max(0, state.health - damage)
@@ -264,10 +270,12 @@ def handle_zombie_event():
     zombie.event = None
 
 
-def perfect_dodge():
-    """Slow the scene for a beat and open the counter window (rules in dodge.py)."""
+def perfect_dodge(attacker):
+    """Slow the scene for a beat and open the counter window against the attacker that
+    missed (rules in dodge.py)."""
     state.slow_motion = dodge.SLOW_TIME
     player.counter_time = dodge.COUNTER_TIME
+    player.counter_target = attacker
     game_world.add_object(DodgeFlash(player.x, player.y), game_world.EFFECT)
     state.message = "완벽 회피! 바로 공격하면 반격"
 

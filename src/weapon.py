@@ -11,6 +11,8 @@ from math import atan2, cos, hypot, pi, sin
 
 import pico2d
 
+import dodge
+
 Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from heavy")
 # sheet: animation sheet (character_look pose); duration and contact in seconds;
 # damage in hit points; reach and depth in px; arc in radians around the facing direction;
@@ -49,11 +51,31 @@ class MeleeAttack:
         self.combo_index = combo_index
         self.elapsed = 0.0
         self.sneak = False          # started before the target noticed: a sneak attack
+        self.lunge = (0.0, 0.0)     # px the attacker travels before the blow (a counter's lunge)
+        self.lunge_from = None      # where the lunge started, for the after-images
 
     def update(self, frame_time):
         before = self.elapsed
         self.elapsed += frame_time
         return before < self.swing.contact <= self.elapsed
+
+    @property
+    def lunge_time(self):
+        return min(self.swing.contact, dodge.LUNGE_TIME)
+
+    def start_lunge(self, attacker, distance):
+        self.lunge = distance
+        self.lunge_from = (attacker.x, attacker.y)
+
+    def lunge_step(self, frame_time):
+        """Movement for this frame of the lunge: an even share of it until lunge_time.
+        Call before update(), which advances elapsed."""
+        if self.lunge == (0.0, 0.0):
+            return 0.0, 0.0
+        start = min(self.elapsed, self.lunge_time)
+        end = min(self.elapsed + frame_time, self.lunge_time)
+        share = (end - start) / self.lunge_time
+        return self.lunge[0] * share, self.lunge[1] * share
 
     @property
     def contact(self):
