@@ -26,10 +26,10 @@ Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier")
 MACHETE = Weapon(
     name="마체테",
     swings=(
-        # 1st and 2nd: quick, light blows; 3rd: the big rising cut with a real wind-up.
+        # 1st and 2nd: quick, light blows; 3rd: the big chop with a real wind-up.
         Swing("swing", 0.46, 0.14, 2, 42, 20, pi / 3, 110, 0.72, False),    # quick sweep
-        Swing("swing2", 0.50, 0.20, 2, 44, 20, pi / 3, 110, 0.70, False),   # quick thrust
-        Swing("swing3", 0.66, 0.26, 6, 50, 24, pi / 3, 320, 0.76, True),    # big rising cut
+        Swing("swing2", 0.50, 0.16, 2, 46, 22, pi / 3, 110, 0.73, False),   # rising cut
+        Swing("swing3", 0.72, 0.30, 6, 50, 24, pi / 3, 320, 0.74, True),    # big chop down
     ),
     combo_window=0.25,
     sneak_multiplier=3,
@@ -128,7 +128,7 @@ class MeleeAttack:
         # While the impact frame shows, the whole blow; once the sprite moves on, a cut's arc
         # stays only as a fading after-image and a thrust's streak (tied to the blade) goes.
         draw_stroke(before, lines[impact], fade * (0.45 if moved_on else 1), MAX_BLOW_TURN,
-                    streak=not moved_on)
+                    streak=not moved_on, facing=attacker.direction)
         if moved_on and impact + 1 < len(lines) and lines[impact + 1]:
             draw_stroke(lines[impact], lines[impact + 1], fade, MAX_FOLLOW_TURN)
 
@@ -138,23 +138,32 @@ class MeleeAttack:
             pico2d.draw_line(x + self.dx * x1, y + y1, x + self.dx * x2, y + y2, shade, shade, shade)
 
 
-# Radians a blade may turn between two frames and still read as a cut: the blow itself can
-# swing wide (a sweep over the head turns ~140 degrees), the follow-through less. A blow
-# turning further is a thrust or a flip and gets a straight streak instead.
-MAX_BLOW_TURN = 2.7
-MAX_FOLLOW_TURN = 1.75
+# Radians a blade may turn between two frames and still read as a cut. A blow's arc goes the
+# way round that passes in front of the body (a cut always crosses the front); it may turn
+# up to MAX_BLOW_TURN (a rising cut from behind turns ~185 degrees). A wide turn whose middle
+# is not in front (the blade flips over the head, as in a thrust) gets a straight streak.
+MAX_BLOW_TURN = 3.5
+WIDE_TURN = 2.7
+MIN_FRONT = 0.3              # cos of the arc's middle angle along the facing for a wide cut
+MAX_FOLLOW_TURN = 1.9
 RINGS = ((1.0, 255), (0.93, 235), (0.86, 205), (0.75, 150), (0.62, 90))   # radius, alpha
 
 
-def draw_stroke(before, at, fade, max_turn, streak=False):
+def draw_stroke(before, at, fade, max_turn, streak=False, facing=0):
     """Trail of a blade moving from `before` to `at` ((grip, tip) screen pairs): a crescent
-    when it turns at most max_turn, otherwise (a thrust or a backhand flip) a straight streak
-    behind the tip if streak is set, or nothing."""
+    when it turns at most max_turn, otherwise a straight streak behind the tip if streak is
+    set, or nothing. With facing (+1 / -1, for the blow itself) the arc takes the way round
+    that passes in front of the body, and a wide turn that is not in front is a thrust."""
     (g0, t0), (g1, t1) = before, at
     a0 = atan2(t0[1] - g0[1], t0[0] - g0[0])
     a1 = atan2(t1[1] - g1[1], t1[0] - g1[0])
     turn = (a1 - a0 + pi) % (2 * pi) - pi          # the short way round
-    if abs(turn) <= max_turn:
+    front = 1.0
+    if facing:
+        other = turn - 2 * pi if turn > 0 else turn + 2 * pi
+        turn = max((turn, other), key=lambda t: cos(a0 + t / 2) * facing)
+        front = cos(a0 + turn / 2) * facing
+    if abs(turn) <= max_turn and (abs(turn) <= WIDE_TURN or front >= MIN_FRONT):
         draw_sweep(before, at, a0, turn, fade)
     elif streak:
         draw_streak(at, fade)

@@ -26,18 +26,18 @@ SETTINGS = ["--tilt", "20", "--bands", "4", "--outline"]
 PASSES = [
     (LIB1,
      ["idle=Idle_Loop", "sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.3", "walk=Walk_Loop",
-      "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "hurt=Hit_Chest", "down=Death01",
-      "pickup=Fixing_Kneeling@0-20"],
-     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "hurt=3", "down=5", "pickup=4"],
+      "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "run=Jog_Fwd_Loop", "hurt=Hit_Chest", "down=Death01",
+      "pickup=Fixing_Kneeling@0-20", "swing3=Sword_Attack@0-16,Sword_Attack@26-36"],
+     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "swing3=6,3"],
      ["--shift-for", "down=16"]),
     (LIB2,
-     # Machete combo (user order 2026-11-12, last change "can the 1st be the sweep?"): 1st a
-     # quick sweep (B, wind-up cut off), 2nd a quick thrust (C up to the stab, its end as the
-     # recovery), 3rd the big rising cut (A from its crouch on: the standing first frames
-     # read as a pause between hits).
-     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_C@0-8,Sword_Regular_C@30-48",
-      "swing3=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23"],
-     ["swing=4,3", "swing2=4,3", "swing3=6,3"],
+     # Machete combo (user order 2026-11-12, "1st sweep, 2nd rising cut, 3rd chop down"):
+     # 1st a quick sweep (B, wind-up cut off), 2nd the rising cut (A from its crouch on,
+     # fewer frames), 3rd the big chop (Sword_Attack: blade raised overhead, lunge, chop down
+     # to the ground, then its own return to standing).
+     # (swing3 is in the first library, so it is rendered with the first pass above.)
+     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23"],
+     ["swing=4,3", "swing2=4,3"],
      []),
 ]
 

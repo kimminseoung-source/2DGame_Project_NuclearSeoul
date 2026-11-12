@@ -29,9 +29,9 @@ import pico2d
 from nav import PX_PER_M_X
 
 
-LOOPING = {"idle", "walk", "sneak", "sneak_idle"}
+LOOPING = {"idle", "walk", "sneak", "sneak_idle", "run"}
 # A pose a character's sheets lack falls back to a close one: (pose, fixed frame or None).
-FALLBACK = {"sneak_idle": ("sneak", 0)}
+FALLBACK = {"sneak_idle": ("sneak", 0), "run": ("walk", None)}
 
 
 class SheetLook:
@@ -132,6 +132,8 @@ class LegacyLook:
     def pick(self, pose, time):
         if pose == "sneak_idle":
             return "sneak", 0
+        if pose == "run":
+            pose = "walk"                       # the old art has no run; walk faster instead
         if pose in ("walk", "sneak"):
             step = int(time / self.FRAME_TIME[pose]) % len(self.WALK_CYCLE)
             return pose, self.WALK_CYCLE[step]

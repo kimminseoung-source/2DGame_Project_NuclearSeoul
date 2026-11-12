@@ -21,8 +21,9 @@ PLAYER_HALF_SIZE = 11
 # Leg cycles cover 1.30 m (walk) and 1.09 m (sneak) of ground, measured from how fast the
 # planted foot slides back in Blender. At these speeds the legs play 1.7x and 1.2x as fast
 # as authored: a brisk walk and a careful sneak, both still natural, feet planted.
-WALK_SPEED_M = 1.7           # metres per second
-SNEAK_SPEED_M = 1.0
+WALK_SPEED_M = 2.0           # metres per second
+SNEAK_SPEED_M = 1.3
+RUN_SPEED_M = 4.8            # Space held while moving (a dash rolls straight into a run)
 DASH_SPEED = 340
 DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
@@ -39,6 +40,7 @@ class Player:
         self.tile_map = tile_map
         self.look = look         # character_look: draws poses, whatever the art
         self.sneaking = False
+        self.running = False
         self.direction = 1
         self.walk_time = 0.0     # seconds spent moving (0 while standing)
         self.walk_distance = 0.0 # metres walked, drives the leg cycle so feet never slide
@@ -209,6 +211,7 @@ class Player:
         keys = sdl2.SDL_GetKeyboardState(None)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
         direction_x, direction_y = self.movement_direction(keys)
+        self.running = bool(keys[sdl2.SDL_SCANCODE_SPACE]) and not self.sneaking
         if direction_x == direction_y == 0:
             if self.state != "IDLE":
                 self.stop()
@@ -219,7 +222,7 @@ class Player:
         elif not self.sneaking and self.state != "WALK":
             self.walk()
         movement_time = step * self.speed_multiplier
-        speed = (SNEAK_SPEED_M if self.sneaking else WALK_SPEED_M) * PX_PER_M_X
+        speed = (SNEAK_SPEED_M if self.sneaking else RUN_SPEED_M if self.running else WALK_SPEED_M) * PX_PER_M_X
         distance_per_axis = speed * movement_time / hypot(direction_x, direction_y)
         old = (self.x, self.y)
         if self.move(direction_x * distance_per_axis, direction_y * distance_per_axis):
@@ -278,8 +281,8 @@ class Player:
             # Holding Shift crouches at once, even before moving.
             self.draw_pose("sneak_idle" if self.sneaking else "idle", self.idle_time)
         else:
-            self.draw_pose("sneak" if self.sneaking else "walk", self.walk_time,
-                           distance=self.walk_distance)
+            pose = "sneak" if self.sneaking else "run" if self.running else "walk"
+            self.draw_pose(pose, self.walk_time, distance=self.walk_distance)
 
     def draw_dash_trail(self, strength):
         x, y = self.x - camera.x, self.y - 12

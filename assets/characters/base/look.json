@@ -13,13 +13,17 @@
     "note": "Sword_Regular_B@2-13: the quick sweep crosses the front"
   },
   "swing2": {
-    "impact": 2,
+    "impact": 1,
     "hold": 0.35,
-    "note": "Sword_Regular_C@0-8: pull back, drop, the stab reaches forward"
+    "note": "Sword_Regular_A@4-: from the crouch the blade rises past the front"
   },
   "swing3": {
-    "impact": 2,
-    "note": "Sword_Regular_A@4-: crouched wind-up, the blade rises past the front",
-    "hold": 0.25
+    "impact": 3,
+    "hold": 0.25,
+    "note": "Sword_Attack@0-16: blade raised overhead, the lunge brings it down in front"
+  },
+  "run": {
+    "stride_m": 5.39,
+    "note": "Jog_Fwd_Loop: planted foot 5.87 m/s over a 0.92 s cycle"
   }
 }
