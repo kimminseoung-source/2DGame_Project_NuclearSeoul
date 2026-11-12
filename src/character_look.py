@@ -15,6 +15,9 @@ before the impact play until the hit and the impact frame shows exactly when it 
 (and stays during the hit-stop); the rest play after. Any attack of any unit uses this.
   "hold": share of the time after the hit that the impact frame stays (default 0), so a fast
   blow is still seen landing: {"swing": {"impact": 2, "hold": 0.35}}.
+  "windup": relative time of each frame before the impact (default even), so a big blow
+  can hold its raised frame and then snap: {"swing3": {"impact": 4, "windup": [1, 1, 3, 0.5]}}.
+  "trail_from": how many frames before the impact the swing trail starts (default 1).
 An optional blade.json (written by tools/sprites/paint_clothes.py) holds the weapon in every
 frame as [grip x, grip y, tip x, tip y] in cell pixels, so swing trails follow the blade.
 
@@ -70,7 +73,15 @@ class SheetLook:
         if impact is not None and contact:
             # Wind-up frames fill the time before the hit, the rest the time after it.
             if time < contact:
-                return min(impact - 1, int(time / contact * impact))
+                weights = self.meta.get(pose, {}).get("windup")
+                if not weights or len(weights) != impact:
+                    return min(impact - 1, int(time / contact * impact))
+                left = time / contact * sum(weights)
+                for index, weight in enumerate(weights):
+                    left -= weight
+                    if left < 0:
+                        return index
+                return impact - 1
             after = (time - contact) / max(1e-6, 1 - contact)
             hold = self.meta.get(pose, {}).get("hold", 0)
             if after < hold or impact + 1 >= count:
@@ -94,6 +105,9 @@ class SheetLook:
 
     def impact_of(self, pose):
         return self.meta.get(pose, {}).get("impact")
+
+    def trail_from(self, pose):
+        return self.meta.get(pose, {}).get("trail_from", 1)
 
     def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0):
         fixed = None

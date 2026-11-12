@@ -27,8 +27,8 @@ PASSES = [
     (LIB1,
      ["idle=Idle_Loop", "sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.3", "walk=Walk_Loop",
       "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "run=Jog_Fwd_Loop", "hurt=Hit_Chest", "down=Death01",
-      "pickup=Fixing_Kneeling@0-20", "swing3=Sword_Attack@0-16,Sword_Attack@26-36"],
-     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "swing3=6,3"],
+      "pickup=Fixing_Kneeling@0-20", "swing3=Sword_Attack@0-7,Sword_Attack@10-13,Sword_Attack@26-36"],
+     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "swing3=3,2,3"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (user order 2026-11-12, "1st sweep, 2nd rising cut, 3rd chop down"):

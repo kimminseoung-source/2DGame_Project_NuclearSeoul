@@ -13,8 +13,9 @@ from weapon import IMPACT_TIME, draw_impact
 class Impact:
     """The star burst where a blow lands."""
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, scale=1.0):
         self.x, self.y = x, y
+        self.scale = scale
         self.time_left = IMPACT_TIME
 
     def update(self):
@@ -23,7 +24,7 @@ class Impact:
             game_world.remove_object(self)
 
     def draw(self):
-        draw_impact(self.x - camera.x, self.y + 5, max(0.0, self.time_left))
+        draw_impact(self.x - camera.x, self.y + 5, max(0.0, self.time_left), self.scale)
 
 
 class DodgeFlash:

@@ -13,12 +13,14 @@ import pico2d
 
 import dodge
 
-Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from heavy")
+Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from heavy step",
+                   defaults=(0,))
 # sheet: animation sheet (character_look pose); duration and contact in seconds;
 # damage in hit points; reach and depth in px; arc in radians around the facing direction;
 # push: knockback speed in px/s; recover_from: progress where the swing's own recovery
 # starts, so a follow-up swing can cut in there instead of waiting for it; heavy: a big blow
-# (combo finisher) that lands one feel class harder (hit-stop, shake, number; see hit_feel).
+# (combo finisher) that lands one feel class harder (hit-stop, shake, number; see hit_feel);
+# step: px the attacker steps forward into the blow (the art's lunge is pinned in place).
 
 Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier")
 # combo_window: seconds after a swing's recovery starts in which a click continues the combo.
@@ -29,7 +31,7 @@ MACHETE = Weapon(
         # 1st and 2nd: quick, light blows; 3rd: the big chop with a real wind-up.
         Swing("swing", 0.46, 0.14, 2, 42, 20, pi / 3, 110, 0.72, False),    # quick sweep
         Swing("swing2", 0.50, 0.16, 2, 46, 22, pi / 3, 110, 0.73, False),   # rising cut
-        Swing("swing3", 0.72, 0.30, 6, 50, 24, pi / 3, 320, 0.74, True),    # big chop down
+        Swing("swing3", 0.70, 0.32, 6, 50, 24, pi / 3, 340, 0.74, True, 22),  # big chop down
     ),
     combo_window=0.25,
     sneak_multiplier=3,
@@ -51,8 +53,10 @@ class MeleeAttack:
         self.combo_index = combo_index
         self.elapsed = 0.0
         self.sneak = False          # started before the target noticed: a sneak attack
-        self.lunge = (0.0, 0.0)     # px the attacker travels before the blow (a counter's lunge)
-        self.lunge_from = None      # where the lunge started, for the after-images
+        # px the attacker travels just before the blow: the swing's own step, plus a counter's
+        # lunge (start_lunge); lunge_from marks a counter, for its after-images.
+        self.lunge = (self.dx * swing.step, 0.0)
+        self.lunge_from = None
 
     def update(self, frame_time):
         before = self.elapsed
@@ -64,16 +68,18 @@ class MeleeAttack:
         return min(self.swing.contact, dodge.LUNGE_TIME)
 
     def start_lunge(self, attacker, distance):
-        self.lunge = distance
+        self.lunge = (self.lunge[0] + distance[0], self.lunge[1] + distance[1])
         self.lunge_from = (attacker.x, attacker.y)
 
     def lunge_step(self, frame_time):
-        """Movement for this frame of the lunge: an even share of it until lunge_time.
+        """Movement for this frame of the lunge: an even share of it over the lunge_time
+        that ends at contact, so the body arrives as the blow lands.
         Call before update(), which advances elapsed."""
         if self.lunge == (0.0, 0.0):
             return 0.0, 0.0
-        start = min(self.elapsed, self.lunge_time)
-        end = min(self.elapsed + frame_time, self.lunge_time)
+        begin = self.swing.contact - self.lunge_time
+        start = min(max(self.elapsed, begin), self.swing.contact)
+        end = min(max(self.elapsed + frame_time, begin), self.swing.contact)
         share = (end - start) / self.lunge_time
         return self.lunge[0] * share, self.lunge[1] * share
 
@@ -123,12 +129,16 @@ class MeleeAttack:
             self.draw_arc_trail(x, feet_y + 12, fade)
             return
         shown = look.frame_of(sheet, self.progress, self.contact)
-        before = lines[max(0, impact - 1)] or lines[impact]
         moved_on = shown > impact
-        # While the impact frame shows, the whole blow; once the sprite moves on, a cut's arc
-        # stays only as a fading after-image and a thrust's streak (tied to the blade) goes.
-        draw_stroke(before, lines[impact], fade * (0.45 if moved_on else 1), MAX_BLOW_TURN,
-                    streak=not moved_on, facing=attacker.direction)
+        # While the impact frame shows, the whole blow (from trail_from frames before it);
+        # once the sprite moves on, a cut's arc stays only as a fading after-image and a
+        # thrust's streak (tied to the blade) goes.
+        first = max(0, impact - look.trail_from(sheet))
+        for index in range(first, impact):
+            before = lines[index] or lines[impact]
+            last = index == impact - 1
+            draw_stroke(before, lines[index + 1] or lines[impact], fade * (0.45 if moved_on else 1),
+                        MAX_BLOW_TURN, streak=last and not moved_on, facing=attacker.direction)
         if moved_on and impact + 1 < len(lines) and lines[impact + 1]:
             draw_stroke(lines[impact], lines[impact + 1], fade, MAX_FOLLOW_TURN)
 
@@ -199,12 +209,17 @@ def draw_streak(at, fade):
         pico2d.draw_line(sx, sy, sx - ux * back, sy - uy * back, 255, 255, 255, round(alpha * fade))
 
 
-def draw_impact(x, y, time_left):
-    """The star burst where a blow lands."""
+def draw_impact(x, y, time_left, scale=1.0):
+    """The star burst where a blow lands; scale grows with the blow's weight (hit_feel)."""
     progress = 1 - time_left / IMPACT_TIME
-    inner = 0.18 + progress * 0.65
-    outer = inner + (1 - progress) * 0.52
+    inner = (0.18 + progress * 0.65) * scale
+    outer = inner + (1 - progress) * 0.52 * scale
     for dx, dy in ((-25, 8), (-15, 21), (4, 25), (22, 15), (26, -4), (12, -13)):
-        pico2d.draw_line(x + dx * inner, y + dy * inner, x + dx * outer, y + dy * outer, 255, 214, 127)
+        for width in range(max(1, round(scale))):          # heavier blows draw thicker rays
+            pico2d.draw_line(x + dx * inner + width, y + dy * inner, x + dx * outer + width,
+                             y + dy * outer, 255, 214, 127)
     if progress < 0.3:
-        pico2d.draw_circle(x, y, 4, 255, 237, 191, filled=True)
+        pico2d.draw_circle(x, y, round(4 * scale), 255, 237, 191, filled=True)
+    if scale > 1.2 and progress < 0.7:                      # a shock ring on heavy blows
+        pico2d.draw_circle(x, y, round(10 + 26 * progress * scale), 255, 230, 180,
+                           round(200 * (1 - progress / 0.7)))

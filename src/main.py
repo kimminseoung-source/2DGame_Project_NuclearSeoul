@@ -229,7 +229,7 @@ def handle_player_events():
             zombie.hurt(damage, player.swing.dx, swing.push)
             weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak or counter,
                                     finishing=not zombie.alive, heavy=swing.heavy)
-            show_impact(position)
+            show_impact(position, weight)
             play_hit_feel(weight)
             game_world.add_object(DamageNumber(zombie.x, zombie.y, damage, weight), game_world.EFFECT)
             if not zombie.alive:
@@ -280,8 +280,9 @@ def perfect_dodge(attacker):
     state.message = "완벽 회피! 바로 공격하면 반격"
 
 
-def show_impact(position):
-    game_world.add_object(Impact(*position), game_world.EFFECT)
+def show_impact(position, hit_weight=None):
+    scale = 1.0 if hit_weight is None else hit_feel.feel(hit_weight).burst
+    game_world.add_object(Impact(*position, scale), game_world.EFFECT)
     assets.bat_impact_sound.play()
 
 

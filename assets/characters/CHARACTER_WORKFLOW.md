@@ -131,7 +131,7 @@
 | sneak | `Walk_Loop` 위에 `Crouch_Idle_Loop`를 30% 얹음(`Walk_Loop+Crouch_Idle_Loop*0.3`) | 12 | 2026-11-11 30%로 조정(처음 40%), 6→12칸. 섞을 때는 COMBINE(회전을 곱해 더함)을 써야 함. 단순 평균(REPLACE)은 다리가 뒤로 뒤집힘 |
 | swing (1타) | `Sword_Regular_B@2-13` 4칸 + 복귀 `Sword_Regular_B_Rec` 3칸 (두 번째 팩 UAL2) | 7 | 빠른 가로 베기(준비 동작 잘라냄). 맞는 칸 인덱스 1, `hold` 0.35. 2026-11-12 "첫 번째 동작을 가로 베기로" → 다시 1타 |
 | swing2 (2타) | `Sword_Regular_A@4-` 4칸 + 복귀 `Sword_Regular_A_Rec@7-23` 3칸 | 7 | 올려 베기: 숙인 자세에서 칼이 앞으로 올라감. 맞는 칸 인덱스 1, `hold` 0.35. 2026-11-12 "2타 올려 베기"로 3타에서 옮기며 6칸 → 4칸 |
-| swing3 (3타) | `Sword_Attack@0-16` 6칸 + `Sword_Attack@26-36` 3칸 (첫 번째 팩 UAL1) | 9 | 내려치기: 칼을 머리 위로 들었다가 앞으로 파고들며 내려침. 맞는 칸 인덱스 3, `hold` 0.25. 첫 번째 팩 동작이라 첫 번째 렌더 묶음에 들어 있음. 후보로 `TreeChopping_Loop`(내려치나 허리 높이에서 멈춤), `Sword_Regular_Combo`, `Melee_Hook`도 그려 비교함 |
+| swing3 (3타) | `Sword_Attack@0-7` 3칸 + `@10-13` 2칸 + `@26-36` 3칸 (첫 번째 팩 UAL1) | 8 | 내려치기: 서기 → 뒤로 빼기 → 머리 위(버팀) → 파고들기 → 땅까지 내려침(맞는 칸 인덱스 4, `hold` 0.3, `windup` [0.7, 0.7, 2.2, 0.4], `trail_from` 2). 첫 번째 팩 동작이라 첫 번째 렌더 묶음에 들어 있음. 후보로 `TreeChopping_Loop`, `Sword_Regular_Combo`, `Melee_Hook`도 비교함 |
 | run | `Jog_Fwd_Loop` | 12 | 2026-11-12 뛰기. 원래 5.87m/s(한 바퀴 0.92초에 5.39m), 게임 4.8m/s에서 걸은 거리로 재생 |
 | sneak_idle | `Idle_Loop` 위에 `Crouch_Idle_Loop`를 40% 얹음 | 4 | Shift만 누르고 서 있을 때. 시트가 없는 캐릭터는 `sneak` 첫 칸으로 대신함(`character_look.FALLBACK`) |
 | hurt | `Hit_Chest` | 3 | |
@@ -293,3 +293,4 @@
 | 2026-11-12 | 사용자 지시 "1·2타가 너무 빨라 잘 안 보이고 흰 선도 잘 안 맞음" | 원인: 맞는 칸이 0.047초만 보임. `look.json`에 `hold`(맞는 칸을 붙잡는 비율) 추가, 1타를 `C@0-8`로 다시 그림(6칸으로 늘려 보니 C 중간에 칼을 다시 치켜드는 동작이 섞여 있었음). 점검: ① 맞는 칸 약 0.1초 ② 1타 찌르는 칸에서 칼이 앞을 향함 ③ 검로가 맞는 칸의 칼과 이어짐 ④ 다음 칸으로 넘어가면 직선 잔상 사라짐. 게임 화면 `previews/blade_trail_ingame.png` |
 | 2026-11-12 | 사용자 지시 "첫 번째 동작을 가로 베기가 가능할까요?" | swing=B(가로 베기), swing2=C@0-8(내지르기)로 바꿔 다시 그림. `look.json`·`blade.json`·무기 시간도 함께 바꿈. 점검: ① 1타 머리 위 호 ② 2타 아래에서 앞으로 올라오는 짧은 호 ③ 3타 올려 베기 호 ④ 좌우 반전 맞음. 게임 화면 `previews/blade_trail_ingame.png` |
 | 2026-11-12 | 사용자 지시 "뛰기 기능", "1타 가로 베기, 2타 올려 베기, 3타 내려치기" | `run=Jog_Fwd_Loop` 12칸 추가(`look.json` `stride_m` 5.39). 내려치기 후보 4개(`Sword_Attack`, `TreeChopping_Loop`, `Sword_Regular_Combo`, `Melee_Hook`)를 그려 비교하고 `Sword_Attack`을 3타로. 점검: ① 뛰기 다리가 걸은 거리와 맞음 ② 2타 검로가 아래에서 앞으로 올라감(전에는 머리 위로 그려짐 → "베기는 몸 앞을 지난다" 규칙) ③ 3타 검로가 머리 위에서 앞으로 내려옴 ④ 좌우 반전 맞음. 게임 화면 `previews/blade_trail_ingame.png` |
+| 2026-11-12 | 사용자 지시 "3번 동작이 쥬시하지 않다" | 3타를 `@0-7`(서기·빼기·머리 위) + `@10-13`(파고들기·내려침) + 복귀로 다시 자름. 맞는 칸을 칼이 땅까지 내려간 칸으로. 점검: ① 머리 위 칸이 가장 오래 보임 ② 파고드는 칸은 한순간 ③ 검로가 머리 위 → 앞 → 땅으로 이어짐 ④ 타격 별이 1·2타보다 큼. 게임 화면 `previews/chop_ingame.png` |
