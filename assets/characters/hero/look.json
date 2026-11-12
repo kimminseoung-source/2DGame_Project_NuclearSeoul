@@ -8,14 +8,14 @@
     "note": "Walk_Loop + Crouch_Idle_Loop*0.3: planted foot 0.82 m/s over 1.33 s"
   },
   "swing": {
+    "impact": 1,
+    "hold": 0.35,
+    "note": "Sword_Regular_B@2-13: the quick sweep crosses the front"
+  },
+  "swing2": {
     "impact": 2,
     "hold": 0.35,
     "note": "Sword_Regular_C@0-8: pull back, drop, the stab reaches forward"
-  },
-  "swing2": {
-    "impact": 1,
-    "note": "Sword_Regular_B@2-13: the quick sweep crosses the front",
-    "hold": 0.35
   },
   "swing3": {
     "impact": 2,
