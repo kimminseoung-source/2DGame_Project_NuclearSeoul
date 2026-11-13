@@ -7,6 +7,29 @@
 - **필요한 것**: 사용자 허락(내려받기), 사용자 확인(소리 듣기·그림 보기) 등 Claude 혼자 끝낼 수 없는 부분
 - 모든 작업은 공통 규칙으로 만든다(다른 무기·적에도 그대로 적용). 남의 그림·코드는 베끼지 않고 원리만 가져온다.
 
+## 사이트별로 본 작업 (2026-11-13)
+
+사용자 요청 "우선 다른 사이트를 통해서 할 수 있는 작업들을 나열해 보세요." 누가 하는지: **C** = Claude가 직접, **C+허락** = 내려받기 등 사용자 허락 후 Claude, **사용자** = 사용자가 직접(Claude는 준비·문안).
+
+| 사이트 | 얻는 것 | 할 수 있는 작업 | 누가 |
+| --- | --- | --- | --- |
+| [Mixamo](https://www.mixamo.com) (무료 계정) | 사람 3D 동작 수천 개 | 맨손·변이 기술 동작(주먹·붙잡기·던지기·땅 내려치기), 피폭체 추가 동작(기어가기·물기·쓰러졌다 일어나기), 주인공 구르기·막기 → 우리 Blender 도구로 같은 화풍 시트 | C+허락(로그인은 사용자) |
+| [Rokoko 무료 격투 동작 13종](https://www.rokoko.com/resources/rokoko-mocap-13-free-fight-animations) | 모션캡처 격투 동작(Mixamo 뼈대) | 맨손 공격·피격 동작 후보 | C+허락(내려받기·계정 여부 확인) |
+| [Quaternius 동물 팩](https://quaternius.itch.io/lowpoly-animated-animals) (CC0) | 늑대·개 3D 모델과 걷기·달리기·점프·죽기 | **들개(피폭견)를 주인공과 같은 Blender 방식으로** 제작. 공격 동작은 없어 달리기·점프를 섞어 만듦 | C+허락 |
+| Quaternius 동작 팩 (이미 보유, CC0) | 사람 동작 약 120개 | 구르기·막기·넘어졌다 일어나기·맨손 공격·주사기 사용(`Consume`)·상자 열기·좀비 동작 → 새 동작 시트 | C |
+| [Dead Pixels Wolf (Free)](https://dead-pixelsz.itch.io/wolf) | 완성된 늑대 도트 시트 | Quaternius 방식이 어렵거나 시간이 없을 때 들개 대안 | C+허락 |
+| [ThingOnItsOwn 타격 이펙트](https://thingonitsown.itch.io/slashstrike-hit-animation) | 베기·찌르기 피 튀김 100종 | 맞을 때 피 튀김 겹치기(B2) | C+허락 |
+| [gungodx 피 튀김](https://gungodx.itch.io/free-blood-spatter-hit-effect-128x128) | 피 튀김 1장 | 바닥 핏자국(B2), 출처 표기 | C+허락 |
+| [Kenney](https://kenney.nl/assets) (CC0) | 효과음·UI 팩 | 문·줍기·배낭·UI 소리(A5), 타격음 후보 | C+허락, 소리 판단은 사용자 |
+| [freesound](https://freesound.org) (CC0만) | 실제 녹음 효과음 | 피폭체 신음, 고기 베는 소리, 발소리 | C+허락, 소리 판단은 사용자 |
+| [Galmuri](https://github.com/quiple/galmuri) (OFL) | 한글 도트 글꼴 | UI·대사·피해 숫자 글꼴 교체(D1) | C+허락 |
+| [Lospec](https://lospec.com/palette-list) | 팔레트 색 값 | 팔레트 통일 도구(D2) | C(색 값만 읽음, 고르기는 함께) |
+| [jsfxr](https://github.com/chr15m/jsfxr) 원리 | 소리 합성 방법 | 효과음 합성 도구(A1) — 사이트 없이 코드로 | C, 소리 판단은 사용자 |
+| [ChipTone](https://sfbgames.itch.io/chiptone) | 효과음 만들기 | 귀로 고르며 만들기 | 사용자 |
+| Gemini 웹 | 콘셉트 그림 | 피폭체 변이 단계·주인공 변이 팔 시안 그림(문안은 Claude) | 사용자 |
+| Pixelorama / [Piskel](https://piskelapp.com) | 손으로 도트 수정 | 시트의 세밀한 손질 | 사용자 |
+| 글 자료(Dead Cells, Mark of the Ninja, Darkwood, Sakurai 기사) | 설계 원칙 | 손맛·은신·시야 설계에 적용(B·C 항목) | C |
+
 ## A. 소리 (지금 모든 타격이 같은 소리)
 
 | # | 작업 | 참고 | 크기 | 필요한 것 | 상태 |
