@@ -39,6 +39,26 @@
 
 Claude가 직접 할 수 있는 작업은 [참고 자료로 할 수 있는 작업 목록](REFERENCE_WORK_LIST.md)에 정리했다.
 
+## 4. Claude가 제작 사이트를 직접 써서 만들 수 있는가 (2026-11-13)
+
+사용자 요청 "너가 작업 사이트를 이용해서 만들 수 있는지도 조사해 봐." Claude는 앱 안의 브라우저로 사이트를 클릭·입력할 수 있고(내려받기·계정 만들기는 사용자 허락 필요), 소리를 듣거나 영상을 볼 수는 없다. 이를 기준으로 판단했다.
+
+| 사이트 | 무엇을 만드나 | Claude가 직접 쓸 수 있나 | 판단 |
+| --- | --- | --- | --- |
+| **Mixamo** (무료 계정, 이미 사용) | 3D 동작 | **예** — 2026-11-11에 사용자 로그인 후 동작을 골라 받은 적 있음 | **가장 쓸모 있음.** 받은 동작을 우리 Blender → 2D 옷 그리기 도구에 넣으면 주인공과 같은 화풍의 새 동작이 나온다 |
+| **Lospec 팔레트** | 색 값 | **예** — 페이지에서 색 값(hex)만 읽어 옴 | 팔레트 통일 스크립트(작업 목록 D2)의 재료로 바로 쓸 수 있음 |
+| **GitHub의 무료 자료**(Galmuri 글꼴 등) | 글꼴·도구 | **예** — 내려받기 허락만 있으면 | 받아서 게임에 연결까지 가능 |
+| [Universal LPC Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator) | 부품을 골라 사람 스프라이트 시트 생성(걷기·베기·찌르기·피격·쏘기) | **예** — 웹에서 고르고 시트를 내보내는 방식이라 클릭으로 가능 | **비추천.** 위에서 비스듬히 보는 4방향 RPG 화풍(64×64)이라 우리 옆 시점·3D 동작 화풍과 다름. 라이선스가 CC-BY-SA/GPL이라 출처 표기와 같은 조건 공유 의무가 따름 |
+| [Piskel](https://piskelapp.com) / Lospec Pixel Editor / Pixelorama | 손으로 도트 그리기 | 부분적 — 클릭으로 점을 찍을 수는 있지만 매우 느리고 부정확 | **비효율.** 같은 일을 Python으로 픽셀을 직접 다루는 쪽이 빠르고 정확(지금 2D 옷 그리기 도구가 그 방식). 손으로 하는 섬세한 수정은 사용자가 이 도구로 하는 게 낫다 |
+| ChipTone / jsfxr | 효과음 | 부분적 — 버튼으로 무작위 생성·내보내기는 가능, 하지만 **소리를 들을 수 없어** 고르기 불가 | 같은 원리를 Python으로 옮겨 숫자로 소리를 설계하는 쪽이 낫다(작업 목록 A1). 최종 판단은 사용자가 들어 보고 |
+| [PixelLab](https://pixellab.ai/pixellab-api) 등 AI 도트 생성 | AI로 도트 캐릭터·동작 생성 | 가능은 함(웹 또는 API) — 계정 만들기·API 키는 사용자 몫 | **비추천.** 무료는 체험(약 40회)뿐이고 이후 월 $12 안팎(사용자 예산 없음). 생성형 AI 결과물이라 과제·라이선스 면에서 불확실, 옆 시점 동작 지원도 확인 안 됨 |
+| Gemini 웹(시안 그림) | 콘셉트 그림 | 사용자가 직접 — Claude는 문안(프롬프트)을 써 줌(2026-11-11에 이 방식으로 시안 받음) | 시안 참고용으로 유지 |
+
+### 결론
+- **Claude에게 맞는 사이트는 "재료를 주는 곳"이다**: 동작(Mixamo), 색(Lospec), 글꼴·소리 파일(GitHub, Kenney), 이펙트 PNG. 재료를 받아 우리 도구(Blender 렌더, 2D 옷 그리기, Python 스크립트)로 가공하면 화풍이 통일되고 반복할 수 있다.
+- **화면에서 직접 그리는 사이트(Piskel 등)나 소리를 귀로 고르는 사이트(ChipTone)는 Claude보다 사용자에게 맞다.** Claude는 같은 일을 코드로 한다.
+- 새로 할 수 있는 큰 작업: **Mixamo에서 들개(개·늑대) 동작이 있는지 확인** → 있으면 들개도 Blender로 같은 화풍 제작, 없으면 5-7절의 무료 늑대 시트 사용.
+
 ## 출처
 - [ChipTone (sfbgames, itch.io)](https://sfbgames.itch.io/chiptone)
 - [jsfxr (GitHub)](https://github.com/chr15m/jsfxr)
@@ -50,4 +70,7 @@ Claude가 직접 할 수 있는 작업은 [참고 자료로 할 수 있는 작�
 - [Juice It or Lose It (GDC Vault)](https://gdcvault.com/play/1016487/Juice-It-or-Lose), [Vlambeer 액션 게임 조언 (Game Developer)](https://gamedeveloper.com/design/vlambeer-co-founder-shares-advice-on-building-better-action-games)
 - [Sakurai 채널 소개 (VGC)](https://www.videogameschronicle.com/news/masahiro-sakurais-new-youtube-channel-gives-his-thoughts-on-game-design), [히트스톱 8가지 (GoNintendo)](https://www.gonintendo.com/contents/13581-sakurai-s-latest-game-dev-video-features-8-hit-stop-techniques)
 - [Mark of the Ninja 은신 5원칙 (PC Gamer)](https://www.pcgamer.com/stealth-game-design-mark-of-the-ninja), [Reinventing stealth in 2D (Game Developer)](https://www.gamedeveloper.com/design/reinventing-stealth-in-2d-with-i-mark-of-the-ninja-i-)
+- [Universal LPC Spritesheet Character Generator (GitHub)](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator), [LPC 라이선스 설명(OpenGameArt)](https://opengameart.org/node/32390)
+- [Piskel](https://piskelapp.com)
+- [PixelLab API](https://pixellab.ai/pixellab-api), [AI 도트 생성기 비교 2026 (cinevva)](https://app.cinevva.com/guides/ai-pixel-art-generators)
 - [Darkwood 시야 연출 (Game Developer)](https://gamedeveloper.com/design/how-i-darkwood-i-s-visibility-mechanics-create-a-new-kind-of-horror)
