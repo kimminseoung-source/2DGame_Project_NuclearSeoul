@@ -139,12 +139,12 @@ class Player:
             self.pick_up()
 
     def start_finisher(self):
-        """The time-warp release: the weapon's last swing, marked to loose a flurry."""
+        """The time-warp release: the weapon's finisher, marked to loose a flurry."""
         if self.state not in FREE_STATES:
             return False
         self.attack()
-        index = len(self.weapon.swings) - 1
-        self.swing = weapon.MeleeAttack(self.weapon.swings[index], (self.direction, 0), index)
+        index = len(self.weapon.swings) - 1          # no combo continues after it
+        self.swing = weapon.MeleeAttack(self.weapon.finisher, (self.direction, 0), index)
         self.swing.flurry = True
         return True
 
@@ -322,7 +322,7 @@ class Player:
     def draw_body(self):
         if self.charging:
             # The finisher's raised blade, held while the charge builds.
-            finisher = self.weapon.swings[-1]
+            finisher = self.weapon.finisher
             contact = finisher.contact / finisher.duration
             self.draw_pose(finisher.sheet, contact * 0.8, contact)
             return
