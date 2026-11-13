@@ -31,15 +31,14 @@ PASSES = [
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4"],
      ["--shift-for", "down=16"]),
     (LIB2,
-     # Machete combo (2026-11-13 "3rd attack back to the earlier one" = the big rising cut):
-     # 1st a quick sweep (B, wind-up cut off), 2nd a quick thrust (C up to the stab, its end
-     # as the recovery), 3rd the big rising cut (A from its crouch on, all frames).
-     # finisher: the big overhead chop (the finisher of the pack's own Sword_Regular_Combo),
-     # only for the time-warp release that looses the flurry.
-     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_C@0-8,Sword_Regular_C@30-48",
-      "swing3=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23",
-      "finisher=Sword_Regular_Combo@31.5-34.5,Sword_Regular_Combo@37.6-41,Sword_Regular_Combo@51-72"],
-     ["swing=4,3", "swing2=4,3", "swing3=6,3", "finisher=2,2,3"],
+     # Machete combo (2026-11-13, the user's pick from the sheets: "back to this one"):
+     # 1st a quick sweep (B, wind-up cut off), 2nd a short rising cut (A from its crouch on,
+     # fewer frames), 3rd the overhead chop - the finisher of the pack's own
+     # Sword_Regular_Combo, so all three come from one animated combo. The time-warp
+     # release swings the 3rd hit too.
+     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23",
+      "swing3=Sword_Regular_Combo@31.5-34.5,Sword_Regular_Combo@37.6-41,Sword_Regular_Combo@51-72"],
+     ["swing=4,3", "swing2=4,3", "swing3=2,2,3"],
      []),
 ]
 

@@ -23,7 +23,7 @@ PLAYER_HALF_SIZE = 11
 # as authored: a brisk walk and a careful sneak, both still natural, feet planted.
 WALK_SPEED_M = 2.0           # metres per second
 SNEAK_SPEED_M = 1.3
-RUN_SPEED_M = 4.8            # Shift held while moving
+RUN_SPEED_M = 3.8            # Shift held while moving (2026-11-13: 4.8 felt too fast)
 DASH_SPEED = 340
 DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
@@ -138,13 +138,16 @@ class Player:
         if self.state in FREE_STATES:
             self.pick_up()
 
+    def finisher_swing(self):
+        return self.weapon.finisher or self.weapon.swings[-1]
+
     def start_finisher(self):
         """The time-warp release: the weapon's finisher, marked to loose a flurry."""
         if self.state not in FREE_STATES:
             return False
         self.attack()
         index = len(self.weapon.swings) - 1          # no combo continues after it
-        self.swing = weapon.MeleeAttack(self.weapon.finisher, (self.direction, 0), index)
+        self.swing = weapon.MeleeAttack(self.finisher_swing(), (self.direction, 0), index)
         self.swing.flurry = True
         return True
 
@@ -322,7 +325,7 @@ class Player:
     def draw_body(self):
         if self.charging:
             # The finisher's raised blade, held while the charge builds.
-            finisher = self.weapon.finisher
+            finisher = self.finisher_swing()
             contact = finisher.contact / finisher.duration
             self.draw_pose(finisher.sheet, contact * 0.8, contact)
             return

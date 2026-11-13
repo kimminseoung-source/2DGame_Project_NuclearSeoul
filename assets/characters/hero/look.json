@@ -13,20 +13,11 @@
     "note": "Sword_Regular_B@2-13: the quick sweep crosses the front"
   },
   "swing2": {
-    "impact": 2,
+    "impact": 1,
     "hold": 0.35,
-    "note": "Sword_Regular_C@0-8: pull back, drop, the stab reaches forward"
+    "note": "Sword_Regular_A@4-: from the crouch the blade rises past the front"
   },
   "swing3": {
-    "impact": 2,
-    "hold": 0.25,
-    "note": "Sword_Regular_A@4- (all frames): crouched wind-up, the blade rises past the front"
-  },
-  "run": {
-    "stride_m": 5.39,
-    "note": "Jog_Fwd_Loop: planted foot 5.87 m/s over a 0.92 s cycle"
-  },
-  "finisher": {
     "impact": 2,
     "hold": 0.3,
     "windup": [
@@ -34,6 +25,10 @@
       1.8
     ],
     "trail_from": 1,
-    "note": "Sword_Regular_Combo@31.5-34.5,@37.6-41 (the pack combo's finisher): from the raised blade of hit 2, lift overhead (held), step in and chop down in front"
+    "note": "Sword_Regular_Combo@31.5-34.5,@37.6-41 (the pack combo's finisher): from the raised blade of hit 2, lift overhead (held), chop down in front"
+  },
+  "run": {
+    "stride_m": 5.39,
+    "note": "Jog_Fwd_Loop: planted foot 5.87 m/s over a 0.92 s cycle"
   }
 }
