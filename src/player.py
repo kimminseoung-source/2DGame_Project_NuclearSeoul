@@ -51,6 +51,10 @@ class Player:
         self.dash_age = float("inf")   # seconds since the last dash started (perfect dodge)
         self.counter_time = 0.0        # a landed blow is a counter while this runs (dodge.py)
         self.counter_target = None     # the enemy whose blow was perfectly dodged
+        self.afterimage = 0.0          # 0..1, set by the play loop during the time warp
+        self.afterimages = []          # recent (x, y) for the warp's after-images
+        self.afterimage_time = 0.0
+        self.ghost = None              # (x, y, alpha) while drawing an after-image
         self.pickup_time = 0.0
         self.swing = None        # the MeleeAttack in progress
         self.weapon = weapon.MACHETE
@@ -160,16 +164,18 @@ class Player:
     # Update -------------------------------------------------------------------
 
     def update(self):
-        dt = game_clock.frame_time
+        # The hero runs on its own clock: faster than the world during the time warp.
+        dt = game_clock.hero_frame_time
         if dt <= 0:
             return
+        self.record_afterimage(dt)
         self.idle_time += dt
         if self.state == "COMBAT":
             return
         self.dash_cooldown = max(0.0, self.dash_cooldown - dt)
         self.dash_age += dt
         self.counter_time = max(0.0, self.counter_time - dt)
-        step = game_clock.step()
+        step = game_clock.hero_step()
         if self.state == "DASH":
             self.update_dash(step)
         elif self.state == "PICKUP":
@@ -244,7 +250,29 @@ class Player:
 
     # Draw ---------------------------------------------------------------------
 
+    AFTERIMAGE_EVERY = 0.035     # seconds between after-image positions
+    AFTERIMAGE_COUNT = 3
+
+    def record_afterimage(self, dt):
+        if self.afterimage <= 0:
+            self.afterimages.clear()
+            return
+        self.afterimage_time += dt
+        if self.afterimage_time >= self.AFTERIMAGE_EVERY:
+            self.afterimage_time = 0.0
+            self.afterimages.append((self.x, self.y))
+            del self.afterimages[:-self.AFTERIMAGE_COUNT]
+
     def draw(self):
+        # Time warp: faded copies of the current pose where the hero just was.
+        for index, (x, y) in enumerate(self.afterimages):
+            if (x, y) != (self.x, self.y):
+                self.ghost = (x, y, self.afterimage * 0.18 * (index + 1))
+                self.draw_state()
+        self.ghost = None
+        self.draw_state()
+
+    def draw_state(self):
         if self.state == "COMBAT":
             swing = self.combat.swing_for(self) if self.combat is not None else None
             if swing is not None:
@@ -269,7 +297,8 @@ class Player:
         if getattr(swing, "lunge_from", None):
             self.draw_lunge_ghosts(swing, sheet)
         self.draw_pose(sheet, swing.progress, swing.contact)
-        swing.draw_trail(self, camera.x)
+        if self.ghost is None:
+            swing.draw_trail(self, camera.x)
 
     def draw_dash(self):
         progress = 1 - self.dash_time / DASH_DURATION
@@ -319,5 +348,10 @@ class Player:
         return self.x - camera.x, self.y - 12
 
     def draw_pose(self, pose, time, contact=None, distance=None):
+        if self.ghost is not None:
+            x, y, alpha = self.ghost
+            self.look.draw(pose, time, x - camera.x, y - 12, self.direction,
+                           contact=contact, distance=distance, alpha=alpha)
+            return
         self.look.draw(pose, time, *self.pose_anchor(), self.direction,
                        contact=contact, distance=distance)

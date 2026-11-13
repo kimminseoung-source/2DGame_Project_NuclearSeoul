@@ -1,5 +1,7 @@
 """Short-lived visual effects that remove themselves from the game world."""
 
+from math import sin
+
 import pico2d
 
 import camera
@@ -76,3 +78,29 @@ class DamageNumber:
         pop = 1 + self.feel.pop * max(0.0, 1 - self.age / self.POP_TIME)
         ui.text_center(self.x - camera.x, self.y + 58 + rise, str(self.amount), self.color,
                        round(self.feel.number_size * 0.7 * pop))
+
+
+class SlashMark:
+    """A blow kept during the time warp: a glowing cut on the target that stays (frozen in
+    time) until the burst lands it, then removes itself."""
+
+    ANGLES = ((-10, 14, 10, -10), (-12, -4, 12, 10), (-6, 18, 8, -14), (-14, 6, 14, -2))
+
+    def __init__(self, target, index):
+        self.target = target
+        self.line = self.ANGLES[index % len(self.ANGLES)]
+        self.age = 0.0
+
+    def update(self):
+        self.age += game_clock.hero_frame_time
+        if not self.target.stored_hits:
+            game_world.remove_object(self)
+
+    def draw(self):
+        x, y = self.target.x - camera.x, self.target.y + 16
+        x1, y1, x2, y2 = self.line
+        glow = round(170 + 60 * (0.5 + 0.5 * sin(self.age * 18)))
+        for offset in (-1, 0, 1):
+            pico2d.draw_line(x + x1, y + y1 + offset, x + x2, y + y2 + offset, glow, 255, glow,
+                             255 if offset == 0 else 110)
+

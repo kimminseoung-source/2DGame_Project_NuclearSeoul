@@ -16,6 +16,7 @@ from pico2d import pico2d as canvas
 
 import camera
 import dodge
+import exposure as exposure_rules
 import game_clock
 import game_world
 import ui
@@ -25,12 +26,14 @@ import hit_feel
 import screen_shake
 from combat import Combat, Fighter
 from combat_view import create_views
-from effects import DamageNumber, DodgeFlash, Impact
+from effects import DamageNumber, DodgeFlash, Impact, SlashMark
 from exit_door import ExitDoor
 from hud import ExplorationBar, ExplorationHud, InventoryOverlay, SettingsOverlay
 from inventory import COLUMNS, Inventory
 from player import Player
 from shelter import SHELTER_EXIT, SHELTER_SPAWN, ShelterMap
+import time_warp
+from time_warp import Hit, TimeWarp
 from tile_map import EXIT, HEIGHT, SPAWN, WIDTH, TileMap
 from wreck import Wreck
 import zombie as zombie_rules
@@ -93,6 +96,9 @@ class GameState:
         self.in_shelter = True
         self.hitstop = 0.0
         self.slow_motion = 0.0   # real seconds left of the perfect-dodge slow motion
+        self.exposure = exposure_rules.Exposure()   # the hero's radiation (피폭 수치), kept between areas
+        self.warp = TimeWarp()   # right-click mutation time warp
+        self.bursts = []         # [target, hits left, seconds to the next pop, power]
         self.aim_x = None
 
 
@@ -132,6 +138,8 @@ def enter_area(in_shelter):
     state.in_shelter = in_shelter
     state.hitstop = 0.0
     state.slow_motion = 0.0
+    state.warp = TimeWarp()
+    state.bursts = []
     tile_map = assets.shelter if in_shelter else assets.street
     spawn, exit_at = (SHELTER_SPAWN, SHELTER_EXIT) if in_shelter else (SPAWN, EXIT)
 
@@ -226,6 +234,14 @@ def handle_player_events():
             damage *= dodge.COUNTER_MULTIPLIER if counter else 1
             player.counter_time = 0.0
             player.counter_target = None
+            if state.warp.held:
+                # Time warp: keep the blow; it lands with the others when time comes back.
+                zombie.stored_hits.append(Hit(damage, player.swing.dx, swing.push, swing.heavy,
+                                              sneak or counter))
+                state.exposure.raise_by(exposure_rules.HIT_RISE)
+                game_world.add_object(SlashMark(zombie, len(zombie.stored_hits) - 1), game_world.EFFECT)
+                state.message = f"가속 중 {len(zombie.stored_hits)}연격"
+                continue
             zombie.hurt(damage, player.swing.dx, swing.push)
             weight = hit_feel.weight(damage, zombie.max_hp, critical=sneak or counter,
                                     finishing=not zombie.alive, heavy=swing.heavy)
@@ -273,11 +289,84 @@ def handle_zombie_event():
 def perfect_dodge(attacker):
     """Slow the scene for a beat and open the counter window against the attacker that
     missed (rules in dodge.py)."""
-    state.slow_motion = dodge.SLOW_TIME
+    if not state.warp.active:
+        state.slow_motion = dodge.SLOW_TIME
     player.counter_time = dodge.COUNTER_TIME
     player.counter_target = attacker
     game_world.add_object(DodgeFlash(player.x, player.y), game_world.EFFECT)
     state.message = "완벽 회피! 바로 공격하면 반격"
+
+
+def start_warp():
+    """Right button down: the world crawls, the hero speeds up (time_warp.py)."""
+    if state.finished or state.inventory_open or state.settings_open or state.in_shelter:
+        return
+    state.warp.held = True
+    state.message = "변이 가속! 베어 두면 풀릴 때 한꺼번에 들어갑니다"
+
+
+def end_warp():
+    """Right button up (or the exposure limit): time comes back and every stored blow bursts."""
+    if not state.warp.held:
+        return
+    state.warp.held = False
+    targets = [zombie] if zombie is not None else []
+    power = state.exposure.power
+    for target in targets:
+        if target.stored_hits:
+            state.bursts.append([target, list(target.stored_hits), 0.0, power])
+
+
+def update_bursts(frame_time):
+    """Pop stored blows one after another (타타타탁), the last one the hardest."""
+    for burst in state.bursts[:]:
+        target, hits, wait, power = burst
+        burst[2] -= frame_time
+        if burst[2] > 0:
+            continue
+        hit = hits.pop(0)
+        target.stored_hits.pop(0)
+        last = not hits
+        if target.alive:
+            damage = max(1, round(hit.damage * power))
+            target.hurt(damage, hit.direction, hit.push)
+            finishing = not target.alive
+            weight = hit_feel.weight(damage, target.max_hp, critical=hit.critical or last,
+                                     finishing=finishing, heavy=hit.heavy)
+            show_impact((target.x, target.y), weight)
+            game_world.add_object(DamageNumber(target.x, target.y + 6 * len(hits), damage, weight),
+                                  game_world.EFFECT)
+            if last or finishing:
+                play_hit_feel(hit_feel.CRUSHING)
+                state.message = "가속 해제!" if target.alive else "가속 해제! 피폭체를 쓰러뜨렸습니다."
+            else:
+                state.hitstop = max(state.hitstop, 0.02)
+        if last or not target.alive:
+            target.stored_hits.clear()
+            state.bursts.remove(burst)
+        else:
+            burst[2] = time_warp.BURST_INTERVAL
+
+
+def update_exposure(frame_time):
+    for event in state.exposure.update(frame_time, rising=state.warp.held):
+        if event == "limit":
+            end_warp()
+            hurt_hero(exposure_rules.LIMIT_DAMAGE, "몸이 한계에 닿았습니다! 피폭 수치가 내려갑니다.")
+        elif event == "drain":
+            hurt_hero(1, "피폭 수치가 너무 높습니다. 체력이 깎입니다.")
+
+
+def hurt_hero(damage, message):
+    state.health = max(0, state.health - damage)
+    weight = hit_feel.weight(damage, state.max_health, finishing=state.health == 0)
+    game_world.add_object(DamageNumber(player.x, player.y, damage, weight, ui.PARTY), game_world.EFFECT)
+    state.message = message
+    if state.health == 0:
+        state.finished = True
+        player.frozen = True
+        state.warp.held = False
+        state.message = "피폭 한계를 넘어 피폭체가 되었습니다… R로 다시 시작"
 
 
 def show_impact(position, hit_weight=None):
@@ -369,6 +458,10 @@ def handle_events():
         if (event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT
                 and combat is not None and not state.settings_open):
             combat.right_click()
+        elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT:
+            start_warp()
+        if event.type == sdl2.SDL_MOUSEBUTTONUP and event.button == sdl2.SDL_BUTTON_RIGHT:
+            end_warp()
         if event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
             state.aim_x = event.x
             if state.settings_open:
@@ -470,6 +563,7 @@ def handle_inventory_key(key):
 def update_world(frame_time):
     if state.settings_open or state.inventory_open:
         game_clock.frame_time = 0.0
+        game_clock.hero_frame_time = 0.0
         return
     # The shake runs on real time, so it keeps going while a hit-stop freezes the scene.
     screen_shake.update(frame_time)
@@ -483,8 +577,15 @@ def update_world(frame_time):
     player.speed_multiplier = state.speed_percent / 100
     if zombie is not None:
         zombie.frozen = state.hitstop > 0
-    game_clock.frame_time = max(0.0, frame_time)
+    frame_time = max(0.0, frame_time)
+    if combat is None and not state.finished:
+        update_exposure(frame_time)
+    state.warp.update(frame_time)
+    player.afterimage = state.warp.blend
+    game_clock.frame_time = frame_time * state.warp.world_scale
+    game_clock.hero_frame_time = frame_time * state.warp.hero_scale
     game_world.update()
+    update_bursts(frame_time)
     if combat is not None:
         handle_combat_results()
         return
