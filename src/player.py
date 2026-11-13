@@ -55,6 +55,7 @@ class Player:
         self.afterimages = []          # recent (x, y) for the warp's after-images
         self.afterimage_time = 0.0
         self.ghost = None              # (x, y, alpha) while drawing an after-image
+        self.charging = False          # holding the time-warp charge in place (set by the play loop)
         self.pickup_time = 0.0
         self.swing = None        # the MeleeAttack in progress
         self.weapon = weapon.MACHETE
@@ -136,6 +137,16 @@ class Player:
     def start_pickup(self):
         if self.state in FREE_STATES:
             self.pick_up()
+
+    def start_finisher(self):
+        """The time-warp release: the weapon's last swing, marked to loose a flurry."""
+        if self.state not in FREE_STATES:
+            return False
+        self.attack()
+        index = len(self.weapon.swings) - 1
+        self.swing = weapon.MeleeAttack(self.weapon.swings[index], (self.direction, 0), index)
+        self.swing.flurry = True
+        return True
 
     def start_swing(self):
         """Attack, or queue the combo's next swing if one is already under way."""
@@ -219,6 +230,8 @@ class Player:
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
         direction_x, direction_y = self.movement_direction(keys)
         self.running = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT]) and not self.sneaking
+        if self.charging:                  # gathering power in place
+            direction_x = direction_y = 0
         if direction_x == direction_y == 0:
             if self.state != "IDLE":
                 self.stop()
@@ -307,6 +320,12 @@ class Player:
         self.draw_pose("walk", progress * 0.36)
 
     def draw_body(self):
+        if self.charging:
+            # The finisher's raised blade, held while the charge builds.
+            finisher = self.weapon.swings[-1]
+            contact = finisher.contact / finisher.duration
+            self.draw_pose(finisher.sheet, contact * 0.8, contact)
+            return
         if not self.walk_time:
             # Holding Ctrl crouches at once, even before moving.
             self.draw_pose("sneak_idle" if self.sneaking else "idle", self.idle_time)

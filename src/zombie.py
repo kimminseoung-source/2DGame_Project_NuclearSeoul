@@ -57,7 +57,6 @@ class Zombie:
         self.max_hp = MAX_HP
         self.hp = MAX_HP
         self.push_speed = KNOCKBACK_SPEED
-        self.stored_hits = []         # blows kept during the hero's time warp (time_warp.py)
 
         self.machine = Machine(
             model=self,

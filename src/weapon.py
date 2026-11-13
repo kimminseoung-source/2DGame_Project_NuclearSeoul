@@ -57,6 +57,7 @@ class MeleeAttack:
         # lunge (start_lunge); lunge_from marks a counter, for its after-images.
         self.lunge = (self.dx * swing.step, 0.0)
         self.lunge_from = None
+        self.flurry = False          # the time-warp finisher: its blow looses a flurry (flurry.py)
 
     def update(self, frame_time):
         before = self.elapsed

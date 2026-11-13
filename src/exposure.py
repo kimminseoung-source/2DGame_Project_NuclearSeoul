@@ -2,21 +2,20 @@
 
 People who pass the limit die and turn into the infected (PRD 12). The hero is exposed
 but not yet turned: pushing the body (the time warp, time_warp.py) raises exposure, which
-makes stored blows hit harder but blurs the eyes, then drains health; at the limit the
+makes the flurry (flurry.py) hit harder but blurs the eyes, then drains health; at the limit the
 body gives out. Rules live here once so any unit with an Exposure (a companion, a
 hostile survivor) works the same way (generic systems rule).
 """
 
 MAX = 100.0
 WARP_RISE = 15.0          # per second while the time warp is held
-HIT_RISE = 3.0            # per blow landed (stored) during the warp
 DECAY = 2.0               # per second once it has rested
 DECAY_DELAY = 1.5         # seconds after the last rise before it starts falling
 LIMIT_DAMAGE = 4          # health lost when the gauge hits the limit
 LIMIT_RESET = 70.0        # the gauge drops back here after the limit
 DRAIN_EVERY = 2.0         # seconds per point of health lost in the last stage
 
-# Stages: (from value, name, power multiplier for stored blows).
+# Stages: (from value, name, power multiplier for the flurry's cuts).
 STAGES = (
     (0.0, "안정", 1.0),
     (30.0, "시야 좁아짐", 1.3),

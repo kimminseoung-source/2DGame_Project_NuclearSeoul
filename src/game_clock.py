@@ -9,6 +9,7 @@ MAX_STEP = 0.05
 
 frame_time = 0.0
 hero_frame_time = 0.0
+real_frame_time = 0.0     # unscaled and not stopped by hit-stop: for screen effects
 
 
 def step():
