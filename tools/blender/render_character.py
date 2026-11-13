@@ -27,17 +27,18 @@ PASSES = [
     (LIB1,
      ["idle=Idle_Loop", "sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.3", "walk=Walk_Loop",
       "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "run=Jog_Fwd_Loop", "hurt=Hit_Chest", "down=Death01",
-      "pickup=Fixing_Kneeling@0-20", "swing3=Sword_Attack@0-7,Sword_Attack@10-13,Sword_Attack@26-36"],
-     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "swing3=3,2,3"],
+      "pickup=Fixing_Kneeling@0-20"],
+     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (user order 2026-11-12, "1st sweep, 2nd rising cut, 3rd chop down"):
      # 1st a quick sweep (B, wind-up cut off), 2nd the rising cut (A from its crouch on,
-     # fewer frames), 3rd the big chop (Sword_Attack: blade raised overhead, lunge, chop down
-     # to the ground, then its own return to standing).
-     # (swing3 is in the first library, so it is rendered with the first pass above.)
-     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23"],
-     ["swing=4,3", "swing2=4,3"],
+     # fewer frames), 3rd the finisher of the pack's own combo (Sword_Regular_Combo: after
+     # A and B it raises the blade overhead and steps in with a diagonal chop), so all three
+     # come from one animated combo and flow together (2026-11-13: Sword_Attack did not).
+     ["swing=Sword_Regular_B@2-13,Sword_Regular_B_Rec", "swing2=Sword_Regular_A@4-,Sword_Regular_A_Rec@7-23",
+      "swing3=Sword_Regular_Combo@31.5-34.5,Sword_Regular_Combo@37.6-41,Sword_Regular_Combo@51-72"],
+     ["swing=4,3", "swing2=4,3", "swing3=2,2,3"],
      []),
 ]
 
