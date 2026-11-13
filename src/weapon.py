@@ -31,7 +31,7 @@ MACHETE = Weapon(
         # 1st and 2nd: quick, light blows; 3rd: the big chop with a real wind-up.
         Swing("swing", 0.46, 0.14, 2, 42, 20, pi / 3, 110, 0.72, False),    # quick sweep
         Swing("swing2", 0.50, 0.16, 2, 46, 22, pi / 3, 110, 0.73, False),   # rising cut
-        Swing("swing3", 0.68, 0.28, 6, 50, 24, pi / 3, 340, 0.74, True, 22),  # finisher: overhead chop
+        Swing("swing3", 0.68, 0.28, 6, 50, 24, pi / 3, 340, 0.74, True),    # finisher: overhead chop (in place)
     ),
     combo_window=0.25,
     sneak_multiplier=3,
