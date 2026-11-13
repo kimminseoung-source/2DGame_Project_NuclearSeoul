@@ -22,19 +22,21 @@ Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push 
 # (combo finisher) that lands one feel class harder (hit-stop, shake, number; see hit_feel);
 # step: px the attacker steps forward into the blow (the art's lunge is pinned in place).
 
-Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier")
-# combo_window: seconds after a swing's recovery starts in which a click continues the combo.
+Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier finisher", defaults=(None,))
+# combo_window: seconds after a swing's recovery starts in which a click continues the combo;
+# finisher: the big blow the time-warp release swings (it looses the flurry, flurry.py).
 
 MACHETE = Weapon(
     name="마체테",
     swings=(
-        # 1st and 2nd: quick, light blows; 3rd: the big chop with a real wind-up.
+        # 1st and 2nd: quick, light blows; 3rd: the big rising cut with a real wind-up.
         Swing("swing", 0.46, 0.14, 2, 42, 20, pi / 3, 110, 0.72, False),    # quick sweep
-        Swing("swing2", 0.50, 0.16, 2, 46, 22, pi / 3, 110, 0.73, False),   # rising cut
-        Swing("swing3", 0.68, 0.28, 6, 50, 24, pi / 3, 340, 0.74, True),    # finisher: overhead chop (in place)
+        Swing("swing2", 0.50, 0.20, 2, 44, 20, pi / 3, 110, 0.70, False),   # quick thrust
+        Swing("swing3", 0.66, 0.26, 6, 50, 24, pi / 3, 320, 0.76, True),    # big rising cut
     ),
     combo_window=0.25,
     sneak_multiplier=3,
+    finisher=Swing("finisher", 0.68, 0.28, 6, 50, 24, pi / 3, 340, 0.74, True),   # overhead chop
 )
 
 IMPACT_TIME = 0.18
