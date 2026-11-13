@@ -22,6 +22,22 @@ class ExplorationHud:
         color = (133, 231, 184) if state.finished else (245, 222, 169)
         ui.text(16, HEIGHT + 32, state.message, color)
         ui.text(500, HEIGHT + 18, f"체력 {state.health}/{state.max_health}", (238, 169, 149))
+        draw_exposure(state.exposure, 500, HEIGHT + 44)
+
+
+# Gauge colour per exposure stage: calm, narrowing, haze, breaking down.
+EXPOSURE_COLORS = ((120, 170, 130), (170, 210, 90), (80, 230, 120), (230, 70, 60))
+
+
+def draw_exposure(exposure, x, y):
+    """피폭 gauge: label, bar with the stage marks, percent and the stage's name."""
+    color = EXPOSURE_COLORS[exposure.stage]
+    ui.text(x, y, "피폭", color, 14)
+    left, width = x + 36, 130
+    ui.bar(left, y - 6, width, 10, exposure.ratio, color)
+    for mark in (0.3, 0.6, 0.9):
+        pico2d.draw_line(left + width * mark, y - 7, left + width * mark, y + 5, 15, 23, 31)
+    ui.text(left + width + 8, y, f"{round(exposure.value)}%", color, 14)
 
 
 class ExplorationBar:

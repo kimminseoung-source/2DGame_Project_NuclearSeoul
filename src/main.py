@@ -36,6 +36,7 @@ import flurry as flurry_rules
 from flurry import Flurry
 from time_warp import TimeWarp
 from tile_map import EXIT, HEIGHT, SPAWN, WIDTH, TileMap
+from vision import ExposureVision
 from wreck import Wreck
 import zombie as zombie_rules
 from zombie import Zombie
@@ -76,6 +77,7 @@ class Assets:
             self.player_look = SheetLook(ASSETS / "characters" / PLAYER_LOOK)
         self.zombie_image = pico2d.load_image(str(ASSETS / "zombie_regular.png"))
         self.wreck_image = pico2d.load_image(str(ASSETS / "street_wreck.png"))
+        self.vision_mask = pico2d.load_image(str(ASSETS / "ui" / "vision_mask.png"))
         self.bat_impact_sound = pico2d.load_wav(str(ASSETS / "bat_impact.wav"))
         self.bat_impact_sound.set_volume(65)
 
@@ -165,6 +167,7 @@ def enter_area(in_shelter):
     ]
     for view, layer in exploration_views:
         game_world.add_object(view, layer)
+    game_world.add_object(ExposureVision(state.exposure, player, assets.vision_mask), game_world.OVERLAY)
     game_world.add_object(WarpTint(state.warp, player), game_world.OVERLAY)
     game_world.add_object(InventoryOverlay(state), game_world.POPUP)
     game_world.add_object(SettingsOverlay(state), game_world.POPUP)
