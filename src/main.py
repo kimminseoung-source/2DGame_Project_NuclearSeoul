@@ -104,6 +104,7 @@ class GameState:
         self.flurries = []       # [Flurry, {target: ComboNumber}] being let loose
         self.flurry_level = 1    # charge level of the release in progress
         self.aim_x = None
+        self.aim_y = None        # mouse height in world coordinates (PRD v4.0 aimed slash)
 
 
 assets = None
@@ -124,10 +125,12 @@ def reset_world():
     if assets is None:
         assets = Assets()
     aim_x = state.aim_x if state is not None else None
+    aim_y = state.aim_y if state is not None else None
     speed = state.speed_percent if state is not None else DEFAULT_SPEED
     skip_spin = state.skip_spin if state is not None else False
     state = GameState()
     state.aim_x = aim_x
+    state.aim_y = aim_y
     state.speed_percent = speed
     state.skip_spin = skip_spin
     enter_area(in_shelter=True)
@@ -181,6 +184,25 @@ def face_cursor():
     offset = state.aim_x - (player.x - camera.x)
     if abs(offset) > 2:
         player.direction = 1 if offset > 0 else -1
+    aim_cursor()
+
+
+AIM_CHEST = 24          # px above the feet the aim is measured from
+
+
+def update_enemies():
+    """The live enemies the hero's lunges stop at."""
+    player.enemies = [zombie] if zombie is not None and zombie.alive else []
+
+
+def aim_cursor():
+    """The direction from the hero's chest to the mouse (the aimed slash, PRD v4.0)."""
+    if state.aim_x is None or state.aim_y is None:
+        player.aim = (player.direction, 0.0)
+        return
+    dx = state.aim_x - (player.x - camera.x)
+    dy = state.aim_y - (player.y - 12 + AIM_CHEST)
+    player.aim = (dx, dy) if hypot(dx, dy) > 4 else (player.direction, 0.0)
 
 
 def interact():
@@ -210,7 +232,9 @@ def attack_click():
     decided now (by the time the blow lands it may have turned around)."""
     if state.warp.held:              # charging: the release does the attacking
         return
+    update_enemies()
     if player.state == "SWING":
+        aim_cursor()
         player.start_swing()
         return
     if player.busy():
@@ -218,7 +242,9 @@ def attack_click():
     face_cursor()
     target = player.counter_target if player.counter_time > 0 else None
     if target is not None and target.alive:
-        player.direction = 1 if target.x >= player.x else -1     # a counter turns to its target
+        # A counter turns to its target and aims at it, whatever the mouse says.
+        player.direction = 1 if target.x >= player.x else -1
+        player.aim = (target.x - player.x, target.y - player.y)
     unseen = can_surprise()
     player.start_swing()
     if player.state == "SWING" and unseen:
@@ -469,6 +495,8 @@ def handle_events():
             return False
         if event.type == sdl2.SDL_MOUSEMOTION:
             state.aim_x = event.x
+            region, _, world_y = ui.split_mouse(event.x, event.y)
+            state.aim_y = world_y if region == "world" else None
             if combat is not None:
                 region, x, y = ui.split_mouse(event.x, event.y)
                 in_world = region == "world"
@@ -484,6 +512,8 @@ def handle_events():
             end_warp()
         if event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
             state.aim_x = event.x
+            region, _, world_y = ui.split_mouse(event.x, event.y)
+            state.aim_y = world_y if region == "world" else None
             if state.settings_open:
                 pass
             elif combat is not None:
@@ -607,6 +637,7 @@ def update_world(frame_time):
         game_world.add_object(DodgeFlash(player.x, player.y), game_world.EFFECT)
         state.message = f"변이 가속 {state.warp.level}단"
     player.afterimage = state.warp.blend
+    update_enemies()
     game_clock.frame_time = frame_time * state.warp.world_scale
     game_clock.hero_frame_time = frame_time * state.warp.hero_scale
     game_world.update()

@@ -13,14 +13,16 @@ import pico2d
 
 import dodge
 
-Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from heavy step",
-                   defaults=(0,))
+Swing = namedtuple("Swing", "sheet duration contact damage reach depth arc push recover_from heavy step trail",
+                   defaults=(0, "blade"))
 # sheet: animation sheet (character_look pose); duration and contact in seconds;
 # damage in hit points; reach and depth in px; arc in radians around the facing direction;
 # push: knockback speed in px/s; recover_from: progress where the swing's own recovery
 # starts, so a follow-up swing can cut in there instead of waiting for it; heavy: a big blow
 # (combo finisher) that lands one feel class harder (hit-stop, shake, number; see hit_feel);
-# step: px the attacker steps forward into the blow (the art's lunge is pinned in place).
+# step: px the attacker steps forward into the blow (the art's lunge is pinned in place);
+# trail: "blade" follows the blade in the sheets, "crescent" draws a big half moon around
+# the attacker in the attack's direction (the aimed slash).
 
 Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier finisher", defaults=(None,))
 # combo_window: seconds after a swing's recovery starts in which a click continues the combo;
@@ -30,13 +32,14 @@ Weapon = namedtuple("Weapon", "name swings combo_window sneak_multiplier finishe
 MACHETE = Weapon(
     name="마체테",
     swings=(
-        # 1st and 2nd: quick, light blows; 3rd: the overhead chop with a real wind-up.
-        Swing("swing", 0.46, 0.14, 2, 42, 20, pi / 3, 110, 0.72, False),    # quick sweep
-        Swing("swing2", 0.50, 0.16, 2, 46, 22, pi / 3, 110, 0.73, False),   # short rising cut
-        Swing("swing3", 0.68, 0.28, 6, 50, 24, pi / 3, 340, 0.74, True),    # overhead chop (combo finisher)
+        # PRD v4.0: one slash toward the mouse - a short lunge, a big crescent, and an
+        # infected falls to one blow. Click again once it recovers to slash again.
+        Swing("swing", 0.32, 0.07, 10, 52, 40, pi / 2.2, 260, 0.55, False, 38, "crescent"),
     ),
     combo_window=0.25,
     sneak_multiplier=3,
+    # The time-warp release's blow (until stage 2 makes the warp a plain slow-down).
+    finisher=Swing("swing3", 0.68, 0.28, 6, 50, 24, pi / 3, 340, 0.74, True),
 )
 
 IMPACT_TIME = 0.18
@@ -51,13 +54,14 @@ class MeleeAttack:
 
     def __init__(self, swing, direction, combo_index=0):
         self.swing = swing
-        self.dx, self.dy = direction
+        length = hypot(*direction) or 1
+        self.dx, self.dy = direction[0] / length, direction[1] / length   # unit vector
         self.combo_index = combo_index
         self.elapsed = 0.0
         self.sneak = False          # started before the target noticed: a sneak attack
         # px the attacker travels just before the blow: the swing's own step, plus a counter's
         # lunge (start_lunge); lunge_from marks a counter, for its after-images.
-        self.lunge = (self.dx * swing.step, 0.0)
+        self.lunge = (self.dx * swing.step, self.dy * swing.step)
         self.lunge_from = None
         self.flurry = False          # the time-warp finisher: its blow looses a flurry (flurry.py)
 
@@ -66,12 +70,28 @@ class MeleeAttack:
         self.elapsed += frame_time
         return before < self.swing.contact <= self.elapsed
 
+    STOP_SHARE = 0.5          # a lunge stops this share of the reach in front of an enemy
+
+    def trim_lunge(self, attacker, targets):
+        """Shorten the swing's own step so it stops just in front of the first enemy in its
+        path instead of running through it (any attacker, any targets)."""
+        length = hypot(*self.lunge)
+        if not length:
+            return
+        for target in targets:
+            along = (target.x - attacker.x) * self.dx + (target.y - attacker.y) * self.dy
+            across = abs((target.x - attacker.x) * self.dy - (target.y - attacker.y) * self.dx)
+            if along > 0 and across <= self.swing.depth:
+                length = min(length, max(0.0, along - self.swing.reach * self.STOP_SHARE))
+        self.lunge = (self.dx * length, self.dy * length)
+
     @property
     def lunge_time(self):
         return min(self.swing.contact, dodge.LUNGE_TIME)
 
     def start_lunge(self, attacker, distance):
-        self.lunge = (self.lunge[0] + distance[0], self.lunge[1] + distance[1])
+        """A counter's lunge: it replaces the swing's own step (it already stops in reach)."""
+        self.lunge = distance
         self.lunge_from = (attacker.x, attacker.y)
 
     def lunge_step(self, frame_time):
@@ -120,11 +140,19 @@ class MeleeAttack:
         """A white trail right after contact that follows the blade in the frames on screen:
         the stroke into the impact frame, then the follow-through once the next frame shows
         (any weapon, any look with blade data). It fades out over TRAIL_TIME."""
+        x, feet_y = attacker.pose_anchor()
+        if self.swing.trail == "crescent":
+            # The half moon sweeps in just before contact, so it is whole when the blow
+            # lands (and stays whole through the hit-stop).
+            after = self.elapsed - self.swing.contact + CRESCENT_GROW
+            if 0 <= after < TRAIL_TIME + CRESCENT_GROW:
+                fade = min(1.0, 1 - (after - CRESCENT_GROW) / TRAIL_TIME)
+                draw_crescent(x, feet_y + 24, atan2(self.dy, self.dx), after, fade)
+            return
         after = self.elapsed - self.swing.contact
         if not 0 <= after < TRAIL_TIME:
             return
         fade = 1 - after / TRAIL_TIME
-        x, feet_y = attacker.pose_anchor()
         look, sheet = attacker.look, self.swing.sheet
         lines = look.blade_lines(sheet, x, feet_y, attacker.direction) if hasattr(look, "blade_lines") else None
         impact = look.impact_of(sheet) if lines else None
@@ -160,6 +188,38 @@ WIDE_TURN = 2.7
 MIN_FRONT = 0.3              # cos of the arc's middle angle along the facing for a wide cut
 MAX_FOLLOW_TURN = 1.9
 RINGS = ((1.0, 255), (0.93, 235), (0.86, 205), (0.75, 150), (0.62, 90))   # radius, alpha
+
+
+CRESCENT_SPAN = 2.6           # radians the half moon covers, centred on the aim
+CRESCENT_GROW = 0.035         # seconds for the cut to sweep across
+CRESCENT_RADIUS = 46          # px, outer edge
+CRESCENT_THICK = 18           # px, thickness in the middle (the tips taper to nothing)
+CRESCENT_STEPS = 150         # dense enough that the band has no gaps
+
+
+def draw_crescent(x, y, angle, after, fade):
+    """A big, clean half moon swept in the aim's direction: a solid band, thick in the
+    middle and sharp at both tips, white along the outer edge and cooler inside; it
+    sweeps from one tip to the other in the first CRESCENT_GROW seconds."""
+    grow = min(1.0, after / CRESCENT_GROW)
+    shown = max(1, round(CRESCENT_STEPS * grow))
+    edge = None
+    for index in range(shown + 1):
+        t = index / CRESCENT_STEPS
+        taper = 1 - abs(2 * t - 1) ** 1.6          # 0 at the tips, 1 in the middle
+        theta = angle + CRESCENT_SPAN * (0.5 - t)
+        c, s = cos(theta), sin(theta) * 0.85
+        outer = CRESCENT_RADIUS
+        core = outer - CRESCENT_THICK * 0.4 * taper
+        inner = outer - CRESCENT_THICK * taper
+        pico2d.draw_line(x + c * inner, y + s * inner, x + c * core, y + s * core,
+                         150, 225, 210, round(150 * fade))
+        pico2d.draw_line(x + c * core, y + s * core, x + c * outer, y + s * outer,
+                         255, 255, 255, round(245 * fade))
+        point = (x + c * (outer + 1), y + s * (outer + 1))
+        if edge is not None:
+            pico2d.draw_line(*edge, *point, 255, 255, 255, round(255 * fade))
+        edge = point
 
 
 def draw_stroke(before, at, fade, max_turn, streak=False, facing=0):

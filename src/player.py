@@ -56,6 +56,8 @@ class Player:
         self.afterimage_time = 0.0
         self.ghost = None              # (x, y, alpha) while drawing an after-image
         self.charging = False          # holding the time-warp charge in place (set by the play loop)
+        self.aim = (1.0, 0.0)          # toward the mouse, set by the play loop (PRD v4.0)
+        self.enemies = []              # live enemies, set by the play loop: a lunge stops at them
         self.pickup_time = 0.0
         self.swing = None        # the MeleeAttack in progress
         self.weapon = weapon.MACHETE
@@ -105,7 +107,8 @@ class Player:
         self.walk_time = 0.0
 
     def on_enter_SWING(self):
-        self.swing = weapon.MeleeAttack(self.weapon.swings[0], (self.direction, 0), 0)
+        self.swing = weapon.MeleeAttack(self.weapon.swings[0], self.aim, 0)
+        self.swing.trim_lunge(self, self.enemies)
         self.combo_queued = False
         self.walk_time = 0.0
 
@@ -155,8 +158,8 @@ class Player:
         """Attack, or queue the combo's next swing if one is already under way."""
         if self.state in FREE_STATES:
             self.attack()
-        elif self.state == "SWING" and self.swing.combo_index + 1 < len(self.weapon.swings)                 and self.swing.elapsed >= self.swing.swing.contact * 0.5:
-            self.combo_queued = True
+        elif self.state == "SWING" and self.swing.elapsed >= self.swing.swing.contact * 0.5:
+            self.combo_queued = True       # the next swing (or the single slash again)
 
     @property
     def invulnerable(self):
@@ -206,9 +209,13 @@ class Player:
             if self.swing.update(step):
                 self.events.append("attack_contact")
             index = self.swing.combo_index
-            if self.combo_queued and self.swing.recovering and index + 1 < len(self.weapon.swings):
-                # Cut the recovery short and go straight into the next swing of the combo.
-                self.swing = weapon.MeleeAttack(self.weapon.swings[index + 1], (self.direction, 0), index + 1)
+            if self.combo_queued and self.swing.recovering and not self.swing.flurry:
+                # Cut the recovery short and go straight into the next swing (a weapon with
+                # one swing slashes again, toward wherever the mouse is now).
+                index = (index + 1) % len(self.weapon.swings)
+                self.direction = 1 if self.aim[0] >= 0 else -1
+                self.swing = weapon.MeleeAttack(self.weapon.swings[index], self.aim, index)
+                self.swing.trim_lunge(self, self.enemies)
                 self.combo_queued = False
             elif self.swing.done:
                 self.swing_end()
