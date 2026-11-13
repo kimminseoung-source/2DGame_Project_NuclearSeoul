@@ -25,11 +25,10 @@ ATTACK_DEPTH = 15
 WINDUP_TIME = 0.55            # long enough to see the "!" and dash away
 MAX_HP = 9
 DAMAGE = 2                    # hit points one claw takes from the hero
-DEATH_TIME = 0.6
+DEATH_TIME = 0.9               # the fall plays, then it blinks out
+DEATH_START = 0.35             # share of the death sheet skipped (its first frames still stand)
 STRIKE_TIME = 0.18
 SWIPE_VISIBLE_TIME = 0.075
-WALK_CYCLE = (3, 4, 5, 4)
-WALK_FRAME_TIME = 0.16
 RECOVERY_TIME = 0.72
 KNOCKBACK_TIME = 0.24
 KNOCKBACK_SPEED = 220
@@ -39,8 +38,8 @@ STATES = ["idle", "chase", "windup", "strike", "recover", "knockback", "stunned"
 
 
 class Zombie:
-    def __init__(self, image, tile_map, target):
-        self.image = image
+    def __init__(self, look, tile_map, target):
+        self.look = look              # character_look: the infected's sheets (PRD 12, 피폭체 시안 1)
         self.tile_map = tile_map
         self.target = target          # the player it hunts
         self.x, self.y = 570, WRECK_Y
@@ -49,6 +48,7 @@ class Zombie:
         self.time_left = 0.0
         self.alerted = False
         self.walk_time = 0.0
+        self.age = 0.0                # seconds alive, for the idle breathing
         self.walk_distance = 0.0     # metres walked; any unit's look can drive its legs with it
         self.detour = None
         self.in_combat = False
@@ -186,6 +186,7 @@ class Zombie:
             return
         self.event = None
         dt = game_clock.step()
+        self.age += dt
         if self.state == "dead":
             self.time_left -= dt
             self.push(self.push_direction * 40 * dt)
@@ -234,46 +235,53 @@ class Zombie:
     # Draw ---------------------------------------------------------------------
 
     def portrait_clip(self):
-        """Source rectangle of the idle frame, cropped to head and torso."""
-        return self.image, 20, 20, 46, 38
+        return self.look.portrait_clip()
+
+    # The scratch is one sheet: wind-up (the "!") -> the claw out front -> recovery.
+    ATTACK_TIME = WINDUP_TIME + STRIKE_TIME + RECOVERY_TIME
+    ATTACK_CONTACT = WINDUP_TIME / ATTACK_TIME
+
+    def attack_elapsed(self):
+        if self.state == "windup":
+            return WINDUP_TIME - self.time_left
+        if self.state == "strike":
+            return WINDUP_TIME + STRIKE_TIME - self.time_left
+        return WINDUP_TIME + STRIKE_TIME + RECOVERY_TIME - self.time_left
 
     def draw(self):
-        x = self.x - camera.x
-        if self.state == "windup":
-            frame = 1
-        elif self.state == "strike":
-            frame = 6 if self.time_left > STRIKE_TIME - SWIPE_VISIBLE_TIME else 7
-        elif self.state == "chase":
-            frame = WALK_CYCLE[int(self.walk_time / WALK_FRAME_TIME) % len(WALK_CYCLE)]
-        elif self.state in ("stunned", "dead"):
-            frame = 2
-        else:
-            frame = 0
+        x, feet = self.x - camera.x, self.y - 12
         if self.state == "dead":
-            # Topple backwards and fade by blinking.
-            if int(self.time_left * 20) % 2 == 0:
-                tilt = (1 - self.time_left / DEATH_TIME) * 1.4 * self.push_direction
-                self.image.clip_composite_draw(frame * 84, 0, 84, 58, -tilt, "h" if self.direction < 0 else "",
-                                               x, self.y - 12 + 29 - 14 * (1 - self.time_left / DEATH_TIME), 84, 58)
+            # The fall plays, then it blinks out.
+            fallen = 1 - self.time_left / DEATH_TIME
+            if fallen < 0.7 or int(self.time_left * 20) % 2 == 0:
+                # Skip the death sheet's standing start: the blow that killed it knocks it down.
+                self.look.draw("down", DEATH_START + (1 - DEATH_START) * fallen, x, feet, self.direction)
             return
-        self.image.clip_composite_draw(
-            frame * 84, 0, 84, 58, 0, "h" if self.direction < 0 else "",
-            x, self.y - 12 + 29, 84, 58,
-        )
-        if frame == 6:
+        if self.state in ("windup", "strike", "recover"):
+            self.look.draw("attack", self.attack_elapsed() / self.ATTACK_TIME, x, feet, self.direction,
+                           contact=self.ATTACK_CONTACT)
+        elif self.state == "knockback":
+            self.look.draw("hurt", 1 - self.time_left / KNOCKBACK_TIME, x, feet, self.direction)
+        elif self.state == "stunned":
+            self.look.draw("hurt", 1.0, x, feet, self.direction)
+        elif self.state == "chase":
+            self.look.draw("walk", self.walk_time, x, feet, self.direction, distance=self.walk_distance)
+        else:
+            self.look.draw("idle", self.age, x, feet, self.direction)
+        if self.state == "strike" and self.time_left > STRIKE_TIME - SWIPE_VISIBLE_TIME:
             self.draw_swipe(x)
         if self.state == "windup":
-            ui.text(x - 4, self.y + 48, "!", (255, 153, 91))
+            ui.text(x - 4, self.y + 52, "!", (255, 153, 91))
 
     def draw_swipe(self, x):
         direction = self.direction
         y = self.y
         for offset in (0, 4, 8):
             pico2d.draw_line(
-                x + 22 * direction, y + 20 - offset,
-                x + 34 * direction, y + 16 - offset, 213, 205, 181,
+                x + 22 * direction, y + 24 - offset,
+                x + 34 * direction, y + 20 - offset, 213, 205, 181,
             )
             pico2d.draw_line(
-                x + 34 * direction, y + 16 - offset,
-                x + 37 * direction, y + 8 - offset, 151, 140, 124,
+                x + 34 * direction, y + 20 - offset,
+                x + 37 * direction, y + 12 - offset, 151, 140, 124,
             )

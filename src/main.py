@@ -75,7 +75,7 @@ class Assets:
             })
         else:
             self.player_look = SheetLook(ASSETS / "characters" / PLAYER_LOOK)
-        self.zombie_image = pico2d.load_image(str(ASSETS / "zombie_regular.png"))
+        self.zombie_look = SheetLook(ASSETS / "characters" / "infected")   # 피폭체 시안 1
         self.wreck_image = pico2d.load_image(str(ASSETS / "street_wreck.png"))
         self.vision_mask = pico2d.load_image(str(ASSETS / "ui" / "vision_mask.png"))
         self.bat_impact_sound = pico2d.load_wav(str(ASSETS / "bat_impact.wav"))
@@ -158,7 +158,7 @@ def enter_area(in_shelter):
     if in_shelter:
         state.message = "오른쪽 출입문에서 E를 눌러 지상으로 나가세요."
     else:
-        zombie = Zombie(assets.zombie_image, tile_map, player)
+        zombie = Zombie(assets.zombie_look, tile_map, player)
         game_world.add_object(zombie, game_world.GROUND)
         state.message = "감염자를 피해 다음 대피소로 이동하세요."
     exploration_views = [

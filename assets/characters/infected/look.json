@@ -1,0 +1,11 @@
+{
+  "walk": {
+    "stride_m": 1.35,
+    "note": "Zombie_Walk_Fwd_Loop: planted foot 1.01 m/s over a 1.33 s cycle"
+  },
+  "attack": {
+    "impact": 3,
+    "hold": 0.2,
+    "note": "Zombie_Scratch: raise (wind-up, the '!'), the claw sweeps out front at frame 3, recover"
+  }
+}
