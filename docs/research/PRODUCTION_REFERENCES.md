@@ -37,6 +37,8 @@
 3. **은신 표시를 Mark of the Ninja처럼** — 은신 중 들키는 거리를 원으로 그려 주기. 이미 있는 `ALERT_DISTANCE`를 보여 주기만 하면 된다.
 4. **팔레트 통일 (Lospec)** — 그림이 늘어날 때 색이 따로 놀지 않게 한 팔레트를 정해 두기.
 
+Claude가 직접 할 수 있는 작업은 [참고 자료로 할 수 있는 작업 목록](REFERENCE_WORK_LIST.md)에 정리했다.
+
 ## 출처
 - [ChipTone (sfbgames, itch.io)](https://sfbgames.itch.io/chiptone)
 - [jsfxr (GitHub)](https://github.com/chr15m/jsfxr)
