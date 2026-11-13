@@ -23,7 +23,7 @@ PLAYER_HALF_SIZE = 11
 # as authored: a brisk walk and a careful sneak, both still natural, feet planted.
 WALK_SPEED_M = 2.0           # metres per second
 SNEAK_SPEED_M = 1.3
-RUN_SPEED_M = 4.8            # Space held while moving (a dash rolls straight into a run)
+RUN_SPEED_M = 4.8            # Shift held while moving
 DASH_SPEED = 340
 DASH_DURATION = 0.14
 DASH_COOLDOWN = 0.45
@@ -209,9 +209,10 @@ class Player:
 
     def update_walking(self, step):
         keys = sdl2.SDL_GetKeyboardState(None)
-        self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT])
+        # Ctrl sneaks, Shift runs (2026-11-13: combat focus, Shift is the usual run key).
+        self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
         direction_x, direction_y = self.movement_direction(keys)
-        self.running = bool(keys[sdl2.SDL_SCANCODE_SPACE]) and not self.sneaking
+        self.running = bool(keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT]) and not self.sneaking
         if direction_x == direction_y == 0:
             if self.state != "IDLE":
                 self.stop()
@@ -278,7 +279,7 @@ class Player:
 
     def draw_body(self):
         if not self.walk_time:
-            # Holding Shift crouches at once, even before moving.
+            # Holding Ctrl crouches at once, even before moving.
             self.draw_pose("sneak_idle" if self.sneaking else "idle", self.idle_time)
         else:
             pose = "sneak" if self.sneaking else "run" if self.running else "walk"
