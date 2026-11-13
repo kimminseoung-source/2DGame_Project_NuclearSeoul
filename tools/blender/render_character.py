@@ -42,10 +42,30 @@ PASSES = [
 ]
 
 
+# Infected (people who died past the radiation limit and turned, PRD 12): the same base body
+# with the pack's zombie motions. Sheet names are what zombie.py asks the look for.
+INFECTED_PASSES = [
+    (LIB2,
+     ["idle=Zombie_Idle_Loop", "walk=Zombie_Walk_Fwd_Loop", "attack=Zombie_Scratch"],
+     ["idle=4", "walk=12", "attack=8"],
+     []),
+    (LIB1,
+     ["hurt=Hit_Chest", "down=Death01"],
+     ["hurt=3", "down=5"],
+     ["--shift-for", "down=16"]),
+]
+ACTION_SETS = {"hero": PASSES, "infected": INFECTED_PASSES}
+
+
+def passes_of(costume):
+    data = json.loads(Path(costume).read_text(encoding="utf-8"))
+    return ACTION_SETS[data.get("actions", "hero")]
+
+
 def blender_pass(costume, out, render_pass, name):
     """All sheets of one character for one render pass (color, or id/light/tex for repaint)."""
     out.mkdir(parents=True, exist_ok=True)
-    for anim, mapping, counts, extra in PASSES:
+    for anim, mapping, counts, extra in passes_of(costume):
         settings = SETTINGS if render_pass == "color" else ["--tilt", "20", "--pass", render_pass]
         cmd = [BLENDER, "-b", "-P", str(SCRIPT), "--", "--costume", str(costume),
                "--anim-file", str(anim), "--out", str(out),
@@ -61,10 +81,10 @@ def blender_pass(costume, out, render_pass, name):
 EXPORT = ROOT / "tools" / "blender" / "export_pose2d.py"
 
 
-def export_poses(out, name):
+def export_poses(out, name, costume):
     """Screen joints of every frame of every sheet (same frames as the renders)."""
     files = []
-    for index, (anim, mapping, counts, extra) in enumerate(PASSES):
+    for index, (anim, mapping, counts, extra) in enumerate(passes_of(costume)):
         target = out / f"poses_{index}.json"
         cmd = [BLENDER, "-b", "-P", str(EXPORT), "--", "--anim-file", str(anim),
                "--map", *mapping, "--frames-for", *counts, "--out", str(target)]
@@ -88,10 +108,10 @@ def render(spec):
         passes = out / "_passes"
         for render_pass in ("id", "light"):
             blender_pass(costume, passes / render_pass, render_pass, name)
-        poses = export_poses(passes, name)
+        poses = export_poses(passes, name, costume)
         subprocess.run([sys.executable, str(ROOT / "tools" / "sprites" / "paint_clothes.py"),
                         "--id", str(passes / "id"), "--light", str(passes / "light"),
-                        "--poses", *poses, "--out", str(out),
+                        "--poses", *poses, "--out", str(out), "--outfit", str(costume),
                         *([] if data.get("backpack", True) else ["--no-pack"]),
                         "--weapon", data.get("weapon", "machete")], check=True)
     elif "repaint" in data:
@@ -105,7 +125,8 @@ def render(spec):
                         "--out", str(out)], check=True)
     else:
         blender_pass(costume, out, "color", name)
-    shutil.copyfile(ROOT / "assets" / "characters" / "base" / "look.json", out / "look.json")
+    if data.get("actions", "hero") == "hero":
+        shutil.copyfile(ROOT / "assets" / "characters" / "base" / "look.json", out / "look.json")
 
 
 if __name__ == "__main__":

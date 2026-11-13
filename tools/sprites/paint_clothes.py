@@ -15,6 +15,10 @@ The base body keeps its motion; this draws over every frame, pixel by pixel:
   action's angle
   (tools/blender/export_pose2d.py), the near hand drawn over the handle;
 - a 1 px dark outline.
+
+Other characters (survivors, infected) pass their costume with --outfit: its "clothes" block
+overrides the colour ramps and switches details (gloves or bare hands, hood collar, pocket,
+glowing radiation wounds and stains anchored to body parts so they stay put frame to frame).
 """
 
 import argparse
@@ -45,7 +49,26 @@ RAMPS = {
     "boots": [(24, 22, 20), (42, 36, 30), (64, 56, 46)],
     "gloves": [(24, 24, 24), (40, 38, 38), (60, 58, 56)],
     "eyes": [(20, 16, 16)] * 3,
+    "stain": [(52, 30, 26), (70, 40, 32), (88, 52, 40)],
+    "wound": [(60, 160, 90), (130, 230, 140), (210, 255, 200)],
 }
+# Details a costume can switch with its "outfit" block (the hero's defaults).
+DETAILS = {"hands": "gloves", "hood": True, "pocket": True, "wounds": [], "stains": []}
+# Wound/stain anchors: (part, x share, y share inside the part's box, size 1 or 2).
+# Shapes: offset -> (ramp, level). Wounds are a torn slit glowing from inside with a dark
+# rim; stains are a blot with a drip running down. Drawn by hand, never symmetric.
+WOUND_SHAPES = {
+    1: {(0, -1): ("stain", 0), (0, 0): ("wound", 2), (1, 0): ("wound", 1), (1, 1): ("stain", 0)},
+    2: {(0, -2): ("stain", 0), (1, -1): ("stain", 0), (0, -1): ("wound", 1), (0, 0): ("wound", 2),
+        (1, 0): ("wound", 2), (-1, 0): ("stain", 0), (1, 1): ("wound", 1), (2, 1): ("stain", 0),
+        (0, 1): ("stain", 0), (1, 2): ("stain", 0)},
+}
+STAIN_SHAPES = {
+    1: {(0, 0): ("stain", 1), (1, 0): ("stain", 0), (1, 1): ("stain", 0)},
+    2: {(0, 0): ("stain", 1), (1, 0): ("stain", 1), (-1, 0): ("stain", 0), (0, -1): ("stain", 0),
+        (1, 1): ("stain", 0), (1, 2): ("stain", 1), (1, 3): ("stain", 0)},
+}
+
 JACKET = {"top", "top_r", "top_l", "forearms_r", "forearms_l"}
 LEGS = {"bottom", "bottom_r", "bottom_l"}
 FEET = {"shoes_r", "shoes_l"}
@@ -99,7 +122,7 @@ def paint_frame(part, light, pose, pack, weapon):
             elif p in FEET:
                 put(x, y, "boots", lv, far)
             elif p in HANDS:
-                put(x, y, "gloves", lv, far)
+                put(x, y, "gloves" if DETAILS["hands"] == "gloves" else "skin", lv, far)
             elif p == "eyes":
                 put(x, y, "eyes", 0)
             else:                                  # head, brows
@@ -131,11 +154,12 @@ def paint_frame(part, light, pose, pack, weapon):
         for x, y in cells(part, LEGS):
             if any((x + dx, y + dy) in torso_set for dx in range(-2, 3) for dy in range(-2, 3)):
                 put(x, y, "jacket", level(light, x, y))
-        back = min(x for x, y in torso if y <= ttop + 2)
-        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1), (-1, 1), (2, 0)):
-            put(back + dx - 1, ttop + dy - 1, "hood", 1)
+        if DETAILS["hood"]:
+            back = min(x for x, y in torso if y <= ttop + 2)
+            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1), (-1, 1), (2, 0)):
+                put(back + dx - 1, ttop + dy - 1, "hood", 1)
     # Cargo pocket on the near thigh.
-    thigh = cells(part, {"bottom_r"})
+    thigh = cells(part, {"bottom_r"}) if DETAILS["pocket"] else []
     if thigh:
         ys = sorted(y for _, y in thigh)
         mid = ys[len(ys) // 2]
@@ -151,6 +175,19 @@ def paint_frame(part, light, pose, pack, weapon):
             nx, ny = x + dx, y + dy
             if 0 <= nx < w and 0 <= ny < h and (part[ny][nx] is None or part[ny][nx] in LEGS):
                 put(nx, ny, "boots", 1, far)
+
+    # Stains (dark, on the clothes) and radiation wounds (glowing, with a dark torn rim).
+    # Hand-made irregular shapes: symmetric blobs read as crosses or badges (ART_FEEDBACK).
+    for anchors, shapes in ((DETAILS["stains"], STAIN_SHAPES), (DETAILS["wounds"], WOUND_SHAPES)):
+        for region, sx, sy, size in anchors:
+            spot = anchor(part, region, sx, sy)
+            if spot is None:
+                continue
+            far = region.endswith("_l")
+            for (dx, dy), (ramp, lv) in shapes[size].items():
+                x, y = spot[0] + dx, spot[1] + dy
+                if 0 <= x < w and 0 <= y < h and part[y][x] is not None:
+                    put(x, y, ramp, lv, far)
 
     # Layers: far limbs, then the backpack, then the torso and near limbs over it.
     far_px = {k for k in paint if part[k[1]][k[0]] is not None and part[k[1]][k[0]].endswith("_l")}
@@ -183,6 +220,18 @@ def paint_frame(part, light, pose, pack, weapon):
         for x, y in near:
             frame.putpixel((x, y), (*RAMPS["gloves"][level(light, x, y)], 255))
     return cc.outline(frame, OUTLINE[:3])
+
+
+def anchor(part, region, sx, sy):
+    """The pixel of a body part at (sx, sy) share of its box, snapped onto the part, so a
+    detail rides on the same spot of the body in every frame."""
+    pts = cells(part, {region})
+    if not pts:
+        return None
+    xs, ys = [x for x, _ in pts], [y for _, y in pts]
+    tx = min(xs) + (max(xs) - min(xs)) * sx
+    ty = min(ys) + (max(ys) - min(ys)) * sy
+    return min(pts, key=lambda q: (q[0] - tx) ** 2 + (q[1] - ty) ** 2)
 
 
 def grip_point(near_hand):
@@ -218,15 +267,21 @@ def main():
     ap.add_argument("--poses", nargs="+", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-pack", action="store_true", help="draw no backpack")
-    ap.add_argument("--weapon", default="machete", choices=sorted(weapons.WEAPONS), help="weapon in the near hand")
+    ap.add_argument("--weapon", default="machete", choices=sorted(weapons.WEAPONS) + ["none"],
+                    help="weapon in the near hand")
+    ap.add_argument("--outfit", help="costume json whose 'clothes' block sets colours and details")
     ap.add_argument("sheets", nargs="*")
     a = ap.parse_args()
     ids = json.loads((Path(a.id) / "ids.json").read_text(encoding="utf-8"))
     poses = {}
     for p in a.poses:
         poses.update(json.loads(Path(p).read_text(encoding="utf-8")))
+    if a.outfit:
+        outfit = json.loads(Path(a.outfit).read_text(encoding="utf-8")).get("clothes", {})
+        RAMPS.update({k: [tuple(c) for c in v] for k, v in outfit.get("ramps", {}).items()})
+        DETAILS.update({k: v for k, v in outfit.items() if k in DETAILS})
     pack = load_props()
-    weapon = weapons.get(a.weapon)
+    weapon = None if a.weapon == "none" else weapons.get(a.weapon)
     if a.no_pack:
         pack = None
     out = Path(a.out)
