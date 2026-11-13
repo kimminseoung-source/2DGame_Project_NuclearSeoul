@@ -107,3 +107,4 @@
 ## 2026-11-13 — 제작 도구·참고 자료 조사
 - 무료 제작 도구(효과음 ChipTone·jsfxr·Kenney, 한글 도트 글꼴 Galmuri, 팔레트 Lospec, 도트 편집기 Pixelorama)와 참고 자료(Dead Cells의 3D → 2D 제작 방식 — 우리 방식과 같은 생각, 손맛 강연 2편, Sakurai 히트스톱 영상, Mark of the Ninja·Darkwood의 시야·은신 설계)를 [제작 도구와 참고 자료](research/PRODUCTION_REFERENCES.md)에 정리했다. 적용 제안: 타격마다 효과음, 한글 도트 글꼴, 은신 들킴 거리 원 표시, 팔레트 통일.
 - 조사한 자료로 Claude가 직접 할 수 있는 작업 18개를 [작업 목록](research/REFERENCE_WORK_LIST.md)으로 정리했다. 추천 순서: 효과음 합성·타격별 소리 → 맞으면 흰색 번쩍 → 한글 도트 글꼴 → 들키는 거리 원.
+- **완성 스프라이트 조사:** 들개 후보로 무료 늑대 시트(대기·달리기·공격·피격·쓰러짐, 생성형 AI 미사용), 베기 타격 이펙트 100종, 피 튀김 이펙트를 찾았다. 좀비·사람 완성 팩은 대부분 유료이거나 32px라 크기·화풍이 달라, 사람·좀비는 같은 Blender 도구로 만드는 쪽을 추천. [외부 도구 5-7절](research/EXTERNAL_TOOLS.md).

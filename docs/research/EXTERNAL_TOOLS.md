@@ -140,6 +140,40 @@
 - 무료(CC0) 쪽은 **옆모습에 피격·쓰러짐까지 갖춘 캐릭터 세트가 드물다.** 캐릭터는 지금의 주인공·피폭체 도트를 유지하고, 외부 에셋은 배경·소품·효과음 위주로 쓰는 편이 화풍 통일과 라이선스 양쪽에 안전하다.
 - 유료 팩의 가격·할인은 자주 바뀐다.
 
+## 5-7. 완성 스프라이트 추가 조사 (2026-11-13)
+
+사용자 요청 "완성된 스프라이트가 있나 조사해 봐요." 5~5-6절 이후 새로 찾은 것과, 지금 방향(실시간 근접, 들개 추가 예정, 손맛 이펙트)에 맞춰 다시 본 것. 무료 조건으로 걸렀다.
+
+### 무료로 쓸 수 있는 것
+
+| 이름 | 무엇 | 동작 | 라이선스·조건 | 우리 게임에 맞는 정도 |
+| --- | --- | --- | --- | --- |
+| [Wolf (Free)](https://dead-pixelsz.itch.io/wolf) (Dead Pixels) | 늑대 1종(옆모습 횡스크롤용) | 대기 7·달리기 8·공격 7·피격 4·쓰러짐 7 | 원하는 만큼(0원 가능), 상업 가능, 수정 가능, 재배포·재판매 금지, 생성형 AI 미사용 | **들개 후보 1순위**. 1차 발표의 첫 적이 들개. 동작이 우리 피폭체 규칙(예고·공격·피격·쓰러짐)에 다 맞음. 색을 바꿔 들개로 |
+| [Slash/strike hit animation](https://thingonitsown.itch.io/slashstrike-hit-animation) (ThingOnItsOwn) | 베기·찌르기 타격 이펙트 100종(피 튀김 포함) | 한 이펙트 35칸, 32×32, 60fps 기준 | 원하는 만큼, 제작자 댓글: 상업 포함 자유 사용, 생성형 AI 미사용 | **타격 이펙트 후보 1순위**. 지금의 별 모양 타격 위에 피 튀김을 겹치기(작업 목록 B2) |
+| [Blood spatter hit effect 128×128](https://gungodx.itch.io/free-blood-spatter-hit-effect-128x128) (gungodx) | 피 튀김 이펙트 1장 | 프레임 수 미표기(파일 1개) | 무료, "쓰면 페이지 링크해 달라", 상업 사용 질문에 답 없음 | 바닥 핏자국 흔적용. 출처 표기 필요 |
+| [Side Scroller Characters 2D](https://pitigamedev.itch.io/side-scroller-character-2d) (PitiGameDev) | 좀비 포함 옆모습 캐릭터 | 좀비: 대기·공격·걷기·쓰러짐(피격 없음) | 무료, 라이선스 페이지에서 확인 필요 | 피격 동작이 없어 우리 규칙에 부족 |
+| [Apocalypse Survivor](https://matheusgg99.itch.io/apocalypse-survivor-pack) (matheusgg99) | 도끼 든 생존자 32×32 | 서기·걷기·막기·공격·피격·쓰러짐 | 원하는 만큼, 라이선스 미표기, 생성형 AI 미사용 | 적대 생존자 후보. 32px라 우리(약 54px)보다 작아 확대 필요 |
+
+이미 5~5-6절에 있는 무료 후보(CraftPix 좀비 3·4종, Gangster, Homeless, OpenGameArt CC0 좀비·배경 등)는 그대로 유효하다.
+
+### 찾았지만 제외한 것
+
+| 이름 | 제외 이유 |
+| --- | --- |
+| [Zombie HD Sprite](https://crumbaker.itch.io/zombie-hd-sprite) (crumbaker) | 최소 $3, 생성형 AI 보조 표기 |
+| [Infected Dog](https://spellsoftpixel.itch.io/infected-dog) (spellsoftpixel) | 최소 $5.99(동작 구성은 좋음: 대기·달리기·공격·피격·쓰러짐) |
+| [Pixel Art Zombie Enemy](https://gandalfhardcore.itch.io/pixel-art-zombie-enemy) (GandalfHardcore) | 최소 $5.19(79칸, 기어가기까지 있어 품질은 높음) |
+| [Zombie Pixel Art Character](https://lazerpants.itch.io/zombie-pixel-art-character) (lazerpants) | 최소 $6.99 |
+| [Survival Character Pack](https://pixelcave.itch.io/survival-character-pack) (pixelcave) | 최소 $2, 근접 공격 없음(총잡이) |
+| [Female Zombie](https://dead-pixelsz.itch.io/enemies-series-female-zombie) (Dead Pixels) | 최소 $2.09(Wolf와 같은 제작자라 화풍은 맞음) |
+| [Post-Apocalyptic Pixel Art Asset Pack](https://thelazystone.itch.io/post-apocalyptic-pixel-art-asset-pack) (TheLazyStone) | **탑뷰**라 지금 옆 시점과 안 맞음(탑뷰로 바꾸면 3,300장·좀비 3종·무기·UI가 있는 최고 후보, 비상업 무료·상업은 $2) |
+| [Hack N' Slash FX](https://jasontomlee.itch.io/slashfx) (jasontomlee) | 무료는 예시 몇 개뿐, 전체는 유료 |
+
+### 쓸 때 주의할 점
+- **크기와 화풍**: 주인공은 3D 동작을 2D로 그린 약 54px 캐릭터라, 32px 손그림 팩을 섞으면 크기(정수배가 아닌 확대 → 흐려짐)와 화풍이 달라 보인다. 사람·좀비는 **같은 Blender 도구로 만드는 쪽이 통일감이 좋다**(동작 팩에 `Zombie_Walk_Fwd_Loop`·`Zombie_Scratch`·`Zombie_Idle_Loop`이 있음, 작업 목록 D4). 동물(들개)과 이펙트는 3D 동작 팩에 없거나 화풍 차이가 덜 보여 완성 스프라이트가 낫다.
+- **재배포 금지**: Dead Pixels·CraftPix 등은 원본 재배포 금지라 공개 GitHub 저장소에 원본 PNG를 올리는 것과 부딪힐 수 있다. 2026-11-10 결정대로 "일단 쓰고 문제가 생기면 교체"하되, 출처를 [ASSETS.md](../references/ASSETS.md)에 꼭 적는다.
+- **생성형 AI 표기**: 같은 무료라도 AI 보조 표기가 있는 팩은 피한다(과제 평가·라이선스 불확실성).
+
 ## 6. 제안하는 진행 순서
 
 1. ~~**라이선스 기준 확정**~~ — 결정함: 교육용 과제이므로 폭넓게 사용(재배포 금지 팩 포함). 출처·라이선스는 모두 기록.
