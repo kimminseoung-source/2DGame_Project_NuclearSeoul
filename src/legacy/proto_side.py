@@ -21,8 +21,9 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # shared modules in src/
 
 import ui  # noqa: E402
 from character_look import SheetLook  # noqa: E402
