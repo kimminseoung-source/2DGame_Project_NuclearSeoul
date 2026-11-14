@@ -6,6 +6,8 @@ Same rules as the side-scroll prototype, only the view changes:
 - infected come from every side, show "!" and strike; the hero takes 2 hits
 - Space: roll (invulnerable); right button held: time crawls, exposure rises
 - dying restarts the room at once (R also restarts)
+- facing vision (2026-11-14): only the cone toward the mouse and a small circle around the
+  hero are lit; infected outside it are not drawn (vision_cone.py)
 
 Characters reuse the side-view sheets (seen from a 3/4 angle), so this is only a feel test.
 
@@ -25,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import ui  # noqa: E402
 from character_look import SheetLook  # noqa: E402
+from vision_cone import VisionCone  # noqa: E402
 from proto_side import (EXPOSURE_FALL, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,  # noqa: E402
                         ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_COOLDOWN,
                         SLASH_HIT, SLASH_LUNGE, SLASH_REACH, SLASH_TIME, SLOW_WORLD, VIEW_H, VIEW_W, WIDTH,
@@ -221,6 +224,8 @@ class Game:
         self.zombie_look = SheetLook(ROOT / "assets/characters/infected")
         self.aim = (None, None)
         self.deaths = 0
+        self.vision = VisionCone()
+        self.look = 0.0
         random.seed(4)
         self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
                        for _ in range(70)]
@@ -270,6 +275,11 @@ class Game:
         world_dt = real_dt * (1 + (SLOW_WORLD - 1) * self.slow_blend)
         aim_x = self.mouse_world(*self.aim)[0] if self.aim[0] is not None else None
         hero.update(real_dt, keys, aim_x)
+        if self.aim[0] is not None:          # the hero looks toward the mouse
+            ax, ay = self.mouse_world(*self.aim)
+            self.look = atan2(ay - (hero.y + CHEST), ax - hero.x)
+        else:
+            self.look = 0.0 if hero.facing > 0 else pi
 
         if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= SLASH_HIT:
             hero.slash["hit"] = True
@@ -328,7 +338,10 @@ class Game:
         things = [(b[1], "block", b) for b in BLOCKS]
         things += [(z.y, "z", z) for z in self.zombies]
         things.append((self.hero.y, "hero", self.hero))
+        eye = (self.hero.x, self.hero.y + CHEST)
         for _, kind, obj in sorted(things, key=lambda t: -t[0]):
+            if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y + CHEST):
+                continue                                   # out of sight: not drawn at all
             if kind == "block":
                 l, b, r, t = obj
                 pico2d.draw_rectangle(l - cx, b - cy, r - cx, t + 18 - cy, 44, 38, 36, filled=True)
@@ -338,6 +351,7 @@ class Game:
                 obj.draw(cx, cy)
         for e in self.effects:
             _draw_effect(e, cx, cy)
+        self.vision.draw((self.hero.x - cx, self.hero.y + CHEST - cy), self.look, VIEW_W, VIEW_H)
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, VIEW_W, VIEW_H, 20, 60, 70, round(80 * self.slow_blend), filled=True)
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
@@ -345,7 +359,10 @@ class Game:
         sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
         pico2d.draw_rectangle(0, HEIGHT - 50, WIDTH, HEIGHT, 10, 12, 16, 200, filled=True)
         ui.text(12, HEIGHT - 20, "[탑뷰] " + self.message, ui.ACCENT, 14)
-        ui.text(12, HEIGHT - 42, "체력 " + "■ " * self.hero.hp + "□ " * (HERO_HP - self.hero.hp), ui.PARTY, 14)
+        ui.text(12, HEIGHT - 42, "체력", ui.PARTY, 14)
+        for i in range(HERO_HP):                 # boxes drawn, the font has no square glyphs
+            pico2d.draw_rectangle(52 + i * 18, HEIGHT - 48, 64 + i * 18, HEIGHT - 36, 230, 90, 80,
+                                  filled=i < self.hero.hp)
         ui.text(150, HEIGHT - 42, f"피폭 {self.exposure:4.0f}%   쓰러진 횟수 {self.deaths}", (150, 230, 160), 14)
 
 
