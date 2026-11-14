@@ -39,3 +39,24 @@
 - 완성 캐릭터를 그대로 주인공으로 쓰면 "흔한 건 싫어"와 직접 디자인 방향에 어긋난다. 주로 **참고용**(옆모습 비율, 칸 수, 베기 동작의 과장, 색 수)으로 본다.
 - 쓸 수 있는 곳: 시험판의 임시 그림, 조연·적 바탕, 사용자가 디자인할 때 비교 기준.
 - 우리 캐릭터 크기는 칸 96×64, 몸 높이 약 48px. 32px 안팎의 작은 팩과는 크기 차이가 있다.
+
+## 4. Pixel Crawler 같은 손도트, 횡스크롤판 (2026-11-14 추가)
+
+사용자가 Pixel Crawler(Anokolisa, 탑뷰 손도트) 이미지를 보여 주며 "횡스크롤 쪽 비슷한 에셋 찾아봐".
+Pixel Crawler 자체는 [무료 팩](https://anokolisa.itch.io/free-pixel-art-asset-pack-topdown-tileset-rpg-16x16-sprites)을 포함해 모두 탑뷰이고, 같은 작가의 횡스크롤판은 찾지 못했다.
+
+**같은 결(굵은 테두리, 큰 색 덩어리, 캐릭터 + 타일 + 배경이 한 묶음)의 횡스크롤 무료 팩**
+- [SunnyLand Woods (ansimuz)](https://opengameart.org/content/sunnyland-woods): CC0, 3겹 시차 배경, 16×16 타일, 주인공 동작 5개, 적 3종
+- [Platformer Starter Kit (GegX)](https://gegx.itch.io/platformer-starter): 타일 80, 물건 48, 캐릭터 4, 시차 배경 3. 상업 사용 가능, 출처 표기 불필요, 재판매 금지
+- [Kingdom Pxels](https://favi-pxel.itch.io/kingdom-pxel): CC0(단 AI 학습 금지 조건), 적 동작, 던전·바깥 타일
+- [Pixel Platformer Hero Kit (GameDev Market)](https://gamedevmarket.net/asset/pixel-platformer-hero-kit): 무료, 주인공·적·배경 2. 라이선스 확인 필요
+- [Winterstone Manhunt (archon-aspect)](https://archon-aspect.itch.io/winterstone-manhunt): 횡스크롤 캐릭터 + 타일, 원하는 가격(0원 가능)
+
+**재난·폐허 분위기 (횡스크롤)**
+- [Free Post Apocalyptic Backgrounds (CraftPix)](https://free-game-assets.itch.io/free-post-apocalyptic-pixel-art-backgrounds): 전쟁 뒤 폐허 배경 4장(캐릭터 없음)
+- [Post-Apocalyptic Free Pack (pixkari)](https://pixkari.itch.io/post-apocalyptic-tileset): 무료, 내용·시점 확인 필요
+- [Post-apocalyptic buildings (ellisjames)](https://ellisjames20061.itch.io/pixel-art-post-apocalyptic-buildings/devlog/217358/asset-pack-launch): 상업·비상업 무료, 건물
+- itch.io 태그 모음: [post-apocalyptic + side-scroller 무료](https://itch.io/game-assets/free/released/tag-parallax/tag-pixel-art/tag-post-apocalyptic/tag-side-scroller)
+- 유료 참고: [Loovgames 아포칼립스 팩](https://loovgames.itch.io/apocalyptic-pixel-art-asset-pack-with-houses-characters-trees-tilesets/devlog/1027589/what-is-missing-from-the-pack)($14.99, 캐릭터·타일·시차 배경)
+
+**판단:** 화풍이 가장 비슷한 건 SunnyLand·GegX지만 밝은 판타지라 분위기가 반대. 우리 분위기에 맞는 건 CraftPix 폐허 배경이고 캐릭터는 없음. 대부분 16×16 타일·작은 캐릭터라 우리 크기(몸 약 48px)와 다르다.
