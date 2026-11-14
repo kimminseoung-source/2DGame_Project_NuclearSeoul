@@ -7,7 +7,7 @@ Same rules as the side-scroll prototype, only the view changes:
 - Space: roll (invulnerable); right button held: time crawls, exposure rises
 - dying restarts the room at once (R also restarts)
 - facing vision (2026-11-14): only the cone toward the mouse and a small circle around the
-  hero are lit; infected outside it are not drawn (vision_cone.py)
+  hero are lit, wrecks cast shadows; infected in the dark are not drawn (vision_cone.py)
 
 Characters reuse the side-view sheets (seen from a 3/4 angle), so this is only a feel test.
 
@@ -224,7 +224,7 @@ class Game:
         self.zombie_look = SheetLook(ROOT / "assets/characters/infected")
         self.aim = (None, None)
         self.deaths = 0
-        self.vision = VisionCone()
+        self.vision = VisionCone(BLOCKS)    # wrecks block the light
         self.look = 0.0
         random.seed(4)
         self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
@@ -338,9 +338,9 @@ class Game:
         things = [(b[1], "block", b) for b in BLOCKS]
         things += [(z.y, "z", z) for z in self.zombies]
         things.append((self.hero.y, "hero", self.hero))
-        eye = (self.hero.x, self.hero.y + CHEST)
+        eye = (self.hero.x, self.hero.y)                  # on the ground
         for _, kind, obj in sorted(things, key=lambda t: -t[0]):
-            if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y + CHEST):
+            if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y):
                 continue                                   # out of sight: not drawn at all
             if kind == "block":
                 l, b, r, t = obj
@@ -351,7 +351,8 @@ class Game:
                 obj.draw(cx, cy)
         for e in self.effects:
             _draw_effect(e, cx, cy)
-        self.vision.draw((self.hero.x - cx, self.hero.y + CHEST - cy), self.look, VIEW_W, VIEW_H)
+        self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y + CHEST - cy),
+                         VIEW_W, VIEW_H)
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, VIEW_W, VIEW_H, 20, 60, 70, round(80 * self.slow_blend), filled=True)
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
