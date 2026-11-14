@@ -1,5 +1,11 @@
 """One area of play: the hero, the infected, the slash, time crawling (exposure), facing
-vision, and drawing it all zoomed into the window. F2 switches the infected senses off to compare."""
+vision, sound, more infected coming in through the area's entrances, and drawing it all zoomed
+into the window. F2 switches the infected senses off to compare.
+
+Infected keep arriving from every side (2026-11-14, "사방에서 오는 긴장감"): every few seconds
+one comes in through an entrance the hero is not looking at, heading for the last loud noise
+(a slash or a roll), and a slash makes the next one come sooner. The area is clear once all of
+them are down."""
 
 import random
 from math import atan2, hypot, pi
@@ -9,14 +15,23 @@ import sdl2
 from pico2d import pico2d as canvas
 
 import ui
-from area import BLOCKS, ROOM_H, ROOM_W, ZOMBIE_STARTS
+from area import BLOCKS, ENTRANCES, ROOM_H, ROOM_W, ZOMBIE_STARTS
 from character_look import SheetLook
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE, ROLL_TIME,
                       ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, VIEW_H, VIEW_W, WIDTH)
 from slash_fx import Crescent, Spark
+from sound import Sounds
 from vision_cone import CONE_HALF, VisionCone
+
+
+WAVE_TOTAL = 12              # infected in this area, the starting ones included
+MAX_ALIVE = 6                # at most this many up at once
+SPAWN_EVERY = (6.0, 9.0)     # s between arrivals
+SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
+NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
+SPAWN_MIN_DIST = 240         # px: never right next to the hero
 
 
 class Game:
@@ -28,6 +43,7 @@ class Game:
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
         self.senses = True                  # F2: infected senses on/off (compare)
         self.look = 0.0
+        self.sounds = Sounds()
         random.seed(4)
         self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
                        for _ in range(70)]
@@ -44,18 +60,29 @@ class Game:
         self.exposure = 0.0
         self.message = "WASD 이동 · 좌클릭 베기 · Space 구르기 · 우클릭 시간 느리게 · R 다시 · F2 감각 비교"
         self.cleared = False
+        self.to_spawn = WAVE_TOTAL - len(self.zombies)
+        self.spawn_in = random.uniform(*SPAWN_EVERY)
+        self.clock = 0.0
+        self.loud = None             # (x, y, time) of the last slash or roll
+        self.was_slow = False
+        self.hero_steps = 0
 
     def mouse_world(self, sx, sy):
         return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
 
     def click(self, sx, sy):
         self.aim = (sx, sy)
+        before = self.hero.slash
         self.hero.start_slash(*self.mouse_world(sx, sy))
+        if self.hero.slash is not None and self.hero.slash is not before:
+            self.sounds.play("slash", 0.8)
 
     def key_down(self, key, keys):
         if key == sdl2.SDLK_SPACE:
             self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
                                  keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
+            if self.hero.roll >= ROLL_TIME:
+                self.sounds.play("roll", 0.6)
         elif key == sdl2.SDLK_r:
             self.reset()
         elif key == sdl2.SDLK_F2:
@@ -71,12 +98,42 @@ class Game:
         return off <= CONE_HALF
 
     def make_noise(self, radius):
+        if radius >= NOISE_ROLL:                          # loud: pulls the next arrivals here
+            if self.loud is None or self.clock - self.loud[2] > 0.5:
+                self.spawn_in = min(self.spawn_in, SPAWN_AFTER_NOISE)
+            self.loud = (self.hero.x, self.hero.y, self.clock)
         for z in self.zombies:
             if z.alive:
                 z.hear(self.hero.x, self.hero.y, radius)
 
+    def spawn(self):
+        """One more infected through an entrance the hero is not looking at, far enough away."""
+        hero = self.hero
+        far = [pos for pos, _ in ENTRANCES if hypot(pos[0] - hero.x, pos[1] - hero.y) >= SPAWN_MIN_DIST]
+        unseen = [pos for pos in far if abs((atan2(pos[1] - hero.y, pos[0] - hero.x) - self.look + pi)
+                                            % (2 * pi) - pi) > CONE_HALF]
+        choices = unseen or far
+        if not choices:
+            return False
+        x, y = random.choice(choices)
+        z = Zombie(self.zombie_look, x, y)
+        if self.senses:
+            recent = self.loud is not None and self.clock - self.loud[2] <= NOISE_PULL
+            target = (self.loud[0], self.loud[1]) if recent else (random.uniform(200, ROOM_W - 200),
+                                                                  random.uniform(150, ROOM_H - 150))
+            z.state, z.target, z.memory = "search", target, 8.0
+        self.zombies.append(z)
+        self.to_spawn -= 1
+        self.sounds.play("alert", 0.7, at=(x, y))          # heard coming in, maybe unseen
+        return True
+
     def update(self, real_dt, keys):
         hero = self.hero
+        self.clock += real_dt
+        self.sounds.listener = (hero.x, hero.y)
+        if self.slow != self.was_slow and not hero.dead:
+            self.sounds.play("slow_in" if self.slow else "slow_out", 0.6)
+        self.was_slow = self.slow
         self.slow_blend = max(0.0, min(1.0, self.slow_blend + (1 if self.slow and not hero.dead else -1)
                                        * real_dt / 0.12))
         if self.slow and not hero.dead:
@@ -84,6 +141,7 @@ class Game:
             if self.exposure >= 100:
                 self.slow = False
                 self.message = "피폭 한계! 시간이 돌아옵니다"
+                self.sounds.play("exposure_limit", 0.8)
         else:
             self.exposure = max(0.0, self.exposure - EXPOSURE_FALL * real_dt)
         self.shake = max(0.0, self.shake - real_dt)
@@ -93,6 +151,9 @@ class Game:
         world_dt = real_dt * (1 + (SLOW_WORLD - 1) * self.slow_blend)
         aim_x = self.mouse_world(*self.aim)[0] if self.aim[0] is not None else None
         hero.update(real_dt, keys, aim_x)
+        if int(hero.run_distance) != self.hero_steps:
+            self.hero_steps = int(hero.run_distance)
+            self.sounds.play("step", 0.25)
         if self.aim[0] is not None:          # the hero looks toward the mouse
             ax, ay = self.mouse_world(*self.aim)
             self.look = atan2(ay - (hero.y + CHEST), ax - hero.x)
@@ -110,6 +171,8 @@ class Game:
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 if hypot(zx - sx, zy - sy) <= SLASH_REACH + 12 and abs(diff) <= SLASH_ARC:
                     z.kill(zx - sx, zy - sy)
+                    self.sounds.play("slash_hit", 0.9)
+                    self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     self.effects.append(Spark(zx, zy + 4, big=True))
                     self.hitstop, self.shake = max(self.hitstop, 0.07), 0.12
 
@@ -121,7 +184,17 @@ class Game:
             elif hero.moving:
                 self.make_noise(NOISE_STEP)
         for z in self.zombies:
-            if z.update(world_dt, hero, self) == "hit" and not hero.invulnerable and not hero.dead:
+            state, steps = z.state, int(z.walk)
+            event = z.update(world_dt, hero, self)
+            if z.state != state:
+                if z.state == "windup":
+                    self.sounds.play("warn", 0.9, at=(z.x, z.y))
+                elif z.state == "alert":
+                    self.sounds.play("alert", 0.8, at=(z.x, z.y))
+            elif z.alive and int(z.walk) != steps:
+                self.sounds.play("infected_step", 0.35, at=(z.x, z.y))
+            if event == "hit" and not hero.invulnerable and not hero.dead:
+                self.sounds.play("hurt", 1.0)
                 hero.hp -= 1
                 hero.hurt = HURT_INVULNERABLE
                 others = sum(1 for o in self.zombies if o is not z and o.alive
@@ -130,6 +203,7 @@ class Game:
                     hero.grabbed = GRAB_TIME             # Zomboid's drag-down: two on him hold him
                     hero.slash = None
                     self.message = "붙잡혔다! Space로 구르면 빠져나감"
+                    self.sounds.play("grab", 1.0)
                 self.effects.append(Spark(hero.x, hero.y + 26))
                 self.hitstop, self.shake = 0.1, 0.2
                 if hero.hp <= 0:
@@ -140,7 +214,12 @@ class Game:
         if hero.dead > 0.9:
             self.reset()
             return
-        if not self.cleared and all(not z.alive for z in self.zombies):
+        if self.to_spawn > 0 and not hero.dead:
+            self.spawn_in -= world_dt
+            if self.spawn_in <= 0 and sum(z.alive for z in self.zombies) < MAX_ALIVE:
+                self.spawn()
+                self.spawn_in = random.uniform(*SPAWN_EVERY)
+        if not self.cleared and self.to_spawn == 0 and all(not z.alive for z in self.zombies):
             self.cleared = True
             self.message = "구역 정리! R로 다시 해 보기"
         for i, (pos, view, room) in enumerate(((hero.x, VIEW_W, ROOM_W), (hero.y, VIEW_H, ROOM_H))):
@@ -165,6 +244,12 @@ class Game:
         for x, y, t in self.cracks:
             pico2d.draw_line(x - cx, y - cy, x + 14 - cx, y + 10 * t - cy, 20, 20, 24)
         pico2d.draw_rectangle(-cx, -cy, ROOM_W - cx, ROOM_H - cy, 70, 64, 60)
+        for (x, y), side in ENTRANCES:                    # alley mouths and doorways
+            w, d = (22, 34) if side in ("left", "right") else (34, 22)
+            gx = {"left": -d, "right": ROOM_W - 2}.get(side, x - w / 2 - 6)
+            gy = {"top": ROOM_H - 2, "bottom": -d}.get(side, y - w / 2 - 6)
+            gw, gh = (d + 2, w + 12) if side in ("left", "right") else (w + 12, d + 2)
+            pico2d.draw_rectangle(gx - cx, gy - cy, gx + gw - cx, gy + gh - cy, 12, 12, 16, filled=True)
         # sort everything on the ground by depth: lower on screen = nearer = drawn later
         things = [(b[1], "block", b) for b in BLOCKS]
         things += [(z.y, "z", z) for z in self.zombies]
@@ -195,4 +280,6 @@ class Game:
         for i in range(HERO_HP):                 # boxes drawn, the font has no square glyphs
             pico2d.draw_rectangle(52 + i * 18, HEIGHT - 48, 64 + i * 18, HEIGHT - 36, 230, 90, 80,
                                   filled=i < self.hero.hp)
-        ui.text(150, HEIGHT - 42, f"피폭 {self.exposure:4.0f}%   쓰러진 횟수 {self.deaths}", (150, 230, 160), 14)
+        left = self.to_spawn + sum(z.alive for z in self.zombies)
+        ui.text(150, HEIGHT - 42, f"피폭 {self.exposure:4.0f}%   남은 피폭체 {left}   쓰러진 횟수 {self.deaths}",
+                (150, 230, 160), 14)

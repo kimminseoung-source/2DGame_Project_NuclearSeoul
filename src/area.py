@@ -4,7 +4,11 @@ infected start. Bodies slide along the wrecks one axis at a time."""
 ROOM_W, ROOM_H = 1000, 640
 # wrecked cars and rubble: (left, bottom, right, top) on the ground plane
 BLOCKS = [(260, 300, 360, 340), (520, 120, 600, 160), (640, 420, 740, 460), (150, 500, 210, 560)]
-ZOMBIE_STARTS = [(520, 380), (820, 200), (860, 540), (380, 560), (700, 80)]
+ZOMBIE_STARTS = [(520, 380), (820, 200), (380, 560)]
+# Gaps in the area's edge (alley mouths, doorways) where more infected come in: (x, y) on the
+# edge and which side it is on, for drawing.
+ENTRANCES = [((12, 420), "left"), ((988, 300), "right"), ((988, 90), "right"),
+             ((520, 628), "top"), ((120, 628), "top"), ((760, 12), "bottom")]
 HERO_START = (100.0, 300.0)
 
 
