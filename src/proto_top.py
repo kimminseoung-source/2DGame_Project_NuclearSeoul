@@ -13,6 +13,11 @@ Same rules as the side-scroll prototype, only the view changes:
   wrecks) or by sound (steps, rolls, slashes), go to the last place they saw or heard him and
   forget after a while; a blow from outside the hero's own sight gives a shorter warning.
   F2 switches back to the old rule (chase anything within 300 px) to compare.
+- from Zomboid's own state files (docs/research/ZOMBOID_REA_ANALYSIS.md): an infected strikes
+  only once it has seen the hero for 0.5 s (before that it hangs back, poised); on a noise it
+  first turns toward it (0.3-0.6 s, each one differently) before setting off; when a blow lands
+  while another infected is also on the hero, they grab him: no moving or slashing for a moment,
+  only a roll breaks free.
 
 Characters reuse the side-view sheets (seen from a 3/4 angle), so this is only a feel test.
 
@@ -54,6 +59,10 @@ NOISE_SLASH = 230
 MEMORY = 3.0                    # s it keeps going to the last place it saw or heard the hero
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 BLIND_WINDUP = 0.25             # s of warning when it strikes from outside the hero's sight
+SEEN_BEFORE_STRIKE = 0.5        # s it must have seen the hero before it strikes (Zomboid: 0.5)
+ALERT_TURN = (0.3, 0.6)         # s it spends turning toward a noise before going
+GRAB_TIME = 0.9                 # s the hero is held when a blow lands with another one on him
+GRAB_NEAR = ZOMBIE_REACH + 12   # px: "on the hero"
 ZOMBIE_STARTS = [(520, 380), (820, 200), (860, 540), (380, 560), (700, 80)]
 
 
@@ -87,13 +96,14 @@ class Hero:
         self.time = 0.0
         self.dead = 0.0
         self.moving = False
+        self.grabbed = 0.0           # held by two or more infected (only a roll breaks free)
 
     @property
     def invulnerable(self):
         return self.roll > 0 or self.hurt > 0
 
     def start_slash(self, ax, ay):
-        if self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead:
+        if self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead or self.grabbed > 0:
             return
         angle = atan2(ay - (self.y + CHEST), ax - self.x)
         self.facing = 1 if cos(angle) >= 0 else -1
@@ -108,6 +118,7 @@ class Hero:
         self.roll_dir = (mx / length, my / length) if length else (float(self.facing), 0.0)
         self.roll = ROLL_TIME
         self.slash = None
+        self.grabbed = 0.0           # rolling tears free
 
     def update(self, dt, keys, aim_x):
         self.time += dt
@@ -120,6 +131,9 @@ class Hero:
         mx = keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A]
         my = keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S]
         self.moving = False
+        if self.grabbed > 0:
+            self.grabbed -= dt
+            return
         if self.roll > 0:
             self.roll -= dt
             move_body(self, self.roll_dir[0] * ROLL_SPEED * dt, self.roll_dir[1] * ROLL_SPEED * dt)
@@ -173,6 +187,8 @@ class Zombie:
         self.memory = 0.0
         self.timer = 0.0
         self.windup = ZOMBIE_WINDUP
+        self.seen_time = 0.0         # how long it has kept the hero in sight
+        self.turn_from = self.turn_to = 0.0
         self.time = random.random()
         self.walk = 0.0
         self.death = (0.0, 0.0)
@@ -198,8 +214,15 @@ class Zombie:
         return dist < 1 or ray_hit(self.x, self.y, dx / dist, dy / dist, BLOCKS) >= dist
 
     def hear(self, x, y, radius):
-        if self.state in ("idle", "search") and hypot(x - self.x, y - self.y) <= radius:
-            self.state, self.target, self.memory = "search", (x, y), MEMORY
+        if hypot(x - self.x, y - self.y) > radius:
+            return
+        if self.state == "idle":
+            # Zomboid's alerted turn: first look toward the noise, then go.
+            self.state, self.timer = "alert", random.uniform(*ALERT_TURN)
+            self.turn_from, self.turn_to = self.heading, atan2(y - self.y, x - self.x)
+            self.target, self.memory = (x, y), MEMORY
+        elif self.state in ("search", "alert"):
+            self.target, self.memory = (x, y), MEMORY
 
     def walk_to(self, x, y, dt):
         dx, dy = x - self.x, y - self.y
@@ -227,23 +250,39 @@ class Zombie:
         if not game.senses:
             if self.state in ("idle", "search") and dist < 300:          # the old rule
                 self.state = "chase"
-        elif self.state in ("idle", "search", "chase"):
+        elif self.state in ("idle", "alert", "search", "chase", "poised"):
             if self.sees(hero):
-                self.state, self.target, self.memory = "chase", (hero.x, hero.y), MEMORY
-            elif self.state == "chase":
-                self.state = "search"                                    # lost sight: go where it was
+                self.seen_time += dt
+                if self.state != "poised":
+                    self.state = "chase"
+                self.target, self.memory = (hero.x, hero.y), MEMORY
+            else:
+                self.seen_time = 0.0
+                if self.state in ("chase", "poised"):
+                    self.state = "search"                                # lost sight: go where it was
         if self.state == "idle":
             self.turn_in -= dt
             if self.turn_in <= 0:                                        # look around now and then
                 self.heading += random.uniform(-1.6, 1.6)
                 self.facing = 1 if cos(self.heading) >= 0 else -1
                 self.turn_in = random.uniform(*WANDER_TURN)
+        elif self.state == "alert":
+            self.timer -= dt
+            turn = (self.turn_to - self.turn_from + pi) % (2 * pi) - pi
+            self.heading = self.turn_from + turn * max(0.0, 1 - self.timer / ALERT_TURN[1])
+            self.facing = 1 if cos(self.heading) >= 0 else -1
+            if self.timer <= 0:
+                self.heading, self.state = self.turn_to, "search"
         elif self.state == "search":
             self.memory -= dt
             if self.walk_to(*self.target, dt) < 6 or self.memory <= 0:
                 self.state, self.turn_in = "idle", 0.6                   # nothing here: give up
-        elif self.state == "chase":
-            if dist <= ZOMBIE_REACH:
+        elif self.state in ("chase", "poised"):
+            if dist <= ZOMBIE_REACH and game.senses and self.seen_time < SEEN_BEFORE_STRIKE:
+                self.state = "poised"            # just spotted: hang back, poised (Zomboid 0.5 s)
+                self.heading = atan2(dy, dx)
+                self.facing = 1 if dx > 0 else -1
+            elif dist <= ZOMBIE_REACH:
                 # From outside the hero's sight the warning is short (Zomboid: from the side
                 # and behind they are far more dangerous).
                 blind = game.senses and not game.hero_sees(self)
@@ -251,6 +290,7 @@ class Zombie:
                 self.state, self.timer = "windup", self.windup
                 self.heading = atan2(dy, dx)
             else:
+                self.state = "chase"
                 self.walk_to(hero.x, hero.y, dt)
         elif self.state in ("windup", "strike", "recover"):
             self.timer -= dt
@@ -277,6 +317,8 @@ class Zombie:
             self.look.draw("attack", 0.45, x, y, self.facing)
         elif self.state == "recover":
             self.look.draw("attack", 0.5 + 0.5 * (1 - self.timer / ZOMBIE_RECOVER), x, y, self.facing)
+        elif self.state == "poised":
+            self.look.draw("attack", 0.08, x, y, self.facing)        # arms up, not yet striking
         elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
             if self.state == "search":
@@ -390,6 +432,12 @@ class Game:
             if z.update(world_dt, hero, self) == "hit" and not hero.invulnerable and not hero.dead:
                 hero.hp -= 1
                 hero.hurt = HURT_INVULNERABLE
+                others = sum(1 for o in self.zombies if o is not z and o.alive
+                             and hypot(o.x - hero.x, o.y - hero.y) <= GRAB_NEAR)
+                if self.senses and others and hero.hp > 0:
+                    hero.grabbed = GRAB_TIME             # Zomboid's drag-down: two on him hold him
+                    hero.slash = None
+                    self.message = "붙잡혔다! Space로 구르면 빠져나감"
                 self.effects.append(Spark(hero.x, hero.y + 26))
                 self.hitstop, self.shake = 0.1, 0.2
                 if hero.hp <= 0:
