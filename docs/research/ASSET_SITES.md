@@ -60,3 +60,53 @@ Pixel Crawler 자체는 [무료 팩](https://anokolisa.itch.io/free-pixel-art-as
 - 유료 참고: [Loovgames 아포칼립스 팩](https://loovgames.itch.io/apocalyptic-pixel-art-asset-pack-with-houses-characters-trees-tilesets/devlog/1027589/what-is-missing-from-the-pack)($14.99, 캐릭터·타일·시차 배경)
 
 **판단:** 화풍이 가장 비슷한 건 SunnyLand·GegX지만 밝은 판타지라 분위기가 반대. 우리 분위기에 맞는 건 CraftPix 폐허 배경이고 캐릭터는 없음. 대부분 16×16 타일·작은 캐릭터라 우리 크기(몸 약 48px)와 다르다.
+
+## 5. 탑뷰·좀보이드풍 (2026-11-14 추가, 사이드 세션 조사)
+
+배경: 탑뷰 확정 후 사용자 "좀보이드 같은 느낌". 받지 않고 목록만. **가격·라이선스는 검색 결과 기준이라, 받기 전에 각 페이지에서 다시 확인한다.**
+
+### 5-1. 도시·실내 타일셋
+
+| 이름 | 시점 | 라이선스·가격 | 내용 | 우리와 맞는가 |
+|---|---|---|---|---|
+| [Zombie City HD Isometric (SmallScaleInt)](https://smallscaleint.itch.io/zombie-city-hd-isometric-tileset/purchase) | 아이소 | 최소 가격 있음(무료판 미확인) | 타일·애니 1000개+, 좀비 도시 | 분위기는 가장 가까움. 유료일 가능성 높음 |
+| [Zombie Rural HD Isometric (SmallScaleInt)](https://smallscaleint.itch.io/zombie-rural-hd-isometric-tileset/devlog/899228/new-asset-zombie-rural-hd-isometric-tileset) | 아이소 | 미확인 | 시골, 나무·차·소품 | 도시가 아님 |
+| [Free TDS Tilesets: buildings and furniture (CraftPix)](https://free-game-assets.itch.io/free-tds-tilesets-buildings-and-furniture) | 정탑뷰 | 무료(CraftPix 라이선스) | 건물·가구 | 현대 실내. 정탑뷰라 3/4와 다름 |
+| [Free Isometric Tileset CC0 (the-outlander)](https://the-outlander.itch.io/free-isometric-tileset-topdown-cc0-for-prototyping) | 아이소 | CC0 | 시험판용 기본 타일 | 시험판 바닥용으로 적당, 분위기 없음 |
+| [Isometric Zombie Apocalypse (maxparata)](https://maxparata.itch.io/isometriczombieapocalypse-monogon) | 아이소 | $9.95 | 좀비 아포칼립스 | 유료라 제외, 참고만 |
+| [Gridline City](https://iot-games.itch.io/gridline-city), [isometric city](https://cybermonkeyassets.itch.io/isometric-city), [free city builder (penzilla)](https://penzilla.itch.io/free-city-builder) | 아이소 | 페이지 확인 필요 | 밝은 도시 건설풍 | 밝고 깨끗해서 폐허 분위기와 반대 |
+| itch 필터: [CC0 + isometric](https://itch.io/game-assets/newest/assets-cc0/tag-isometric) | | CC0 | | 계속 찾을 곳 |
+
+### 5-2. 탑뷰·8방향 캐릭터
+
+| 이름 | 방향 | 라이선스·가격 | 내용 | 우리와 맞는가 |
+|---|---|---|---|---|
+| [Zombie Characters Pack (mrmgames)](https://mrmgames.itch.io/zombie-characters-pack-pixelart) | 8방향 | 가격 미확인 | 좀비 5종 | 적 후보 1순위(가격 확인) |
+| [Pixel Art Zombie (tiki-ted)](https://tiki-ted.itch.io/pixel-art-zombie-character-sprites) | 8방향 | 상업 가능, £2 이상(이름값 지불일 수 있음) | 서기·걷기·피격·공격·죽음 | 동작이 다 있음 |
+| [HD 8-Directional Zombie (SmallScaleInt)](https://smallscaleint.itch.io/hd-8-directional-top-down-zombie-pack/purchase) | 8방향 | 최소 가격 있음 | HD 좀비 | 타일셋과 같은 제작자 |
+| [Apocalypse (cuddle-bug)](https://cuddle-bug.itch.io/apocalypse) | 4방향 | 일부 무료, 전체 유료 | 생존자 + 좀비 | 생존자가 있는 드문 팩 |
+| [Top-Down Zombie Apocalypse (jarry-0)](https://jarry-0.itch.io/zombie) | ? | 무료 | 74kB, 개발 중 | 작고 미완성 |
+| [2D Topdown Survival Character](https://fightswithbears.itch.io/2d-topdown-survival-character), [Top-down character base (apyryon)](https://apyryon.itch.io/top-down-character-base) | ? | 확인 필요 | 생존자 몸 | 주인공 후보 |
+
+**판단:** 무료 + 8방향 + 칼 베기 동작까지 있는 주인공은 찾지 못함. **우리 Blender → 도트 도구로 카메라만 위로 올려 8방향을 뽑는 것이 가장 현실적**(이미 기본 몸·동작·마체테가 있음). 적은 위 좀비 팩을 대조용으로 본다.
+
+### 5-3. Blender로 배경을 렌더할 무료 3D (CC0)
+
+| 이름 | 라이선스 | 내용 | 우리와 맞는가 |
+|---|---|---|---|
+| [Kenney City Kit (Roads)](https://kenney.nl/assets/city-kit-roads) | CC0 | 도로·교차로, 다른 City Kit와 맞물림 | 거리 바닥 |
+| [City Kit (Suburban)](https://opengameart.org/content/city-kit-suburban) | CC0 | 주택·울타리·나무·진입로 | 주택가 |
+| [City Kit (Commercial)](https://opengameart.org/content/city-kit-commercial) | CC0 | 상가·차양·간판 | 한국 상가로 간판만 바꾸기 좋음 |
+| [City Kit (Industrial)](https://opengameart.org/content/city-kit-industrial) | CC0 | 공장·창고 | 부산 항구·쉘터 |
+| [Kenney Modular Buildings](https://kenney-assets.itch.io/modular-buildings) | CC0 | 90+ 조각(OBJ/FBX/glTF) | 실내·건물 조립 |
+| Quaternius (도시·차량 팩) | CC0(공식 페이지 확인 필요) | 이번 검색에선 도시 팩을 특정하지 못함 | 차량·소품 보조 |
+
+**판단:** Kenney는 깨끗한 장난감풍이라 그대로 쓰면 밝음 → Blender에서 **낮은 채도·어두운 조명·먼지/잔해 소품을 더해 렌더**하고, 기존 피폭 빛 색 방향(구역별 빛)을 입힌다. 좀보이드처럼 3/4 아이소 카메라 하나로 고정.
+
+### 5-4. 시야·빛 참고
+
+- [Red Blob Games: 2D Visibility](https://www.redblobgames.com/articles/visibility/) — 벽에 가려지는 시야 다각형의 기본. 시야 원뿔은 이 다각형을 각도로 자르면 됨
+- [Nicky Case: Sight and Light](https://ncase.me/sight-and-light/) — 광선을 각도순으로 이어 시야 다각형, 조금씩 비켜 쏴서 부드러운 그림자
+- [Eric Lippert: Shadowcasting](https://ericlippert.com/2011/12/12/9067/) — 칸(타일) 기반 시야, 타일 맵이면 이쪽이 빠름
+- [Catlike Coding: Light and Shadow (top-down)](https://catlikecoding.com/godot/true-top-down-2d/4-light-and-shadow/) — 엔진은 Godot지만 표현(어둠 덮개 + 빛 구멍) 참고
+- pico2d 적용: 화면 크기 어둠 텍스처에 시야 다각형만 투명하게 그려 덮는 방식(render target 이미 사용 중)
