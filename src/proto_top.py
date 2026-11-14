@@ -8,6 +8,11 @@ Same rules as the side-scroll prototype, only the view changes:
 - dying restarts the room at once (R also restarts)
 - facing vision (2026-11-14): only the cone toward the mouse and a small circle around the
   hero are lit, wrecks cast shadows; infected in the dark are not drawn (vision_cone.py)
+- infected senses (2026-11-14, from Project Zomboid's public rules, docs/planning/
+  ZOMBOID_VISUAL_REFERENCE.md): they find the hero by sight (a cone ahead of them, blocked by
+  wrecks) or by sound (steps, rolls, slashes), go to the last place they saw or heard him and
+  forget after a while; a blow from outside the hero's own sight gives a shorter warning.
+  F2 switches back to the old rule (chase anything within 300 px) to compare.
 
 Characters reuse the side-view sheets (seen from a 3/4 angle), so this is only a feel test.
 
@@ -27,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import ui  # noqa: E402
 from character_look import SheetLook  # noqa: E402
-from vision_cone import VisionCone  # noqa: E402
+from vision_cone import CONE_HALF, VisionCone, ray_hit  # noqa: E402
 from proto_side import (EXPOSURE_FALL, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,  # noqa: E402
                         ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_COOLDOWN,
                         SLASH_HIT, SLASH_LUNGE, SLASH_REACH, SLASH_TIME, SLOW_WORLD, VIEW_H, VIEW_W, WIDTH,
@@ -39,6 +44,16 @@ RUN_SPEED = 150.0
 CHEST = 22                       # chest height above the feet, where blows land
 # wrecked cars and rubble: (left, bottom, right, top) on the ground plane
 BLOCKS = [(260, 300, 360, 340), (520, 120, 600, 160), (640, 420, 740, 460), (150, 500, 210, 560)]
+# Infected senses (numbers are ours; the rules come from Zomboid's sight / hearing / memory).
+SIGHT_RANGE = 260               # px an infected sees ahead of it
+SIGHT_HALF = 1.1                # radians either side of where it faces
+NOTICE_NEAR = 36                # px: so close it notices whatever way it faces
+NOISE_STEP = 70                 # px the hero's footsteps carry
+NOISE_ROLL = 140
+NOISE_SLASH = 230
+MEMORY = 3.0                    # s it keeps going to the last place it saw or heard the hero
+WANDER_TURN = (2.0, 5.0)        # s between idle head turns
+BLIND_WINDUP = 0.25             # s of warning when it strikes from outside the hero's sight
 ZOMBIE_STARTS = [(520, 380), (820, 200), (860, 540), (380, 560), (700, 80)]
 
 
@@ -151,8 +166,13 @@ class Zombie:
         self.look = look
         self.x, self.y = float(x), float(y)
         self.facing = -1
-        self.state = "idle"
+        self.heading = random.uniform(-pi, pi)     # where it looks (its own sight cone)
+        self.turn_in = random.uniform(*WANDER_TURN)
+        self.state = "idle"          # idle, search (going to a seen/heard spot), chase, windup...
+        self.target = None           # last place it saw or heard the hero
+        self.memory = 0.0
         self.timer = 0.0
+        self.windup = ZOMBIE_WINDUP
         self.time = random.random()
         self.walk = 0.0
         self.death = (0.0, 0.0)
@@ -166,7 +186,35 @@ class Zombie:
         length = hypot(dx, dy) or 1
         self.death = (dx / length * 160, dy / length * 160)
 
-    def update(self, dt, hero):
+    def sees(self, hero):
+        dx, dy = hero.x - self.x, hero.y - self.y
+        dist = hypot(dx, dy)
+        if hero.dead or dist > SIGHT_RANGE:
+            return False
+        if dist > NOTICE_NEAR:
+            off = abs((atan2(dy, dx) - self.heading + pi) % (2 * pi) - pi)
+            if off > SIGHT_HALF:
+                return False
+        return dist < 1 or ray_hit(self.x, self.y, dx / dist, dy / dist, BLOCKS) >= dist
+
+    def hear(self, x, y, radius):
+        if self.state in ("idle", "search") and hypot(x - self.x, y - self.y) <= radius:
+            self.state, self.target, self.memory = "search", (x, y), MEMORY
+
+    def walk_to(self, x, y, dt):
+        dx, dy = x - self.x, y - self.y
+        dist = hypot(dx, dy)
+        if dist < 1:
+            return dist
+        self.heading = atan2(dy, dx)
+        if abs(dx) > 1:
+            self.facing = 1 if dx > 0 else -1
+        step = min(dist, ZOMBIE_SPEED * dt)
+        move_body(self, dx / dist * step, dy / dist * step)
+        self.walk += step / 32
+        return dist
+
+    def update(self, dt, hero, game):
         self.time += dt
         if self.state == "dead":
             self.timer += dt
@@ -176,17 +224,34 @@ class Zombie:
         dx, dy = hero.x - self.x, hero.y - self.y
         dist = hypot(dx, dy)
         event = None
-        if self.state == "idle" and dist < 300:
-            self.state = "chase"
-        if self.state == "chase":
-            if dx:
-                self.facing = 1 if dx > 0 else -1
+        if not game.senses:
+            if self.state in ("idle", "search") and dist < 300:          # the old rule
+                self.state = "chase"
+        elif self.state in ("idle", "search", "chase"):
+            if self.sees(hero):
+                self.state, self.target, self.memory = "chase", (hero.x, hero.y), MEMORY
+            elif self.state == "chase":
+                self.state = "search"                                    # lost sight: go where it was
+        if self.state == "idle":
+            self.turn_in -= dt
+            if self.turn_in <= 0:                                        # look around now and then
+                self.heading += random.uniform(-1.6, 1.6)
+                self.facing = 1 if cos(self.heading) >= 0 else -1
+                self.turn_in = random.uniform(*WANDER_TURN)
+        elif self.state == "search":
+            self.memory -= dt
+            if self.walk_to(*self.target, dt) < 6 or self.memory <= 0:
+                self.state, self.turn_in = "idle", 0.6                   # nothing here: give up
+        elif self.state == "chase":
             if dist <= ZOMBIE_REACH:
-                self.state, self.timer = "windup", ZOMBIE_WINDUP
+                # From outside the hero's sight the warning is short (Zomboid: from the side
+                # and behind they are far more dangerous).
+                blind = game.senses and not game.hero_sees(self)
+                self.windup = BLIND_WINDUP if blind else ZOMBIE_WINDUP
+                self.state, self.timer = "windup", self.windup
+                self.heading = atan2(dy, dx)
             else:
-                step = ZOMBIE_SPEED * dt
-                move_body(self, dx / dist * step, dy / dist * step)
-                self.walk += step / 32
+                self.walk_to(hero.x, hero.y, dt)
         elif self.state in ("windup", "strike", "recover"):
             self.timer -= dt
             if self.timer <= 0:
@@ -206,14 +271,16 @@ class Zombie:
             if self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
                 self.look.draw("down", min(1.0, self.timer * 2), x, y, 1 if self.death[0] < 0 else -1)
         elif self.state == "windup":
-            self.look.draw("attack", 0.25 * (1 - self.timer / ZOMBIE_WINDUP), x, y, self.facing)
+            self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
             ui.text_center(x, y + 66, "!", (255, 120, 80), 22)
         elif self.state == "strike":
             self.look.draw("attack", 0.45, x, y, self.facing)
         elif self.state == "recover":
             self.look.draw("attack", 0.5 + 0.5 * (1 - self.timer / ZOMBIE_RECOVER), x, y, self.facing)
-        elif self.state == "chase":
+        elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
+            if self.state == "search":
+                ui.text_center(x, y + 66, "?", (220, 200, 120), 18)
         else:
             self.look.draw("idle", self.time, x, y, self.facing)
 
@@ -225,6 +292,7 @@ class Game:
         self.aim = (None, None)
         self.deaths = 0
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
+        self.senses = True                  # F2: infected senses on/off (compare)
         self.look = 0.0
         random.seed(4)
         self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
@@ -240,7 +308,7 @@ class Game:
         self.slow = False
         self.slow_blend = 0.0
         self.exposure = 0.0
-        self.message = "WASD 이동 · 좌클릭 베기 · Space 구르기 · 우클릭 시간 느리게 · R 다시"
+        self.message = "WASD 이동 · 좌클릭 베기 · Space 구르기 · 우클릭 시간 느리게 · R 다시 · F2 감각 비교"
         self.cleared = False
 
     def mouse_world(self, sx, sy):
@@ -256,6 +324,22 @@ class Game:
                                  keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
         elif key == sdl2.SDLK_r:
             self.reset()
+        elif key == sdl2.SDLK_F2:
+            self.senses = not self.senses
+            self.reset()
+            self.message = ("피폭체 감각 켬: 보고 듣고 찾음, 시야 밖 공격은 예고가 짧음" if self.senses
+                            else "피폭체 감각 끔: 예전 규칙(300px 안이면 무조건 쫓아옴)")
+
+    def hero_sees(self, zombie):
+        """Is the infected inside the hero's view cone? (The small lit circle around the body
+        does not count: what comes from the side or behind is still a blind-side attack.)"""
+        off = abs((atan2(zombie.y - self.hero.y, zombie.x - self.hero.x) - self.look + pi) % (2 * pi) - pi)
+        return off <= CONE_HALF
+
+    def make_noise(self, radius):
+        for z in self.zombies:
+            if z.alive:
+                z.hear(self.hero.x, self.hero.y, radius)
 
     def update(self, real_dt, keys):
         hero = self.hero
@@ -295,8 +379,15 @@ class Game:
                     self.effects.append(Spark(zx, zy + 4, big=True))
                     self.hitstop, self.shake = max(self.hitstop, 0.07), 0.12
 
+        if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
+            if hero.slash and hero.slash["time"] <= real_dt:
+                self.make_noise(NOISE_SLASH)
+            elif hero.roll > 0 and hero.roll >= ROLL_TIME - real_dt:
+                self.make_noise(NOISE_ROLL)
+            elif hero.moving:
+                self.make_noise(NOISE_STEP)
         for z in self.zombies:
-            if z.update(world_dt, hero) == "hit" and not hero.invulnerable and not hero.dead:
+            if z.update(world_dt, hero, self) == "hit" and not hero.invulnerable and not hero.dead:
                 hero.hp -= 1
                 hero.hurt = HURT_INVULNERABLE
                 self.effects.append(Spark(hero.x, hero.y + 26))
