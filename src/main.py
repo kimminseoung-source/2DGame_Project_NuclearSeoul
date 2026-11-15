@@ -3,7 +3,7 @@
     .venv\\Scripts\\python.exe src\\main.py
 
 WASD move, left click slash toward the mouse, Space roll, E pick up / leave, 1 bandage,
-R restart, F2 infected senses on/off, F3 realistic look on/off (compare), Esc quit.
+Tab bag (inventory), R restart, F2 infected senses on/off, F3 realistic look on/off, Esc quit.
 (Right button time crawl with exposure is switched off for now: settings.EXPOSURE_ON.)
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
 """
@@ -35,8 +35,13 @@ def main(window_x=None):
         last = now
         keys = sdl2.SDL_GetKeyboardState(None)
         for event in pico2d.get_events():
-            if event.type == sdl2.SDL_QUIT or (event.type == sdl2.SDL_KEYDOWN and event.key == sdl2.SDLK_ESCAPE):
+            if event.type == sdl2.SDL_QUIT:
                 running = False
+            elif event.type == sdl2.SDL_KEYDOWN and event.key == sdl2.SDLK_ESCAPE:
+                if game.bag_open:
+                    game.bag_open = False          # Esc closes the bag first
+                else:
+                    running = False
             elif event.type == sdl2.SDL_KEYDOWN:
                 game.key_down(event.key, keys)
             elif event.type == sdl2.SDL_MOUSEMOTION:

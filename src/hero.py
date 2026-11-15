@@ -9,6 +9,9 @@ from settings import (CHEST, HERO_HP, ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, RUN_
                       SLASH_HIT, SLASH_LUNGE, SLASH_TIME)
 
 
+PICKUP_TIME = 0.35          # s of the pick-up motion (2026-11-15 "간단하게")
+
+
 class Hero:
     def __init__(self, look):
         self.look = look
@@ -27,6 +30,7 @@ class Hero:
         self.dead = 0.0
         self.moving = False
         self.grabbed = 0.0           # held by two or more infected (only a roll breaks free)
+        self.pickup = 0.0            # s left of the short pick-up motion (E)
 
     @property
     def invulnerable(self):
@@ -64,6 +68,9 @@ class Hero:
         if self.grabbed > 0:
             self.grabbed -= dt
             return
+        if self.pickup > 0:                    # crouched for a moment, picking something up
+            self.pickup -= dt
+            return
         if self.roll > 0:
             self.roll -= dt
             move_body(self, self.roll_dir[0] * ROLL_SPEED * dt, self.roll_dir[1] * ROLL_SPEED * dt)
@@ -92,6 +99,8 @@ class Hero:
             self.look.draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
         elif self.hurt > 0 and int(self.hurt * 20) % 2 == 0:
             return
+        elif self.pickup > 0:
+            self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing)
         elif self.roll > 0:
             face = 1 if self.roll_dir[0] >= 0 else -1
             self.look.draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,

@@ -13,10 +13,10 @@ PICK_RANGE = 28            # px from the hero's feet
 PICK_NOISE = 100           # px the rummaging carries
 
 KINDS = {
-    # kind: (name, body colour, band colour)
-    "bandage": ("붕대", (220, 216, 200), (120, 160, 120)),
-    "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200)),
-    "can": ("통조림", (150, 150, 158), (190, 120, 60)),
+    # kind: (name, body colour, band colour, description shown in the bag)
+    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "상처를 감는다.\n체력 +1"),
+    "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200), "피폭을 늦춘다.\n피폭 -30"),
+    "can": ("통조림", (150, 150, 158), (190, 120, 60), "오래 버티는 식량.\n다음 구역 여정에 쓴다."),
 }
 USE_KEYS = {"bandage": "1", "pill": "2"}
 PILL_EFFECT = 30.0
@@ -32,7 +32,7 @@ class Supply:
         return KINDS[self.kind][0]
 
     def draw(self, cx, cy, near=False):
-        _, body, band = KINDS[self.kind]
+        _, body, band = KINDS[self.kind][:3]
         x, y = self.x - cx, self.y - cy
         pico2d.draw_rectangle(x - 6, y - 2, x + 6, y + 6, 14, 14, 18, filled=True)        # shadow / outline
         pico2d.draw_rectangle(x - 5, y - 1, x + 5, y + 5, *body, filled=True)

@@ -14,7 +14,9 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
+import hud
 import ui
+from hero import PICKUP_TIME
 from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
 from character_look import SheetLook
 from hero import Hero
@@ -56,7 +58,10 @@ class Game:
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
         self.senses = True                  # F2: infected senses on/off (compare)
         self.real = True                    # F3: realistic look on/off (compare)
-        infected.Zombie.show_marks = not self.real
+        infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
+        infected.Zombie.blink_corpse = not self.real
+        self.bag_open = False               # Tab: the bag (inventory)
+        self.bag_cursor = 0
         self.look = 0.0
         self.sounds = Sounds()
         self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
@@ -85,6 +90,8 @@ class Game:
         self.siren_in = random.uniform(15, 30)
         self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES if EXPOSURE_ON or kind != "pill"]
         self.stains = []             # blood on the ground (realistic look)
+        self.bag_open = False
+        self.bag_cursor = 0
         self.message_at = 0.0
         self.bag = {kind: 0 for kind in KINDS}
         self.kills = 0
@@ -100,7 +107,42 @@ class Game:
         if self.hero.slash is not None and self.hero.slash is not before:
             self.sounds.play("slash", 0.8)
 
+    def use(self, kind):
+        """Use one supply from the bag (keys 1/2 or Enter in the bag)."""
+        if self.hero.dead or not self.bag.get(kind):
+            return
+        if kind == "bandage" and self.hero.hp < HERO_HP:
+            self.bag[kind] -= 1
+            self.hero.hp += 1
+            self.message = "붕대를 감았다 (체력 +1)"
+            self.sounds.play("pickup", 0.6)
+        elif kind == "pill" and EXPOSURE_ON:
+            self.bag[kind] -= 1
+            self.exposure = max(0.0, self.exposure - PILL_EFFECT)
+            self.message = f"피폭 억제제를 먹었다 (피폭 -{PILL_EFFECT:.0f})"
+            self.sounds.play("pickup", 0.6)
+        elif kind == "bandage":
+            self.message = "다친 곳이 없다"
+
+    def bag_key(self, key):
+        items = hud.bag_items(self)
+        cols, total = hud.BAG_COLS, hud.BAG_COLS * hud.BAG_ROWS
+        moves = {sdl2.SDLK_LEFT: -1, sdl2.SDLK_RIGHT: 1, sdl2.SDLK_UP: -cols, sdl2.SDLK_DOWN: cols}
+        if key in (sdl2.SDLK_TAB, sdl2.SDLK_ESCAPE):
+            self.bag_open = False
+        elif key in moves:
+            self.bag_cursor = (self.bag_cursor + moves[key]) % total
+        elif key in (sdl2.SDLK_RETURN, sdl2.SDLK_KP_ENTER) and self.bag_cursor < len(items):
+            self.use(items[self.bag_cursor][0])
+
     def key_down(self, key, keys):
+        if self.bag_open:                                  # the bag takes the keys while it is open
+            self.bag_key(key)
+            return
+        if key == sdl2.SDLK_TAB and not self.left and not self.hero.dead:
+            self.bag_open = True
+            self.slow = False
+            return
         if key == sdl2.SDLK_SPACE:
             self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
                                  keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
@@ -110,21 +152,15 @@ class Game:
             self.reset()
         elif key == sdl2.SDLK_e and not self.left and not self.hero.dead:
             self.interact()
-        elif key == sdl2.SDLK_1 and self.bag["bandage"] and self.hero.hp < HERO_HP and not self.hero.dead:
-            self.bag["bandage"] -= 1
-            self.hero.hp += 1
-            self.message = "붕대를 감았다 (체력 +1)"
-            self.sounds.play("pickup", 0.6)
-        elif key == sdl2.SDLK_2 and EXPOSURE_ON and self.bag["pill"] and not self.hero.dead:
-            self.bag["pill"] -= 1
-            self.exposure = max(0.0, self.exposure - PILL_EFFECT)
-            self.message = f"피폭 억제제를 먹었다 (피폭 -{PILL_EFFECT:.0f})"
-            self.sounds.play("pickup", 0.6)
+        elif key == sdl2.SDLK_1:
+            self.use("bandage")
+        elif key == sdl2.SDLK_2:
+            self.use("pill")
         elif key == sdl2.SDLK_F3:
             self.real = not self.real
-            infected.Zombie.show_marks = not self.real
-            self.message = "사실적 연출 켬: 머리 위 표시 없음, 피, 시체, 어두운 색" if self.real \
-                else "사실적 연출 끔: 예전 연출(반달 궤적, !·? 표시)"
+            infected.Zombie.blink_corpse = not self.real
+            self.message = "사실적 연출 켬: 피, 시체, 어두운 색" if self.real \
+                else "사실적 연출 끔: 예전 연출(반달 궤적, 불꽃)"
         elif key == sdl2.SDLK_F2:
             self.senses = not self.senses
             self.reset()
@@ -144,8 +180,9 @@ class Game:
             self.sounds.play("exit", 0.8)
             return
         item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
-        if item is None:
+        if item is None or self.hero.pickup > 0 or self.hero.slash or self.hero.roll > 0:
             return
+        self.hero.pickup = PICKUP_TIME                     # a short crouch to pick it up
         item.taken = True
         self.bag[item.kind] += 1
         self.message = f"{supply_rules.with_object_particle(item.name)} 챙겼다" + (f" ({supply_rules.USE_KEYS[item.kind]}로 사용)"
@@ -192,7 +229,7 @@ class Game:
 
     def update(self, real_dt, keys):
         hero = self.hero
-        if self.left:                                      # out of the area: only the summary shows
+        if self.left or self.bag_open:                     # summary or bag open: the world waits
             return
         self.clock += real_dt
         self.sounds.listener = (hero.x, hero.y)
@@ -270,7 +307,8 @@ class Game:
                     z.groan_in = random.uniform(3.0, 7.0)
             if z.state != state:
                 if z.state == "chase" and state in ("idle", "alert", "search"):
-                    self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))   # it spotted the hero
+                    z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
+                    self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
                 elif z.state == "alert":
@@ -390,7 +428,13 @@ class Game:
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
         canvas.canvas_height = HEIGHT
         sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
-        u, t1, t2 = UI_SCALE, hud_size(14), hud_size(13)
+        hud.draw_hud(self)
+        if self.bag_open:
+            hud.draw_inventory(self)
+        if self.left:
+            hud.draw_summary(self)
+        return
+        u, t1, t2 = UI_SCALE, hud_size(14), hud_size(13)       # (old HUD, kept below for reference)
         pico2d.draw_rectangle(0, HEIGHT - HUD_H, WIDTH, HEIGHT, 10, 12, 16, 200, filled=True)
         if not self.real or self.clock - self.message_at < MESSAGE_TIME or self.left:
             ui.text(12 * u, HEIGHT - 20 * u, self.message, ui.ACCENT, t1)

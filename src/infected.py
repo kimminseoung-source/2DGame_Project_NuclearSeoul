@@ -19,6 +19,7 @@ NOISE_ROLL = 140
 NOISE_SLASH = 230
 MEMORY = 3.0                    # s it keeps going to the last place it saw or heard the hero
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
+SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
 BLIND_WINDUP = 0.25             # s of warning when it strikes from outside the hero's sight
 SEEN_BEFORE_STRIKE = 0.5        # s it must have seen the hero before it strikes (Zomboid: 0.5)
 ALERT_TURN = (0.3, 0.6)         # s it spends turning toward a noise before going
@@ -38,6 +39,7 @@ class Zombie:
         self.memory = 0.0
         self.timer = 0.0
         self.windup = ZOMBIE_WINDUP
+        self.spotted = 0.0           # s left of the "!" shown the moment it spots the hero
         self.seen_time = 0.0         # how long it has kept the hero in sight
         self.turn_from = self.turn_to = 0.0
         self.time = random.random()
@@ -90,6 +92,7 @@ class Zombie:
 
     def update(self, dt, hero, game):
         self.time += dt
+        self.spotted = max(0.0, self.spotted - dt)
         if self.state == "dead":
             self.timer += dt
             move_body(self, self.death[0] * dt, self.death[1] * dt)
@@ -156,12 +159,13 @@ class Zombie:
                     self.state = "chase"
         return event
 
-    show_marks = True        # "!" / "?" over the head and a blinking corpse; off in the realistic look
+    show_marks = True        # "!" / "?" over the head
+    blink_corpse = True      # the corpse blinks; off in the realistic look (bodies stay)
 
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
         if self.state == "dead":
-            if not self.show_marks or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
+            if not self.blink_corpse or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
                 self.look.draw("down", min(1.0, self.timer * 2), x, y, 1 if self.death[0] < 0 else -1)
         elif self.state == "windup":
             self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
@@ -180,3 +184,6 @@ class Zombie:
                     ui.text_center(x, y + 66, "?", (220, 200, 120), 18)
         else:
             self.look.draw("idle", self.time, x, y, self.facing)
+        if self.spotted > 0 and self.state not in ("dead", "windup") and self.show_marks:
+            pop = 1 + 0.4 * max(0.0, self.spotted - SPOTTED_TIME + 0.15) / 0.15   # pops in, then settles
+            ui.text_center(x, y + 68, "!", (255, 220, 90), round(22 * pop))
