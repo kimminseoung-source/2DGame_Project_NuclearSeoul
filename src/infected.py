@@ -32,33 +32,32 @@ SEEN_BEFORE_STRIKE = 0.5        # s it must have seen the hero before it strikes
 ALERT_TURN = (0.3, 0.6)         # s it spends turning toward a noise before going
 GRAB_TIME = 0.9                 # s the hero is held when a blow lands with another one on him
 GRAB_NEAR = ZOMBIE_REACH + 12   # px: "on the hero"
+# The shove only pushes it back (2026-11-16 "그냥 살짝 밀쳐내지는 정도로", "밀쳐내기로 가자": a fallen
+# infected could not be told from a dead one, so nothing is knocked down any more).
 STAGGER_TIME = 0.8 * TEMPO      # s it reels after a shove
-DOWN_TIME = 1.8                 # s on the ground after a shove knocks it over
-DOWN_CHANCE = 0.35              # chance a shove knocks it over (Zomboid: shove, then stomp)
-SHOVE_PUSH = 70                 # px/s it is pushed back
+SHOVE_PUSH = 130                # px/s it is pushed back (fades 0.88 a frame: about 18 px)
 # Toughness (2026-11-16 "좀보이드처럼"): an infected that is facing the hero takes several slashes;
-# each one makes it flinch (its attack is broken off) or, sometimes, knocks it down. One that is
-# unaware, reeling from a shove or on the ground still dies to a single slash (helpless).
+# each one makes it flinch (its attack is broken off). One that is unaware or reeling from a shove
+# dies to a single slash (helpless).
 HITS = (2, 3)                   # slashes an aware infected takes
 FLINCH_TIME = 0.35 * TEMPO      # s it reels from a slash that does not kill it (not helpless)
-HIT_DOWN_CHANCE = 0.2           # chance such a slash knocks it down instead
 HIT_PUSH = 55                   # px/s a slash knocks it back
 # Reading the infected (2026-11-16 "전투적인 측면을 많이 다듬어야"; DESIGN_LOCK pillar 1 "빈틈을 노리면
 # 한 방"): after its claw swings it is open while it recovers - one slash ends it - and a shove
-# timed to the end of its warning always knocks it down (a counter), an early one only staggers.
+# timed to the end of its warning is a counter: it reels far back for longer.
 COUNTER_WINDOW = 0.22 * TEMPO   # s at the end of the wind-up when a shove is a counter
-# Crawlers (2026-11-16 "쓰러지면 기어서도 오는 요소"; Zomboid's zombie-crawler): an infected that
-# was knocked down sometimes does not get up but drags itself on toward the hero, slow and on the
-# ground (one slash ends it), and bites at the ankles if it is left to reach him.
-CRAWL_CHANCE = 0.4              # chance a downed infected crawls instead of getting up
-CRAWL_TIME = (3.0, 6.0)         # s it crawls before it gets back up
+COUNTER_STAGGER = 1.2 * TEMPO   # s a countered infected reels
+COUNTER_PUSH = 290              # px/s it is thrown back (about 40 px)
+# Crawlers (2026-11-16 "(나) 처음부터 기어 다니는 피폭체"; Zomboid's zombie-crawler): some infected
+# have lost the use of their legs and drag themselves along on the ground - slow, always helpless
+# (the hero stamps on them), biting at the ankles if they are left to reach him.
+CRAWLER_SHARE = 0.25            # share of infected that crawl
 CRAWL_SPEED = 0.35              # share of the walking speed
 CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
-RISE_TIME = 0.4 * TEMPO         # s of getting up (the end of the down sheet played back)
 
 
 class Zombie:
-    def __init__(self, look, x, y):
+    def __init__(self, look, x, y, crawler=False):
         self.look = look
         self.x, self.y = float(x), float(y)
         self.facing = -1
@@ -77,29 +76,29 @@ class Zombie:
         self.death = (0.0, 0.0)
         self.push = (0.0, 0.0)
         self.health = random.randint(*HITS)
-        self.prone = False           # crawling: on the ground, moves and bites from there
+        self.prone = crawler         # a crawler: on the ground, moves and bites from there
         self.on_ground = False       # it was lying down when it died
-        self.crawl_left = 0.0        # s of crawling left (kept apart: a bite uses self.timer)
-        self.rising = False          # getting up after a crawl (no second crawl roll)
 
     @property
     def alive(self):
-        return self.state not in ("dead", "slump")
+        return self.state != "dead"
 
-    def slump(self, time):
-        """Taken hold of and stabbed by the hero (takedown): it sinks down where it stands, then
-        lies dead. No sound, no blood burst."""
-        self.state, self.timer, self.slump_time = "slump", time, time
-        self.push = (0.0, 0.0)
+    @property
+    def speed(self):
+        return ZOMBIE_SPEED * (CRAWL_SPEED if self.prone else 1.0)
+
+    @property
+    def reach(self):
+        return CRAWL_REACH if self.prone else ZOMBIE_REACH
 
     def kill(self, dx, dy):
-        self.on_ground = self.prone or self.state == "down"     # killed lying down: no second fall
+        self.on_ground = self.prone                  # killed lying down: no fall
         self.state, self.timer = "dead", 0.0
         length = hypot(dx, dy) or 1
         self.death = (dx / length * 160, dy / length * 160)
 
     def reel(self, from_x, from_y, push, state, time):
-        """Knocked back from (from_x, from_y) into `state` (stagger, flinch or down) for `time` s;
+        """Knocked back from (from_x, from_y) into `state` (stagger or flinch) for `time` s;
         an attack being wound up is broken off."""
         dx, dy = self.x - from_x, self.y - from_y
         length = hypot(dx, dy) or 1
@@ -109,32 +108,29 @@ class Zombie:
         self.target, self.memory = (from_x, from_y), MEMORY    # it knows where the blow came from
 
     def shoved(self, from_x, from_y, weak=False):
-        """Pushed by the hero: it reels or falls (a tired, weak shove only makes it reel). A shove
-        right at the end of its warning is a counter: it always goes down. Returns True for that."""
-        if not weak and self.state == "windup" and self.timer <= COUNTER_WINDOW:
-            self.reel(from_x, from_y, SHOVE_PUSH, "down", DOWN_TIME)
-            return True
-        if not weak and random.random() < DOWN_CHANCE:
-            self.reel(from_x, from_y, SHOVE_PUSH, "down", DOWN_TIME)
+        """Pushed back by the hero and reeling. A shove right at the end of its warning is a
+        counter: it is thrown further and reels longer (a tired, weak shove never is). Returns True
+        for a counter."""
+        countered = not weak and self.state == "windup" and self.timer <= COUNTER_WINDOW
+        if countered:
+            self.reel(from_x, from_y, COUNTER_PUSH, "stagger", COUNTER_STAGGER)
         else:
             self.reel(from_x, from_y, SHOVE_PUSH, "stagger", STAGGER_TIME)
-        return False
+        self.stagger_time = self.timer
+        return countered
 
     def hurt(self, from_x, from_y):
         """A slash on an aware infected: True when it was the last one it could take."""
         self.health -= 1
         if self.health <= 0:
             return True
-        if random.random() < HIT_DOWN_CHANCE:
-            self.reel(from_x, from_y, HIT_PUSH, "down", DOWN_TIME)
-        else:
-            self.reel(from_x, from_y, HIT_PUSH, "flinch", FLINCH_TIME)
+        self.reel(from_x, from_y, HIT_PUSH, "flinch", FLINCH_TIME)
         return False
 
     @property
     def helpless(self):
-        """Reeling, on the ground, open after its swing, or unaware of the hero: one slash ends it."""
-        return self.prone or self.state in ("idle", "alert", "search", "stagger", "down", "recover")
+        """Crawling, reeling, open after its swing, or unaware of the hero: one blow ends it."""
+        return self.prone or self.state in ("idle", "alert", "search", "stagger", "recover")
 
     def sees(self, hero):
         dx, dy = hero.x - self.x, hero.y - self.y
@@ -165,7 +161,7 @@ class Zombie:
         elif self.state in ("search", "alert"):
             self.target, self.memory = (x, y), MEMORY
 
-    def walk_to(self, x, y, dt, speed=ZOMBIE_SPEED):
+    def walk_to(self, x, y, dt):
         dx, dy = x - self.x, y - self.y
         dist = hypot(dx, dy)
         if dist < 1:
@@ -173,7 +169,7 @@ class Zombie:
         self.heading = atan2(dy, dx)
         if abs(dx) > 1:
             self.facing = 1 if dx > 0 else -1
-        step = min(dist, speed * dt)
+        step = min(dist, self.speed * dt)
         move_body(self, dx / dist * step, dy / dist * step)
         self.walk += step / 32
         return dist
@@ -181,12 +177,6 @@ class Zombie:
     def update(self, dt, hero, game):
         self.time += dt
         self.spotted = max(0.0, self.spotted - dt)
-        if self.state == "slump":
-            self.timer -= dt
-            if self.timer <= 0:
-                self.state, self.timer, self.on_ground = "dead", 0.0, True
-                self.death = (0.0, 0.0)
-            return None
         if self.state == "dead":
             self.timer += dt
             move_body(self, self.death[0] * dt, self.death[1] * dt)
@@ -213,8 +203,6 @@ class Zombie:
                 self.seen_time = 0.0
                 if self.state in ("chase", "poised"):
                     self.state = "search"                                # lost sight: go where it was
-        if self.prone:
-            self.crawl_left -= dt
         if self.state == "idle":
             self.turn_in -= dt
             if self.turn_in <= 0:                                        # look around now and then
@@ -230,14 +218,14 @@ class Zombie:
                 self.heading, self.state = self.turn_to, "search"
         elif self.state == "search":
             self.memory -= dt
-            if self.walk_to(*self.target, dt) < 6 or self.memory <= 0:
+            if self.target is None or self.walk_to(*self.target, dt) < 6 or self.memory <= 0:
                 self.state, self.turn_in = "idle", 0.6                   # nothing here: give up
         elif self.state in ("chase", "poised"):
-            if dist <= ZOMBIE_REACH and game.senses and self.seen_time < SEEN_BEFORE_STRIKE:
+            if dist <= self.reach and game.senses and self.seen_time < SEEN_BEFORE_STRIKE:
                 self.state = "poised"            # just spotted: hang back, poised (Zomboid 0.5 s)
                 self.heading = atan2(dy, dx)
                 self.facing = 1 if dx > 0 else -1
-            elif dist <= ZOMBIE_REACH:
+            elif dist <= self.reach:
                 # From outside the hero's sight the warning is short (Zomboid: from the side
                 # and behind they are far more dangerous).
                 blind = game.senses and not game.hero_sees(self)
@@ -247,27 +235,12 @@ class Zombie:
             else:
                 self.state = "chase"
                 self.walk_to(hero.x, hero.y, dt)
-        elif self.state in ("stagger", "flinch", "down"):
+        elif self.state in ("stagger", "flinch"):
             self.timer -= dt
-            if self.state != "down" or self.timer > DOWN_TIME - 0.25:
-                move_body(self, self.push[0] * dt, self.push[1] * dt)
-                self.push = (self.push[0] * 0.88, self.push[1] * 0.88)
-            if self.timer <= 0 and self.state == "down" and not self.rising                     and random.random() < CRAWL_CHANCE:
-                self.state, self.prone = "crawl", True                     # drags itself on
-                self.crawl_left = random.uniform(*CRAWL_TIME)
-            elif self.timer <= 0:
-                self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE   # back up, angry
-                self.rising = False
-        elif self.state == "crawl":
-            if self.crawl_left <= 0:                                       # gets back up
-                self.state, self.timer = "down", RISE_TIME
-                self.prone, self.rising = False, True
-            elif dist <= CRAWL_REACH and not hero.dead:                    # bites at the ankles
-                self.state, self.windup = "windup", ZOMBIE_WINDUP
-                self.timer = self.windup
-                self.heading = atan2(dy, dx)
-            else:
-                self.walk_to(hero.x, hero.y, dt, ZOMBIE_SPEED * CRAWL_SPEED)
+            move_body(self, self.push[0] * dt, self.push[1] * dt)
+            self.push = (self.push[0] * 0.88, self.push[1] * 0.88)
+            if self.timer <= 0:
+                self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE   # back on it, angry
         elif self.state in ("windup", "strike", "recover"):
             self.timer -= dt
             if self.timer <= 0:
@@ -275,12 +248,12 @@ class Zombie:
                     self.state, self.timer = "strike", ZOMBIE_STRIKE
                     # the claw lands where it lunged: out of reach or around its side, it misses
                     off = abs((atan2(dy, dx) - self.heading + pi) % (2 * pi) - pi)
-                    if dist <= (CRAWL_REACH if self.prone else ZOMBIE_REACH) + 8 and off <= ZOMBIE_ARC:
+                    if dist <= self.reach + 8 and off <= ZOMBIE_ARC:
                         event = "hit"
                 elif self.state == "strike":
                     self.state, self.timer = "recover", ZOMBIE_RECOVER
                 else:
-                    self.state = "crawl" if self.prone else "chase"
+                    self.state = "chase"
         return event
 
     show_marks = True        # "!" / "?" over the head
@@ -288,19 +261,20 @@ class Zombie:
 
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
-        if self.state == "slump":
-            self.look.draw("slump", 1 - self.timer / self.slump_time, x, y, self.facing)
-            return
         if self.state == "dead":
             if not self.blink_corpse or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
                 if self.on_ground:                   # already lying there: stays as it lay
                     self.look.draw("down", 1.0, x, y, self.facing)
                 else:
                     self.look.draw("down", min(1.0, self.timer * 2), x, y, 1 if self.death[0] < 0 else -1)
-        elif self.prone:                                     # crawling, or clawing from the ground
-            self.look.draw("crawl", self.time * (1.6 if self.state != "crawl" else 1.0), x, y, self.facing)
+        elif self.prone:                                     # a crawler: drags itself, claws from the ground
+            moving = self.state in ("chase", "search")
+            self.look.draw("crawl", self.time * (1.6 if self.state in ("windup", "strike") else 1.0)
+                           if moving or self.state in ("windup", "strike") else 0.0, x, y, self.facing)
             if self.state == "windup" and self.show_marks:
                 ui.text_center(x, y + 30, "!", (255, 120, 80), 22)
+            elif self.state == "search" and self.show_marks:
+                ui.text_center(x, y + 30, "?", (220, 200, 120), 18)
         elif self.state == "windup":
             self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
             if self.show_marks:
@@ -312,12 +286,8 @@ class Zombie:
         elif self.state == "poised":
             self.look.draw("attack", 0.08, x, y, self.facing)        # arms up, not yet striking
         elif self.state in ("stagger", "flinch"):
-            whole = STAGGER_TIME if self.state == "stagger" else FLINCH_TIME
+            whole = getattr(self, "stagger_time", STAGGER_TIME) if self.state == "stagger" else FLINCH_TIME
             self.look.draw("hurt", 1 - self.timer / whole, x, y, self.facing)
-        elif self.state == "down":                                   # falls, lies, gets up
-            t = DOWN_TIME - self.timer
-            progress = min(1.0, t / (0.35 * TEMPO)) if self.timer > RISE_TIME else self.timer / RISE_TIME
-            self.look.draw("down", progress, x, y, self.facing)
         elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
             if self.state == "search":

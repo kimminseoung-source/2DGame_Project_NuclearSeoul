@@ -34,11 +34,11 @@ SLASH_LUNGE = 34.0              # px travelled along the aim (as before the temp
 SLASH_REACH = 58.0              # px from the hero's chest to the infected's (was 58 + 12 slack)
 SLASH_ARC = 1.1                 # radians either side of the aim (was 1.25)
 SLASH_COOLDOWN = 0.1
-# The downward chop (2026-11-16 "자동 내려찍기로"): a slash aimed at an infected on the ground
-# becomes an overhead chop (swing3 sheet): slower, a short step, the blade lands at its feet.
-CHOP_TIME = 0.42 * TEMPO
-CHOP_HIT = 0.2 * TEMPO
-CHOP_LUNGE = 16.0
+# The stomp (2026-11-16 "기어 다니는 거는 발로 밟는 동작으로", was the overhead chop): a click aimed at
+# a crawling infected becomes a stamp of the foot (stomp sheet: knee up, lean in, foot down).
+STOMP_TIME = 0.45 * TEMPO
+STOMP_HIT = 0.24 * TEMPO
+STOMP_LUNGE = 12.0
 HERO_HP = 100.0                 # health in percent (2026-11-16 "퍼센트로": was 2 hits)
 # Being hit (2026-11-16 "맞았을 때 깜박거리는데 수정 필요"): the hero reels a moment (hurt sheet,
 # no control) instead of blinking, and stays safe from a second blow a shorter while (was 0.8 s).

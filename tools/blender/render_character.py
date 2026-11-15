@@ -32,11 +32,11 @@ PASSES = [
       #미는 것 같다" -> cross punch + Push_Loop for both hands; then "하체는 거의 가만히, 상체만
       #가볍게" -> '~Idle_Loop' keeps hips and legs in Idle_Loop's first pose, render_sprites.get_action)
       "push=Punch_Cross~Idle_Loop@0-14+Push_Loop~Idle_Loop*0.45",
-      # takedown: the quiet kill of an unaware infected (2026-11-16 "기습을 성공하는 건 애니메이션을
-      # 따로, 조용히 죽이는 걸로"): reach out and take hold, then a short stab, feet planted
-      "takedown=Interact@0-14,Punch_Cross~Idle_Loop@2-14"],
+      # (a takedown sheet - take hold, short stab - was tried and dropped 2026-11-16 "기습 성공하는 건 빼죠")
+      # stomp: on a crawling infected (made from the idle pose, tools/blender/made_actions.py)
+      "stomp=Stomp"],
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4",
-      "takedown=4,4"],
+      "stomp=6"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (2026-11-13, the user's pick from the sheets: "back to this one"):
@@ -59,12 +59,11 @@ INFECTED_PASSES = [
      ["idle=4", "walk=12", "attack=8"],
      []),
     (LIB1,
-     # crawl: a downed infected that drags itself on (2026-11-16 "기어서도 오는 요소"); the
-     # front crawl stroke seen from the side reads as pulling along the ground
-     # slump: taken hold of from behind and stabbed, it jerks and sinks down (the takedown's victim)
-     ["hurt=Hit_Chest", "down=Death01", "crawl=Swim_Fwd_Loop", "slump=Hit_Head,Death01"],
-     ["hurt=3", "down=5", "crawl=8", "slump=2,6"],
-     ["--shift-for", "down=16", "slump=16"]),
+     # crawl: an infected that drags itself along (2026-11-16 "기어서도 오는 요소", now a kind of
+     # infected from the start); the front crawl stroke seen from the side reads as pulling along
+     ["hurt=Hit_Chest", "down=Death01", "crawl=Swim_Fwd_Loop"],
+     ["hurt=3", "down=5", "crawl=8"],
+     ["--shift-for", "down=16"]),
 ]
 ACTION_SETS = {"hero": PASSES, "infected": INFECTED_PASSES}
 

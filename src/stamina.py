@@ -8,7 +8,7 @@ out and every blow becomes a choice. The rules are numbers here so any unit can 
 """
 
 MAX = 100.0
-COST = {"slash": 14.0, "chop": 10.0, "shove": 12.0, "roll": 20.0}
+COST = {"slash": 14.0, "stomp": 10.0, "shove": 12.0, "roll": 20.0}
 MISS = 8.0                 # extra for a slash that hits nothing
 REGEN = 30.0               # per second, standing
 REGEN_MOVING = 0.6         # share of it while moving

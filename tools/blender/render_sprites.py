@@ -257,11 +257,53 @@ def channel_fcurves(action):
             for bag in strip.channelbags for fc in bag.fcurves]
 
 
+def made_action(name):
+    """A motion built from a pack pose by turning bones (made_actions.MADE), made once."""
+    from mathutils import Euler, Quaternion
+    from made_actions import MADE
+    spec = MADE[name]
+    base_name, base_frame = spec["from"]
+    base = bpy.data.actions.get(base_name)
+    if base is None:
+        return None
+    made = base.copy()
+    made.name = name
+    curves = {}
+    for fc in channel_fcurves(made):
+        bone = fc.data_path.split('"')[1] if '"' in fc.data_path else ""
+        value = fc.evaluate(base_frame)
+        fc.keyframe_points.clear()
+        fc.keyframe_points.insert(0, value)                  # every channel holds the start pose
+        curves[(bone, fc.data_path.rsplit(".", 1)[-1], fc.array_index)] = (fc, value)
+    for frame, turns in spec["keys"].items():
+        for bone in {b for keys in spec["keys"].values() for b in keys}:
+            q = [curves.get((bone, "rotation_quaternion", i), (None, (1, 0, 0, 0)[i]))[1] for i in range(4)]
+            rot = Quaternion(q)
+            if bone in turns:
+                axis, degrees = turns[bone]
+                angles = [0.0, 0.0, 0.0]
+                angles["XYZ".index(axis)] = math.radians(degrees)
+                rot = rot @ Euler(angles).to_quaternion()
+            for i in range(4):
+                fc = curves.get((bone, "rotation_quaternion", i), (None, None))[0]
+                if fc is not None:
+                    fc.keyframe_points.insert(frame, rot[i])
+    made.use_frame_range = True
+    made.frame_start, made.frame_end = 0, spec["length"]
+    return made
+
+
 def get_action(name):
     """An action by name. 'A~B' is A with the hips and legs held still in B's first pose, so an
-    upper-body move (a light shove) plays while the feet stay planted (2026-11-16)."""
+    upper-body move (a light shove) plays while the feet stay planted (2026-11-16). Names in
+    made_actions.MADE are built from a pack pose (the stomp)."""
     if "~" not in name:
-        return bpy.data.actions.get(name)
+        found = bpy.data.actions.get(name)
+        if found is None:
+            from made_actions import MADE
+            if name in MADE:
+                return made_action(name)
+        return found
     made = bpy.data.actions.get(name)
     if made is not None:
         return made

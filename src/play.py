@@ -22,7 +22,7 @@ from hero import PICKUP_TIME
 from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
 from character_look import SheetLook
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
-from hero import TAKEDOWN_REACH, TAKEDOWN_STAB, TAKEDOWN_TIME, Hero
+from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
@@ -82,7 +82,8 @@ class Game:
 
     def reset(self):
         self.hero = Hero(self.hero_look)
-        self.zombies = [Zombie(self.zombie_look, x, y) for x, y in ZOMBIE_STARTS]
+        self.zombies = [Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
+                        for x, y in ZOMBIE_STARTS]
         self.effects = []
         self.cam = [0.0, 0.0]
         self.hitstop = self.shake = 0.0
@@ -136,8 +137,6 @@ class Game:
         self.sounds.play("slash_hit", 0.7)
         self.effects.append(Blood(zx, zy - 6, ang, 8) if self.real else Spark(zx, zy + 4))
         self.hitstop = max(self.hitstop, 0.04)
-        if z.state == "down":
-            self.message = "넘어뜨렸다! 지금 베면 끝난다"
 
     def right_click(self, sx, sy):
         """Shove: infected right in front reel (or fall) and any attack they wind up is broken off."""
@@ -147,7 +146,7 @@ class Game:
             return
         self.sounds.play("roll", 0.5)
         for z in self.zombies:
-            if not z.alive or z.state == "down" or z.prone:          # nothing to shove on the ground
+            if not z.alive or z.prone:                                # nothing to shove on the ground
                 continue
             diff = (atan2(z.y - hero.y, z.x - hero.x) - hero.shove_angle + pi) % (2 * pi) - pi
             if hypot(z.x - hero.x, z.y - hero.y) <= SHOVE_REACH and abs(diff) <= 0.9:
@@ -155,8 +154,7 @@ class Game:
                 self.sounds.play("slash_hit", 0.6 if countered else 0.35, at=(z.x, z.y))
                 if countered:                                  # timed to its swing: a heavier jolt
                     self.hitstop, self.shake = max(self.hitstop, 0.08), 0.1
-                self.message = ("받아쳐 넘어뜨렸다! 내려찍어라" if countered
-                                else "넘어뜨렸다! 지금 베면 확실하다" if z.state == "down"
+                self.message = ("받아쳤다! 크게 휘청인다 · 지금 베어라" if countered
                                 else "숨이 차서 힘없이 밀었다" if hero.shove_weak else "밀쳐냈다")
         if self.senses:
             self.make_noise(NOISE_STEP)
@@ -173,8 +171,8 @@ class Game:
         return found
 
     def ground_target(self, angle):
-        """True when the nearest infected the slash would reach is on the ground (down or
-        crawling): the slash becomes the overhead chop (2026-11-16 "자동 내려찍기")."""
+        """True when the nearest infected the slash would reach is a crawler: the click becomes
+        a stomp (2026-11-16 "기어 다니는 거는 발로 밟는 동작으로")."""
         hero, best = self.hero, None
         for z in self.zombies:
             if not z.alive:
@@ -183,36 +181,20 @@ class Game:
             diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
             if dist <= SLASH_REACH + SLASH_LUNGE and abs(diff) <= SLASH_ARC and (best is None or dist < best[0]):
                 best = (dist, z)
-        return best is not None and (best[1].state == "down" or best[1].prone)
-
-    def takedown_target(self, angle):
-        """An infected that has not noticed the hero, standing within reach in front: the click
-        becomes the quiet takedown (2026-11-16 "기습을 성공하는 건 애니메이션을 따로")."""
-        hero, best = self.hero, None
-        for z in self.zombies:
-            if not z.alive or z.prone or z.state not in ("idle", "alert", "search"):
-                continue
-            dist = hypot(z.x - hero.x, z.y - hero.y)
-            diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
-            if dist <= TAKEDOWN_REACH and abs(diff) <= SLASH_ARC and (best is None or dist < best[0]):
-                best = (dist, z)
-        return best and best[1]
+        return best is not None and best[1].prone
 
     def click(self, sx, sy):
         self.aim = (sx, sy)
         before = self.hero.slash
         ax, ay = self.mouse_world(sx, sy)
         angle = atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)
-        victim = self.takedown_target(angle)
-        if victim is not None and self.hero.start_takedown(victim):
-            victim.slump(TAKEDOWN_TIME)
-            victim.stabbed = False
-            self.kills += 1
-            self.sounds.play("slash", 0.2)                       # cloth and a breath, nothing more
-            return
-        self.hero.start_slash(ax, ay, chop=self.ground_target(angle))
+        self.hero.start_slash(ax, ay, stomp=self.ground_target(angle))
         if self.hero.slash is not None and self.hero.slash is not before:
-            self.hero.slash["quiet"] = bool(self.unaware_in_reach(self.hero.slash["angle"]))
+            unaware = self.unaware_in_reach(self.hero.slash["angle"])
+            self.hero.slash["quiet"] = bool(unaware)
+            # unaware when the swing began is unaware when it lands: the lunge closing in must not
+            # wake it a moment before the blade arrives
+            self.hero.slash["unaware"] = unaware
             self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
 
     def use(self, kind):
@@ -339,7 +321,7 @@ class Game:
         if not choices:
             return False
         x, y = random.choice(choices)
-        z = Zombie(self.zombie_look, x, y)
+        z = Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
         if self.senses:
             recent = self.loud is not None and self.clock - self.loud[2] <= NOISE_PULL
             target = (self.loud[0], self.loud[1]) if recent else (random.uniform(200, ROOM_W - 200),
@@ -389,18 +371,10 @@ class Game:
         else:
             self.look = 0.0 if hero.facing > 0 else pi
 
-        victim = hero.victim
-        if victim is not None and not victim.stabbed and hero.takedown <= TAKEDOWN_TIME * (1 - TAKEDOWN_STAB):
-            victim.stabbed = True                                # the blade goes in: quiet, a little blood
-            self.message = "들키기 전에 조용히 처리했다"
-            self.sounds.play("slash_hit", 0.35)
-            if self.real:
-                self.effects.append(Blood(victim.x, victim.y + CHEST - 4, atan2(victim.y - hero.y, victim.x - hero.x), 8))
-            self.hitstop = max(self.hitstop, 0.05)
         if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= hero.slash["hit_at"]:
             hero.slash["hit"] = True
             sx, sy = hero.x, hero.y + CHEST
-            if hero.slash["chop"]:                       # the blade comes down at its feet
+            if hero.slash["stomp"]:                      # the foot comes down on it
                 self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
             else:
                 self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
@@ -413,7 +387,8 @@ class Game:
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 dist = hypot(zx - sx, zy - sy)
                 if dist <= BODY_CONTACT or (dist <= SLASH_REACH and abs(diff) <= SLASH_ARC):  # touching: hit
-                    opening = z.state if z.helpless else None   # helpless: one slash is enough
+                    opening = (z.state if z.helpless else "idle" if z in hero.slash.get("unaware", ())
+                               else None)                      # helpless: one slash is enough
                     if opening is None and not z.hurt(hero.x, hero.y):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         continue
@@ -449,7 +424,7 @@ class Game:
         for z in self.zombies:
             state, steps = z.state, int(z.walk)
             event = z.update(world_dt, hero, self)
-            if z.alive and z.state in ("chase", "search", "poised", "crawl"):   # they groan as they come
+            if z.alive and z.state in ("chase", "search", "poised"):   # they groan as they come
                 z.groan_in = getattr(z, "groan_in", random.uniform(0.5, 3.0)) - world_dt
                 if z.groan_in <= 0:
                     self.sounds.play(random.choice(("ai_infected_groan_1", "ai_infected_groan_2")), 0.55,
@@ -458,10 +433,11 @@ class Game:
             if z.state != state:
                 if z.state == "chase" and state in ("idle", "alert", "search"):
                     z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
-                    self.hint("spotted", "들켰다! 우클릭으로 밀치고, 넘어지면 베어라")
+                    if z.prone:
+                        self.hint("crawler", "기어 오는 피폭체 · 다가가 클릭하면 밟는다")
+                    else:
+                        self.hint("spotted", "들켰다! 할퀸 뒤 빈틈을 베거나, 예고 끝에 우클릭으로 받아쳐라")
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
-                elif z.state == "crawl" and state == "down":
-                    self.hint("crawl", "쓰러진 피폭체가 기어 온다 · 한 번 베면 끝난다")
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
                 elif z.state == "alert":
