@@ -22,6 +22,10 @@ class Sounds:
     def __init__(self):
         self.wavs = {}
         self.listener = (0.0, 0.0)
+        try:
+            sdlmixer.Mix_AllocateChannels(32)  # many short effects at once + the ambience loop
+        except Exception:
+            pass
         for path in sorted(SOUNDS.glob("*.wav")):
             try:
                 self.wavs[path.stem] = pico2d.load_wav(str(path))
@@ -41,3 +45,15 @@ class Sounds:
         channel = sdlmixer.Mix_PlayChannel(-1, wav.wav, 0)
         if channel >= 0:
             sdlmixer.Mix_Volume(channel, level)
+
+    def has(self, name):
+        return name in self.wavs
+
+    def loop(self, name, volume=1.0):
+        """Play a background sound over and over (the area's ambience)."""
+        wav = self.wavs.get(name)
+        if wav is None:
+            return
+        channel = sdlmixer.Mix_PlayChannel(-1, wav.wav, -1)
+        if channel >= 0:
+            sdlmixer.Mix_Volume(channel, round(128 * MASTER * min(1.0, volume)))

@@ -185,6 +185,8 @@
 
 - **2026-11-14 · BlenderMCP·Stable Audio Open 설치** — (추천: 설치 없이) → "그래도 설치" → "설치해서 하면 뭐가 더 소모가 되는데", "무슨 차이가 있는데" → "둘 다 설치하고 블렌더는 필요할 때만 쓰면 되는 거 아님?" → BlenderMCP를 Claude Code 사용자 설정(~/.claude.json mcpServers.blender, 백업 ~/.claude/backups)에 추가, 애드온 설치 명령은 자동 모드 검사에 막혀 사용자가 직접 실행. Stable Audio Open은 별도 환경(C:/Users/doboh/ai_tools/stable_audio, PyTorch cu128, 4.4GB, RTX 5060 인식)과 tools/sounds/make_ambient_ai.py 준비, 모델은 사용자의 Hugging Face 로그인·라이선스 동의 뒤.
 
+- **2026-11-15 · 너가 다 해** — "내가 뭘 해 줘야 해" → "너가 다 해", "너가 다 진행하고 내가 해 줘야 하는 거만 알려 주면 좋겠어", "뭘 하고 있는지 앞으로 뭘 할 건지 정도는 나랑 공유해" → Blender 애드온을 Blender 명령줄로 설치·켜고 Blender를 띄워 연결 서버(9876) 확인. Hugging Face 로그인이 필요한 Stable Audio 대신 로그인 없는 AudioLDM2로 바꿔(비상업 라이선스) 모델을 curl로 직접 받고(hub 도구가 두 번 멈춤) 환경음·피폭체 목소리 6개를 만들어 게임에 연결. 사용자에게 남은 일: Claude 세션 다시 시작(Blender 연결).
+
 - **2026-11-13 · 새 방향 1단계: 마우스 방향 한 번 베기** — "1단계 시작." 좌클릭 = 마우스 쪽으로 파고들며 한 번 베기, 반달 궤적, 피폭체 한 방. PRD v4.0.
 
 - **2026-11-13 · 기획 전환: 순수 횡스크롤 + 한 방 전투** — 사이드 대화에서 사용자와 처음부터 다시 정함("흔한 건 싫어", "순수 횡스크롤로 가자", "공격 모션이 Katana Zero와 굉장히 비슷하면 좋겠음"). 메인 세션에서 확인: 그 방향으로 / 좌클릭은 마우스 방향 한 번 베기 / 주인공 2~3번 / 우클릭은 느린 시간에 직접 싸움. PRD v4.0, [새 기획 방향](docs/planning/NEW_DIRECTION_2026-11-13.md).

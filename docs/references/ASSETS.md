@@ -26,3 +26,10 @@
 - Quaternius, Universal Animation Library [Standard], https://quaternius.itch.io/universal-animation-library , CC0 1.0. 대기·걷기·웅크려 걷기·공격·피격·쓰러짐·줍기 동작으로 사용.
 - Quaternius, Universal Animation Library 2 [Standard], https://opengameart.org/content/universal-animation-library-2 , CC0 1.0. 휘두르기(나무 베기 동작) 등으로 사용.
 - 이 3D 원본을 Blender로 렌더해 만든 스프라이트 시트는 `assets/characters/` 아래에 있다. 원본 목록과 받는 방법은 `assets/source3d/README.md`.
+
+## 소리 (2026-11-14~15)
+
+| 파일 | 만든 방법 | 출처·라이선스 |
+|---|---|---|
+| `assets/sounds/*.wav` (ai_로 시작하지 않는 13개) | `tools/sounds/make_sfx.py`로 직접 합성(sfxr 방식) | 우리 것 |
+| `assets/sounds/ai_*.wav` (바람, 먼 사이렌, 지하철 터널, 피폭체 신음 2, 비명) | `tools/sounds/make_ambient_ai.py`로 로컬 AI 모델 생성 후 `finish_ai_sounds.py`로 음량·이음매 정리 | 모델 [AudioLDM2 (cvssp/audioldm2)](https://huggingface.co/cvssp/audioldm2), Haohe Liu 외, **CC BY-NC-SA 4.0**(비상업, 출처 표기, 동일 조건). 학교 과제(비상업)로만 사용 |

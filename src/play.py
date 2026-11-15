@@ -44,6 +44,7 @@ class Game:
         self.senses = True                  # F2: infected senses on/off (compare)
         self.look = 0.0
         self.sounds = Sounds()
+        self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
         random.seed(4)
         self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
                        for _ in range(70)]
@@ -66,6 +67,7 @@ class Game:
         self.loud = None             # (x, y, time) of the last slash or roll
         self.was_slow = False
         self.hero_steps = 0
+        self.siren_in = random.uniform(15, 30)
 
     def mouse_world(self, sx, sy):
         return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
@@ -186,8 +188,16 @@ class Game:
         for z in self.zombies:
             state, steps = z.state, int(z.walk)
             event = z.update(world_dt, hero, self)
+            if z.alive and z.state in ("chase", "search", "poised"):   # they groan as they come
+                z.groan_in = getattr(z, "groan_in", random.uniform(0.5, 3.0)) - world_dt
+                if z.groan_in <= 0:
+                    self.sounds.play(random.choice(("ai_infected_groan_1", "ai_infected_groan_2")), 0.55,
+                                     at=(z.x, z.y))
+                    z.groan_in = random.uniform(3.0, 7.0)
             if z.state != state:
-                if z.state == "windup":
+                if z.state == "chase" and state in ("idle", "alert", "search"):
+                    self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))   # it spotted the hero
+                elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
                 elif z.state == "alert":
                     self.sounds.play("alert", 0.8, at=(z.x, z.y))
@@ -214,6 +224,10 @@ class Game:
         if hero.dead > 0.9:
             self.reset()
             return
+        self.siren_in -= real_dt
+        if self.siren_in <= 0:                             # a siren far away now and then
+            self.sounds.play("ai_siren_far", 0.25)
+            self.siren_in = random.uniform(30, 50)
         if self.to_spawn > 0 and not hero.dead:
             self.spawn_in -= world_dt
             if self.spawn_in <= 0 and sum(z.alive for z in self.zombies) < MAX_ALIVE:
