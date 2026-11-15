@@ -14,6 +14,7 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
+import bag_screen
 import hud
 import ui
 from hero import PICKUP_TIME
@@ -60,7 +61,7 @@ class Game:
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
         infected.Zombie.blink_corpse = not self.real
         self.bag_open = False               # Tab: the bag (inventory)
-        self.bag_cursor = 0
+        bag_screen.reset(self)
         self.look = 0.0
         self.sounds = Sounds()
         # Rendered in Blender (tools/blender/render_area.py): the ground, and a picture per wreck.
@@ -97,7 +98,7 @@ class Game:
         self.death_cause, self.death_time = "", 0.0
         self.stains = []             # blood on the ground (realistic look)
         self.bag_open = False
-        self.bag_cursor = 0
+        bag_screen.reset(self)
         self.message_at = 0.0
         self.bag = {kind: 0 for kind in KINDS}
         self.kills = 0
@@ -172,43 +173,15 @@ class Game:
         elif kind == "bandage":
             self.message = "다친 곳이 없다"
 
-    def bag_key(self, key):
-        items = hud.bag_items(self)
-        cols = hud.BAG_COLS                                # a grid again (the reference picture)
-        moves = {sdl2.SDLK_LEFT: -1, sdl2.SDLK_RIGHT: 1, sdl2.SDLK_UP: -cols, sdl2.SDLK_DOWN: cols,
-                 sdl2.SDLK_a: -1, sdl2.SDLK_d: 1, sdl2.SDLK_w: -cols, sdl2.SDLK_s: cols}
-        if key in (sdl2.SDLK_TAB, sdl2.SDLK_ESCAPE):
-            self.bag_open = False
-        elif key in moves:
-            self.bag_cursor = (self.bag_cursor + moves[key]) % (hud.BAG_COLS * hud.BAG_ROWS)
-        elif key == sdl2.SDLK_f:                                         # take all nearby
-            taken = 0
-            for item in hud.nearby_items(self):
-                if supply_rules.bag_weight(self.bag) + supply_rules.weight_of(item.kind) > supply_rules.BAG_CAPACITY + 1e-6:
-                    break
-                item.taken = True
-                self.bag[item.kind] += 1
-                taken += 1
-            self.message = f"물건 {taken}개를 챙겼다" if taken else "더 챙길 수 없다"
-            if taken:
-                self.sounds.play("pickup", 0.8)
-                if self.senses:
-                    self.make_noise(supply_rules.PICK_NOISE)
-        elif key in (sdl2.SDLK_RETURN, sdl2.SDLK_KP_ENTER) and self.bag_cursor < len(items):
-            self.use(items[self.bag_cursor][0])
-        elif key == sdl2.SDLK_x and self.bag_cursor < len(items):        # drop one at the hero's feet
-            kind = items[self.bag_cursor][0]
-            self.bag[kind] -= 1
-            self.supplies.append(Supply(self.hero.x + 10, self.hero.y - 4, kind))
-            self.message = f"{supply_rules.with_object_particle(KINDS[kind][0])} 내려놓았다"
-            self.bag_cursor = min(self.bag_cursor, max(0, len(hud.bag_items(self)) - 1))
-
     def key_down(self, key, keys):
         if self.bag_open:                                  # the bag takes the keys while it is open
-            self.bag_key(key)
+            shift = keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT]
+            bag_screen.key(self, key, bool(shift))
             return
         if key == sdl2.SDLK_TAB and not self.left and not self.hero.dead:
             self.bag_open = True
+            self.bag_drag = None
+            self.bag_note_from = self.message              # only what happens in the bag is shown there
             self.slow = False
             return
         if key == sdl2.SDLK_SPACE:
@@ -563,9 +536,10 @@ class Game:
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
         canvas.canvas_height = HEIGHT
         sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
-        hud.draw_hud(self)
-        if self.bag_open:
+        if self.bag_open:                                  # the bag screen replaces the HUD
             hud.draw_inventory(self)
+        else:
+            hud.draw_hud(self)
         if self.left:
             hud.draw_summary(self)
         if self.hero.dead > 0.4:

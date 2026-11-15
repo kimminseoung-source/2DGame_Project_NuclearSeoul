@@ -4,9 +4,9 @@
 - bottom middle: quick slots (bag contents with their keys)
 - top left: the goal and how many infected are left
 - above the slots: the latest message, fading away
-- Tab: the inventory (2026-11-15, after the user's reference picture): the bag as a grid of
-  item tiles with a weight bar, the body with its wounds and the gear in hand, and the items
-  lying nearby with "take all"
+- Tab: the bag laid out on a ground sheet (2026-11-16, bag B v4): things take as many 0.1
+  cells as they weigh, a 20-segment weight bar, the ground nearby on the same grid, the body
+  with its wounds and the gear in hand. Pixel canvas + Galmuri (pixel_ui), not smooth shapes
 - the area summary once the hero has left
 
 Everything scales with the window (settings.UI_SCALE). Item icons are drawn here from simple
@@ -15,6 +15,8 @@ shapes so any new supply kind only needs an entry in supplies.KINDS.
 
 import pico2d
 
+import bag_grid
+import pixel_ui as px
 import ui
 from area import EXIT_NAME
 from settings import EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
@@ -26,7 +28,6 @@ EDGE = (70, 74, 80)
 TEXT = (226, 222, 210)
 DIM = (150, 150, 150)
 MESSAGE_TIME = 4.0
-BAG_COLS, BAG_ROWS = 5, 3      # the bag grid
 
 
 def size(px):
@@ -130,50 +131,20 @@ def draw_status(game):
         x += tile * 1.45 + size(3)
 
 
-def weight_bar(l, b, w, used, cap):
-    pico2d.draw_rectangle(l, b, l + w, b + size(10), 30, 32, 36, filled=True)
-    share = min(1.0, used / cap)
-    colour = (120, 170, 110) if share < 0.75 else (200, 170, 80) if share < 1.0 else (190, 70, 60)
-    pico2d.draw_rectangle(l, b, l + w * share, b + size(10), *colour, filled=True)
-    ui.text(l + w + size(8), b + size(5), f"{used:.1f} / {cap:.1f}", TEXT, size(12))
-
-
-def draw_gear_icon(kind, x, y, s):
-    """Gear in hand: the machete, the bag."""
-    if kind == "machete":
-        pico2d.draw_rectangle(x - s * 0.9, y - s * 0.12, x + s * 0.45, y + s * 0.12, 190, 196, 200, filled=True)
-        pico2d.draw_rectangle(x + s * 0.45, y - s * 0.1, x + s * 0.9, y + s * 0.1, 80, 52, 34, filled=True)
-    else:
-        pico2d.draw_rectangle(x - s * 0.6, y - s * 0.7, x + s * 0.6, y + s * 0.5, 96, 84, 62, filled=True)
-        pico2d.draw_rectangle(x - s * 0.35, y + s * 0.5, x + s * 0.35, y + s * 0.75, 70, 60, 44, filled=True)
-
-
-def tile(l, t, size_px, selected=False):
-    panel(l, t - size_px, l + size_px, t, 255)
-    if selected:
-        pico2d.draw_rectangle(l - 2, t - size_px - 2, l + size_px + 2, t + 2, 220, 190, 110)
-
-
-def draw_body(cx, base, height, injuries):
-    """A plain standing figure; each wound a dark red mark at a fixed spot by its kind."""
-    u = height / 100
-    grey = (150, 150, 152)
-    pico2d.draw_circle(cx, base + 90 * u, round(9 * u), *grey, filled=True)                 # head
-    pico2d.draw_rectangle(cx - 13 * u, base + 46 * u, cx + 13 * u, base + 80 * u, *grey, filled=True)   # body
-    for sx in (-1, 1):
-        pico2d.draw_rectangle(cx + sx * 14 * u - 4 * u, base + 44 * u, cx + sx * 14 * u + 4 * u, base + 78 * u,
-                              *grey, filled=True)                                           # arms
-        pico2d.draw_rectangle(cx + sx * 6 * u - 5 * u, base, cx + sx * 6 * u + 5 * u, base + 46 * u,
-                              *grey, filled=True)                                           # legs
-    spots = {"scratch": [(-14, 62), (8, 30), (14, 70)], "laceration": [(-4, 64), (-6, 20)], "bite": [(14, 58), (0, 86)]}
-    used = {}
-    for wound in injuries:
-        k = used.get(wound["kind"], 0)
-        used[wound["kind"]] = k + 1
-        dx, dy = spots[wound["kind"]][k % len(spots[wound["kind"]])]
-        colour = (150, 20, 20) if wound.get("bleed", 0) > 0 else (90, 40, 40)
-        pico2d.draw_rectangle(cx + dx * u - 3 * u, base + dy * u - 3 * u, cx + dx * u + 3 * u, base + dy * u + 3 * u,
-                              *colour, filled=True)
+# ---- Tab: the bag laid out on a ground sheet (2026-11-16, bag B v4, "이대로 구현") --------------
+# Drawn on the 640x360 pixel canvas (pixel_ui) like docs/planning/ui_redesign/v4_bag_b_grid.png;
+# the fixed art is exported by tools/ui/build_bag_art.py. Where things lie: bag_grid.
+CELL = 34                                 # canvas px of one 0.1 cell
+SHEET_GRID = (212, 96)                    # top-left of the sheet's grid
+SHEET_MARGIN = 12
+NEAR_ORIGIN = (SHEET_GRID[0] + bag_grid.BAG_GRID[0] * CELL + SHEET_MARGIN + 26, SHEET_GRID[1])
+LIGHT, INK_C, GREY_C = (222, 216, 198), (34, 30, 28), (122, 122, 118)
+ROAD, BLOOD, ORANGE = (196, 170, 92), (168, 34, 30), (214, 128, 52)
+FOOT_BAG, FOOT_BAG_CHOSEN, FOOT_BAG_EDGE = (74, 80, 58), (108, 114, 86), (50, 54, 38)
+FOOT_NEAR, FOOT_NEAR_CHOSEN, FOOT_NEAR_EDGE = (40, 42, 46), (62, 64, 68), (70, 72, 76)
+# a wound's mark on the body outline (canvas px from its top-left), by kind
+WOUND_SPOTS = {"scratch": [(3, 28), (36, 46), (14, 70)], "laceration": [(26, 30), (10, 80)],
+               "bite": [(37, 38), (20, 8)]}
 
 
 def nearby_items(game):
@@ -182,70 +153,151 @@ def nearby_items(game):
             and (s.x - game.hero.x) ** 2 + (s.y - game.hero.y) ** 2 <= (PICK_RANGE * 2.5) ** 2]
 
 
-def draw_inventory(game):
-    """Inventory after the user's reference: bag grid + weight | body, wounds, gear | nearby."""
-    pico2d.draw_rectangle(0, 0, WIDTH, HEIGHT, 0, 0, 0, 120, filled=True)
-    top, bottom = HEIGHT - size(70), size(110)
-    cols, rows = BAG_COLS, BAG_ROWS
-    cell, gap = size(42), size(6)
-    # ---- bag (left)
-    bl = size(40)
-    bw = cols * (cell + gap) + size(24)
-    panel(bl, bottom, bl + bw, top, 235)
-    ui.text(bl + size(12), top - size(18), "배낭", TEXT, size(15))
-    weight_bar(bl + size(54), top - size(23), size(110), bag_weight(game.bag), BAG_CAPACITY)
-    items = bag_items(game)
-    gx, gy = bl + size(12), top - size(44)
-    for i in range(cols * rows):
-        c, r = i % cols, i // cols
-        tl, tt = gx + c * (cell + gap), gy - r * (cell + gap)
-        tile(tl, tt, cell, i == game.bag_cursor)
-        if i < len(items):
-            kind, n = items[i]
-            draw_icon(kind, tl + cell / 2, tt - cell / 2, cell * 0.3)
-            ui.text(tl + cell - size(16), tt - cell + size(10), str(n), TEXT, size(11))
-    # selected item, under the grid
-    dy = gy - rows * (cell + gap) - size(8)
-    if game.bag_cursor < len(items):
-        kind, n = items[game.bag_cursor]
-        ui.text(bl + size(12), dy, f"{KINDS[kind][0]} ×{n} · 하나 {weight_of(kind):.1f}", TEXT, size(13))
-        ui.text(bl + size(12), dy - size(20), KINDS[kind][3].replace("\n", " "), DIM, size(11))
-    ui.text(bl + size(12), bottom + size(14), "방향키/WASD 선택 · Enter 사용 · X 버리기", DIM, size(10))
-    # ---- body and gear (middle)
-    ml = bl + bw + size(14)
-    mw = size(210)
-    panel(ml, bottom, ml + mw, top, 235)
-    ui.text(ml + size(12), top - size(18), "몸", TEXT, size(15))
-    draw_body(ml + size(55), bottom + size(50), size(150), game.condition.injuries)
-    sx = ml + size(110)
-    ui.text(sx, top - size(52), f"체력 {max(0, round(100 * game.hero.hp / HERO_HP))}%", TEXT, size(12))
+def bag_layout(game):
+    """{"bag": placed, "near": placed, "near_left": count} - placed as bag_grid.pack gives."""
+    shown = (lambda kind: EXPOSURE_ON or kind != "pill")
+    bag, _ = bag_grid.pack(bag_grid.bag_things(game.bag, shown), bag_grid.BAG_GRID)
+    near, left = bag_grid.pack([(s.kind, s) for s in nearby_items(game)], bag_grid.NEAR_GRID)
+    return {"bag": bag, "near": near, "near_left": len(left)}
+
+
+def grid_origin(side):
+    return SHEET_GRID if side == "bag" else NEAR_ORIGIN
+
+
+def cell_at(cx, cy):
+    """(side, col, row) under a canvas point, or None."""
+    for side, (cols, rows) in (("bag", bag_grid.BAG_GRID), ("near", bag_grid.NEAR_GRID)):
+        gx, gy = grid_origin(side)
+        if cx < gx or cy < gy:
+            continue
+        col, row = int((cx - gx) // CELL), int((cy - gy) // CELL)
+        if col < cols and row < rows:
+            return side, col, row
+    return None
+
+
+def chosen(game, layout=None):
+    layout = layout or bag_layout(game)
+    return bag_grid.at(layout[game.bag_side], *game.bag_cell)
+
+
+def fits(game, kind):
+    return bag_weight(game.bag) + weight_of(kind) <= BAG_CAPACITY + 1e-6
+
+
+def corners(l, t, r, b, colour):
+    """The chosen cell: four square corner marks, not a rounded highlight or a side stripe."""
+    for (cx, cy, sx, sy) in ((l, t, 1, 1), (r, t, -1, 1), (l, b, 1, -1), (r, b, -1, -1)):
+        px.rect(min(cx, cx + 5 * sx), cy, max(cx, cx + 5 * sx), cy, colour)
+        px.rect(cx, min(cy, cy + 5 * sy), cx, max(cy, cy + 5 * sy), colour)
+
+
+def draw_things(game, side, placed, pick):
+    gx, gy = grid_origin(side)
+    fill, fill_chosen, edge = ((FOOT_BAG, FOOT_BAG_CHOSEN, FOOT_BAG_EDGE) if side == "bag"
+                               else (FOOT_NEAR, FOOT_NEAR_CHOSEN, FOOT_NEAR_EDGE))
+    for p in placed:
+        kind, ref, c, r, w, h = p
+        if game.bag_drag is not None and game.bag_drag[1] == p:
+            continue                                                  # it is in the hand
+        l, t = gx + c * CELL, gy + r * CELL
+        rr, bb = l + w * CELL, t + h * CELL
+        px.rect(l + 2, t + 2, rr - 2, bb - 2, fill_chosen if p == pick else fill)
+        px.frame(l + 2, t + 2, rr - 2, bb - 2, edge)
+        px.blit(f"bag/big_{kind}.png", l + (w * CELL - 32) // 2, t + (h * CELL - 32) // 2)
+        if p == pick:
+            heavy = side == "near" and not fits(game, kind)          # it would not fit: red corners
+            corners(l, t, rr, bb, BLOOD if heavy else ROAD)
+    if pick is None and game.bag_side == side:                         # an empty cell is chosen
+        c, r = game.bag_cell
+        corners(gx + c * CELL, gy + r * CELL, gx + (c + 1) * CELL, gy + (r + 1) * CELL, GREY_C)
+
+
+def draw_body_column(game):
+    l, t = 22, 42
+    hp = max(0, round(100 * game.hero.hp / HERO_HP))
+    px.text(l, t, "몸", LIGHT, bold=True)
+    px.text(l + 112, t, f"{hp}%", BLOOD if hp < 60 else LIGHT, bold=True, anchor="r")
+    bx, by = l + 10, t + 26
+    px.blit("bag/body.png", bx, by)
+    used = {}
+    for wound in game.condition.injuries:
+        k = used.get(wound["kind"], 0)
+        used[wound["kind"]] = k + 1
+        sx, sy = WOUND_SPOTS[wound["kind"]][k % len(WOUND_SPOTS[wound["kind"]])]
+        colour = BLOOD if wound["bleed"] > 0 else (92, 40, 40)
+        px.rect(bx + sx - 2, by + sy - 2, bx + sx + 2, by + sy + 2, colour)
     wounds = game.condition.injuries
-    for k, wound in enumerate(wounds[:3]):
-        state = "출혈" if wound["bleed"] > 0 else ("치료됨" if wound.get("dressed") else "")
-        ui.text(sx, top - size(126) - k * size(20), f"{wound['name']} {state}", (200, 120, 110), size(11))
+    for k, wound in enumerate(wounds[:4]):
+        y = t + 40 + k * 30
+        px.text(l + 62, y, wound["name"], LIGHT)
+        state = "피가 난다" if wound["bleed"] > 0 else "감았다" if wound.get("dressed") else ""
+        px.text(l + 62, y + 14, state, BLOOD if wound["bleed"] > 0 else GREY_C)
     if not wounds:
-        ui.text(sx, top - size(126), "부상 없음", DIM, size(11))
-    for k, (label, gear) in enumerate((("손", "machete"), ("등", "bag"))):
-        tl, tt = ml + size(110) + k * size(50), bottom + size(62)
-        tile(tl, tt, size(44))
-        draw_gear_icon(gear, tl + size(22), tt - size(22), size(16))
-        ui.text_center(tl + size(22), tt + size(9), label, DIM, size(10))
-    # ---- nearby (right)
-    rl = ml + mw + size(14)
-    rw = WIDTH - size(40) - rl
-    panel(rl, bottom, rl + rw, top, 235)
-    ui.text(rl + size(12), top - size(18), "근처 물건", TEXT, size(15))
-    near = nearby_items(game)
-    ncols = max(1, int((rw - size(24)) // (cell + gap)))
-    for i, item in enumerate(near[:ncols * 4]):
-        c, r = i % ncols, i // ncols
-        tl, tt = rl + size(12) + c * (cell + gap), top - size(44) - r * (cell + gap)
-        tile(tl, tt, cell)
-        draw_icon(item.kind, tl + cell / 2, tt - cell / 2, cell * 0.3)
-        ui.text_center(tl + cell / 2, tt - cell + size(9), item.name, DIM, size(9))
-    if not near:
-        ui.text(rl + size(12), top - size(50), "주변에 주울 것이 없다", DIM, size(12))
-    ui.text(rl + size(12), bottom + size(14), "F 모두 수집 · Tab 닫기", (236, 214, 150), size(11))
+        px.text(l + 62, t + 40, "다친 곳 없음", GREY_C)
+    px.text(l, t + 146, "손", GREY_C)
+    px.blit("bag/icon_machete.png", l + 18, t + 143)
+    px.text(l + 44, t + 146, "마체테", LIGHT)
+
+
+def draw_weight_bar(x, y, used):
+    """20 segments of 0.1; orange past 1.6, red past the limit (Zomboid's heavy load)."""
+    colour = BLOOD if used > BAG_CAPACITY + 1e-6 else ORANGE if used > 1.6 + 1e-6 else ROAD
+    for i in range(round(BAG_CAPACITY / bag_grid.CELL_WEIGHT)):
+        sx = x + i * 9
+        px.rect(sx, y, sx + 7, y + 5, INK_C)
+        px.rect(sx + 1, y + 1, sx + 6, y + 4, colour if i < round(used * 10 + 1e-6) else (40, 40, 38))
+
+
+def draw_inventory(game):
+    """The bag laid out on a ground sheet, the ground beside it, the body, the keys."""
+    layout = bag_layout(game)
+    pick = bag_grid.at(layout[game.bag_side], *game.bag_cell)
+    px.blit("bag/dither.png", 0, 0)
+    draw_body_column(game)
+    gx, gy = SHEET_GRID
+    sl, st = gx - SHEET_MARGIN, gy - SHEET_MARGIN
+    sr = gx + bag_grid.BAG_GRID[0] * CELL + SHEET_MARGIN
+    sb = gy + bag_grid.BAG_GRID[1] * CELL + SHEET_MARGIN
+    used = bag_weight(game.bag)
+    px.blit("bag/icon_backpack.png", sl, st - 30)
+    px.text(sl + 20, st - 27, "배낭", LIGHT, bold=True)
+    px.text(sr, st - 27, f"{used:.1f} / {BAG_CAPACITY:.1f}", LIGHT, anchor="r")
+    px.blit("bag/sheet.png", sl, st)
+    draw_things(game, "bag", layout["bag"], pick if game.bag_side == "bag" else None)
+    draw_weight_bar(sl + 8, sb + 6, used)
+    nx, ny = NEAR_ORIGIN
+    px.text(nx, ny - 39, "근처", LIGHT, bold=True)
+    px.text(nx, ny - 23, "< 바닥 >", GREY_C)
+    px.blit("bag/ground.png", nx - 4, ny - 4)
+    draw_things(game, "near", layout["near"], pick if game.bag_side == "near" else None)
+    if not layout["near"]:
+        px.text(nx + bag_grid.NEAR_GRID[0] * CELL // 2, ny + CELL - 6, "주울 것 없음", GREY_C, anchor="m")
+    if layout["near_left"]:
+        px.text(nx, ny + bag_grid.NEAR_GRID[1] * CELL + 8, f"그 밖에 {layout['near_left']}개", GREY_C)
+    # what just happened in the bag, the chosen thing and the keys
+    y = px.CH - 56
+    if game.message and game.message != game.bag_note_from:
+        px.text(150, y - 20, game.message, (236, 214, 150))
+    if pick is not None:
+        kind = pick[0]
+        name = KINDS[kind][0]
+        px.text(150, y, name, ROAD, bold=True)
+        px.text(150 + px.width(name, True) + 8, y, KINDS[kind][3], LIGHT)
+        px.text(px.CW - 22, y, f"칸 {pick[4] * pick[5]} · {weight_of(kind):.1f}", GREY_C, anchor="r")
+    else:
+        px.text(150, y, "빈 칸", GREY_C)
+    rows = ((("Enter", "쓰기" if game.bag_side == "bag" else "줍기"), ("X", "내려놓기"),
+             ("F", "같은 것 줍기"), ("Shift+F", "모두 줍기")),
+            (("WASD", "고르기 (D: 근처로)"), ("끌어 놓기", "옮기기"), ("Tab", "닫기")))
+    for row, keys in enumerate(rows):
+        kx = 150
+        for key, label in keys:
+            kx = px.key_cap(kx, y + 16 + row * 16, key, label, LIGHT, INK_C, LIGHT)
+    if game.bag_drag is not None:                                      # carried by the mouse
+        mx, my = game.bag_mouse
+        px.blit(f"bag/big_{game.bag_drag[1][0]}.png", round(mx) - 16, round(my) - 16)
 
 
 def draw_death(game):

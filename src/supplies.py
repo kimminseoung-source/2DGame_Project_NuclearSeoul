@@ -1,7 +1,7 @@
 """Supplies on the ground and the bag (1차 발표 단계 01 "탐색 기반": find supplies, reach the exit).
 
 E picks up the nearest supply within reach - rummaging makes a little noise the infected can
-hear. 1 uses a bandage (+1 health), 2 a suppressant (exposure -30). Cans are carried for the
+hear. 1 uses a bandage (stops the worst bleeding, +15% health), 2 a suppressant (exposure -30). Cans are carried for the
 journey (stage 03). Each kind is just data here, so new supplies need only a new entry.
 """
 
@@ -14,9 +14,9 @@ PICK_NOISE = 100           # px the rummaging carries
 
 KINDS = {
     # kind: (name, body colour, band colour, description shown in the bag, weight)
-    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "상처를 감는다.\n체력 +1", 0.1),
-    "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200), "피폭을 늦춘다.\n피폭 -30", 0.1),
-    "can": ("통조림", (150, 150, 158), (190, 120, 60), "오래 버티는 식량.\n다음 구역 여정에 쓴다.", 0.4),
+    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "가장 심한 상처의 피를 멈추고 체력 +15%", 0.1),
+    "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200), "피폭을 늦춘다. 피폭 -30", 0.1),
+    "can": ("통조림", (150, 150, 158), (190, 120, 60), "오래 버티는 식량. 다음 구역 여정에 쓴다", 0.4),
 }
 BAG_CAPACITY = 2.0          # the bag holds this much weight (Zomboid: weight, not slots)
 
@@ -50,11 +50,19 @@ class Supply:
             ui.text_center(x, y - 12, f"E {self.name}", (240, 230, 190), 12)   # under it, clear of the body
 
 
+def has_final_consonant(word):
+    last = word[-1]
+    return "가" <= last <= "힣" and (ord(last) - ord("가")) % 28 != 0
+
+
 def with_object_particle(word):
     """'붕대를', '통조림을': 을 after a final consonant, 를 otherwise."""
-    last = word[-1]
-    has_final = "가" <= last <= "힣" and (ord(last) - ord("가")) % 28 != 0
-    return word + ("을" if has_final else "를")
+    return word + ("을" if has_final_consonant(word) else "를")
+
+
+def with_subject_particle(word):
+    """'붕대가', '통조림이'."""
+    return word + ("이" if has_final_consonant(word) else "가")
 
 
 def nearest(supplies, x, y):

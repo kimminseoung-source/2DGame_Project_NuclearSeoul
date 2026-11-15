@@ -14,9 +14,20 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
+import bag_screen
 import ui
 from play import Game
 from settings import EXPOSURE_ON, HEIGHT, WIDTH
+
+
+def bag_mouse(game, event):
+    """Hover chooses, a left drag moves a thing between the sheet and the ground, right = use."""
+    if event.type == sdl2.SDL_MOUSEMOTION:
+        bag_screen.mouse_move(game, event.x, event.y)
+    elif event.type == sdl2.SDL_MOUSEBUTTONDOWN:
+        bag_screen.mouse_down(game, event.x, event.y, "right" if event.button == sdl2.SDL_BUTTON_RIGHT else "left")
+    elif event.button == sdl2.SDL_BUTTON_LEFT:
+        bag_screen.mouse_up(game, event.x, event.y)
 
 
 def main(window_x=None):
@@ -44,6 +55,9 @@ def main(window_x=None):
                     running = False
             elif event.type == sdl2.SDL_KEYDOWN:
                 game.key_down(event.key, keys)
+            elif game.bag_open and event.type in (sdl2.SDL_MOUSEMOTION, sdl2.SDL_MOUSEBUTTONDOWN,
+                                                  sdl2.SDL_MOUSEBUTTONUP):
+                bag_mouse(game, event)               # the bag takes the mouse while it is open
             elif event.type == sdl2.SDL_MOUSEMOTION:
                 game.aim = (event.x, event.y)
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
