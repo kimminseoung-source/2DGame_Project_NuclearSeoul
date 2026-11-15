@@ -280,10 +280,11 @@ def made_action(name):
             q = [curves.get((bone, "rotation_quaternion", i), (None, (1, 0, 0, 0)[i]))[1] for i in range(4)]
             rot = Quaternion(q)
             if bone in turns:
-                axis, degrees = turns[bone]
-                angles = [0.0, 0.0, 0.0]
-                angles["XYZ".index(axis)] = math.radians(degrees)
-                rot = rot @ Euler(angles).to_quaternion()
+                turn = turns[bone]
+                for axis, degrees in ([turn] if isinstance(turn[0], str) else turn):   # one turn or several
+                    angles = [0.0, 0.0, 0.0]
+                    angles["XYZ".index(axis)] = math.radians(degrees)
+                    rot = rot @ Euler(angles).to_quaternion()
             for i in range(4):
                 fc = curves.get((bone, "rotation_quaternion", i), (None, None))[0]
                 if fc is not None:
