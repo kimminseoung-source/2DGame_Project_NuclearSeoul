@@ -58,18 +58,20 @@ def ray_hit(x, y, ux, uy, blockers):
     return exit_at
 
 
-def alpha_at(dx, dy, look):
-    """Darkness 0..FOG at offset (dx, dy) from the eye when looking toward angle `look`."""
+def alpha_at(dx, dy, look, scale=1.0):
+    """Darkness 0..FOG at offset (dx, dy) from the eye when looking toward angle `look`;
+    `scale` < 1 narrows and shortens the cone (panic)."""
     r = hypot(dx, dy)
     near = _ramp((r - NEAR_CLEAR) / NEAR_SOFT)
     off = abs((atan2(dy, dx) - look + pi) % (2 * pi) - pi)
-    cone = max(_ramp((off - CONE_HALF) / CONE_SOFT), _ramp((r - CONE_RANGE) / RANGE_SOFT))
+    cone = max(_ramp((off - CONE_HALF * scale) / CONE_SOFT), _ramp((r - CONE_RANGE * scale) / RANGE_SOFT))
     return FOG * min(near, cone)
 
 
 class VisionCone:
     def __init__(self, blockers=()):
         self.blockers = list(blockers)
+        self.scale = 1.0                 # < 1 while panicking: a narrower, shorter cone
         n, m = STEPS, len(RADII) + 2
         self.spoke = m
         self.count = n * m
@@ -86,7 +88,7 @@ class VisionCone:
     def darkness(self, eye, look, x, y):
         dx, dy = x - eye[0], y - eye[1]
         r = hypot(dx, dy)
-        dark = alpha_at(dx, dy, look)
+        dark = alpha_at(dx, dy, look, self.scale)
         if r > 0 and self.blockers:
             hit = ray_hit(eye[0], eye[1], dx / r, dy / r, self.blockers)
             if r > hit:
@@ -113,7 +115,7 @@ class VisionCone:
                 v.position.x = ox + dx
                 v.position.y = view_h - 1 - (oy + dy)
                 v.color.r, v.color.g, v.color.b = 6, 8, 12
-                dark = alpha_at(dx, dy, look)
+                dark = alpha_at(dx, dy, look, self.scale)
                 if radius > hit:
                     dark = max(dark, FOG * _ramp((radius - hit) / SHADOW_SOFT))
                 v.color.a = round(dark)

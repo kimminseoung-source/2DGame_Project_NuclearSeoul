@@ -39,9 +39,11 @@ SPAWN_EVERY = (6.0, 9.0)     # s between arrivals
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
+SHOVE_REACH = 46             # px a shove reaches
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
+DEATH_SUMMARY = 2.2          # s the short "how you died" card shows before the area restarts
 HUD_PAD = 40                 # world px the HUD bar covers at the top of the screen
 HUD_H = round(52 * UI_SCALE)  # screen px of the HUD bar
 MESSAGE_TIME = 4.0           # s a message stays (realistic look: messages fade instead of staying)
@@ -58,6 +60,7 @@ class Game:
         self.aim = (None, None)
         self.deaths = 0
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
+        self.hints_shown = set()            # first-time hints, once per play session
         self.senses = True                  # F2: infected senses on/off (compare)
         self.real = True                    # F3: realistic look on/off (compare)
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
@@ -97,7 +100,7 @@ class Game:
         self.siren_in = random.uniform(15, 30)
         self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES if EXPOSURE_ON or kind != "pill"]
         self.condition = Condition()         # tension, wounds (status icons)
-        self.beat_in = 0.0
+        self.death_cause, self.death_time = "", 0.0
         self.stains = []             # blood on the ground (realistic look)
         self.bag_open = False
         self.bag_cursor = 0
@@ -109,12 +112,30 @@ class Game:
     def mouse_world(self, sx, sy):
         return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
 
+    def right_click(self, sx, sy):
+        """Shove: infected right in front reel (or fall) and any attack they wind up is broken off."""
+        self.aim = (sx, sy)
+        hero = self.hero
+        if not hero.start_shove(*self.mouse_world(sx, sy)):
+            return
+        self.sounds.play("roll", 0.5)
+        for z in self.zombies:
+            if not z.alive or z.state in ("down",):
+                continue
+            diff = (atan2(z.y - hero.y, z.x - hero.x) - hero.shove_angle + pi) % (2 * pi) - pi
+            if hypot(z.x - hero.x, z.y - hero.y) <= SHOVE_REACH and abs(diff) <= 0.9:
+                z.shoved(hero.x, hero.y)
+                self.sounds.play("slash_hit", 0.35, at=(z.x, z.y))
+                self.message = "넘어뜨렸다! 지금 베면 확실하다" if z.state == "down" else "밀쳐냈다"
+        if self.senses:
+            self.make_noise(NOISE_STEP)
+
     def unaware_in_reach(self, angle):
         """Infected within the slash that have not spotted the hero (Zomboid: a blow on an
         unaware zombie is a sure, quiet finisher)."""
         hero, found = self.hero, []
         for z in self.zombies:
-            if z.alive and z.state in ("idle", "alert", "search"):
+            if z.alive and z.helpless:
                 diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
                 if hypot(z.x - hero.x, z.y - hero.y) <= SLASH_REACH + 30 and abs(diff) <= SLASH_ARC:
                     found.append(z)
@@ -210,6 +231,12 @@ class Game:
             self.message = ("피폭체 감각 켬: 보고 듣고 찾음, 시야 밖 공격은 예고가 짧음" if self.senses
                             else "피폭체 감각 끔: 예전 규칙(300px 안이면 무조건 쫓아옴)")
 
+    def hint(self, key, text):
+        """A one-time tip (2026-11-16: lower the entry barrier - Zomboid's biggest complaint)."""
+        if key not in self.hints_shown:
+            self.hints_shown.add(key)
+            self.message = text
+
     def near_exit(self):
         l, b, r, t = EXIT
         return l - 14 <= self.hero.x <= r + 14 and b - 14 <= self.hero.y <= t + 14
@@ -287,6 +314,8 @@ class Game:
         if self.left or self.bag_open:                     # summary or bag open: the world waits
             return
         self.clock += real_dt
+        if self.clock > 1.0:
+            self.hint("sneak", "Ctrl 살금살금 · 소리가 피폭체를 부른다 · 못 본 피폭체는 조용히 벨 수 있다")
         self.sounds.listener = (hero.x, hero.y)
         if self.slow != self.was_slow and not hero.dead:
             self.sounds.play("slow_in" if self.slow else "slow_out", 0.6)
@@ -327,7 +356,7 @@ class Game:
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 if hypot(zx - sx, zy - sy) <= SLASH_REACH + 12 and abs(diff) <= SLASH_ARC:
-                    unaware = z.state in ("idle", "alert", "search")
+                    unaware = z.helpless
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
                     if unaware:                                  # finisher: a clean, quiet kill
@@ -368,6 +397,7 @@ class Game:
             if z.state != state:
                 if z.state == "chase" and state in ("idle", "alert", "search"):
                     z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
+                    self.hint("spotted", "들켰다! 우클릭으로 밀치고, 넘어지면 베어라")
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
@@ -381,6 +411,8 @@ class Game:
                 wound = self.condition.wound()
                 if wound:
                     self.message = f"{wound}! (붕대로 치료)"
+                    if wound != "긁힘":
+                        self.hint("bleed", f"{wound}: 피를 흘린다 · 1 또는 Tab에서 붕대로 멈춰라")
                 hero.hp -= 1
                 hero.hurt = HURT_INVULNERABLE
                 others = sum(1 for o in self.zombies if o is not z and o.alive
@@ -399,10 +431,12 @@ class Game:
                 if hero.hp <= 0:
                     hero.dead = 0.001
                     self.deaths += 1
-                    self.message = "쓰러졌다… 바로 다시 시작"
+                    self.death_cause = "피폭체에게 당했다"
+                    self.death_time = self.clock
         if self.condition.update(real_dt, hero, self.zombies) == "bled" and not hero.dead:
             hero.hp -= 1                                       # an untreated wound bled out
             self.message = "피를 많이 흘렸다 (체력 -1)"
+            self.death_cause, self.death_time = "피를 너무 많이 흘렸다", self.clock
             if hero.hp <= 0:
                 hero.dead = 0.001
                 self.deaths += 1
@@ -411,18 +445,14 @@ class Game:
             hero._panic_slowed = True
         if hero.slash_cooldown <= 0:
             hero._panic_slowed = False
-        if self.condition.tension >= 0.33:                   # the heart, louder when panicking
-            self.beat_in -= real_dt
-            if self.beat_in <= 0:
-                self.sounds.play("heartbeat", 0.35 + 0.5 * self.condition.tension)
-                self.beat_in = 60.0 / self.condition.heart_rate()
+        self.vision.scale = self.condition.view_scale()      # panic narrows the view
         self.effects = [e for e in self.effects if e.update(real_dt)]
         for e in self.effects:
             if isinstance(e, Blood):
                 self.stains.extend(e.landed())
         if self.message != getattr(self, "_shown", None):
             self._shown, self.message_at = self.message, self.clock
-        if hero.dead > 0.9:
+        if hero.dead > DEATH_SUMMARY:
             self.reset()
             return
         self.siren_in -= real_dt
@@ -530,6 +560,8 @@ class Game:
             hud.draw_inventory(self)
         if self.left:
             hud.draw_summary(self)
+        if self.hero.dead > 0.4:
+            hud.draw_death(self)
         return
         u, t1, t2 = UI_SCALE, hud_size(14), hud_size(13)       # (old HUD, kept below for reference)
         pico2d.draw_rectangle(0, HEIGHT - HUD_H, WIDTH, HEIGHT, 10, 12, 16, 200, filled=True)

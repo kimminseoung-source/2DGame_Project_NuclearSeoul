@@ -1,7 +1,7 @@
 """The hero's condition (Zomboid-style "moodles", 2026-11-15 "1번 ㄱ"):
 
 - tension: rises while infected that have spotted the hero are close, falls when they are gone;
-  at panic the heart races (heartbeat sound) and the blade is slower to come back after a slash
+  at panic the blade is slower to come back after a slash and the hero's view narrows
 - injuries from blows: a scratch, a laceration (bleeds) or a bite (bleeds, and will matter for
   exposure later). An untreated bleeding wound costs 1 health after a while. A bandage stops the
   worst bleeding.
@@ -47,8 +47,11 @@ class Condition:
     def panic(self):
         return self.tension >= PANIC
 
-    def heart_rate(self):
-        return round(72 + 88 * self.tension)
+    def view_scale(self):
+        """Panic narrows what the hero takes in (Zomboid: panic cuts vision): 1.0 calm, 0.7 at worst."""
+        if self.tension <= PANIC:
+            return 1.0
+        return 1.0 - 0.3 * (self.tension - PANIC) / (1 - PANIC)
 
     # ------------------------------------------------------------------ wounds
     def wound(self):

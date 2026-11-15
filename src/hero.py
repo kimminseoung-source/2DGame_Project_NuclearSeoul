@@ -15,6 +15,8 @@ SNEAK_SPEED = 0.45          # Ctrl held: share of the normal speed
 HIT_SLOW = 0.25             # each blow taken slows the hero this much more...
 MAX_SLOW = 0.5              # ...up to half speed (Zomboid's attack slow cap)
 SLOW_RECOVER = 0.2          # per second back to full speed
+SHOVE_TIME = 0.25           # s of the shove (right click)
+SHOVE_COOLDOWN = 0.6
 
 
 class Hero:
@@ -38,6 +40,9 @@ class Hero:
         self.pickup = 0.0            # s left of the short pick-up motion (E)
         self.sneaking = False        # Ctrl held: slow, quiet, harder to spot
         self.slowed = 0.0            # 0..MAX_SLOW from blows taken
+        self.shove = 0.0             # s left of a shove
+        self.shove_angle = 0.0
+        self.shove_cooldown = 0.0
 
     @property
     def invulnerable(self):
@@ -63,6 +68,16 @@ class Hero:
         speed = SLASH_LUNGE / SLASH_HIT * 0.5
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
 
+    def start_shove(self, ax, ay):
+        """Right click: push whatever is in front away (Zomboid's shove)."""
+        if self.shove > 0 or self.shove_cooldown > 0 or self.slash or self.roll > 0 or self.dead \
+                or self.grabbed > 0 or self.pickup > 0:
+            return False
+        self.shove_angle = atan2(ay - (self.y + CHEST), ax - self.x)
+        self.facing = 1 if cos(self.shove_angle) >= 0 else -1
+        self.shove = SHOVE_TIME
+        return True
+
     def start_roll(self, mx, my):
         if self.roll > 0 or self.roll_cooldown > 0 or self.dead:
             return
@@ -78,6 +93,7 @@ class Hero:
         self.slash_cooldown = max(0.0, self.slash_cooldown - dt)
         self.roll_cooldown = max(0.0, self.roll_cooldown - dt)
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
+        self.shove_cooldown = max(0.0, self.shove_cooldown - dt)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
         if self.dead:
             self.dead += dt
@@ -90,6 +106,11 @@ class Hero:
             return
         if self.pickup > 0:                    # crouched for a moment, picking something up
             self.pickup -= dt
+            return
+        if self.shove > 0:                     # both hands out, pushing
+            self.shove -= dt
+            if self.shove <= 0:
+                self.shove_cooldown = SHOVE_COOLDOWN
             return
         if self.roll > 0:
             self.roll -= dt
@@ -122,6 +143,8 @@ class Hero:
             return
         elif self.pickup > 0:
             self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing)
+        elif self.shove > 0:                   # the first frames of the swing read as a push
+            self.look.draw("swing", 0.15 * (1 - self.shove / SHOVE_TIME), x, y, self.facing)
         elif self.roll > 0:
             face = 1 if self.roll_dir[0] >= 0 else -1
             self.look.draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,

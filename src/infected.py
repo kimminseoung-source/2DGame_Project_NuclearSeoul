@@ -32,6 +32,10 @@ SEEN_BEFORE_STRIKE = 0.5        # s it must have seen the hero before it strikes
 ALERT_TURN = (0.3, 0.6)         # s it spends turning toward a noise before going
 GRAB_TIME = 0.9                 # s the hero is held when a blow lands with another one on him
 GRAB_NEAR = ZOMBIE_REACH + 12   # px: "on the hero"
+STAGGER_TIME = 0.8              # s it reels after a shove
+DOWN_TIME = 1.8                 # s on the ground after a shove knocks it over
+DOWN_CHANCE = 0.35              # chance a shove knocks it over (Zomboid: shove, then stomp)
+SHOVE_PUSH = 70                 # px/s it is pushed back
 
 
 class Zombie:
@@ -52,6 +56,7 @@ class Zombie:
         self.time = random.random()
         self.walk = 0.0
         self.death = (0.0, 0.0)
+        self.push = (0.0, 0.0)
 
     @property
     def alive(self):
@@ -61,6 +66,22 @@ class Zombie:
         self.state, self.timer = "dead", 0.0
         length = hypot(dx, dy) or 1
         self.death = (dx / length * 160, dy / length * 160)
+
+    def shoved(self, from_x, from_y):
+        """Pushed by the hero: an attack being wound up is broken off; it reels or falls."""
+        dx, dy = self.x - from_x, self.y - from_y
+        length = hypot(dx, dy) or 1
+        self.push = (dx / length * SHOVE_PUSH, dy / length * SHOVE_PUSH)
+        if random.random() < DOWN_CHANCE:
+            self.state, self.timer = "down", DOWN_TIME
+        else:
+            self.state, self.timer = "stagger", STAGGER_TIME
+        self.seen_time = 0.0
+
+    @property
+    def helpless(self):
+        """Reeling, on the ground, or unaware of the hero: a sure, quiet finisher."""
+        return self.state in ("idle", "alert", "search", "stagger", "down")
 
     def sees(self, hero):
         dx, dy = hero.x - self.x, hero.y - self.y
@@ -165,6 +186,13 @@ class Zombie:
             else:
                 self.state = "chase"
                 self.walk_to(hero.x, hero.y, dt)
+        elif self.state in ("stagger", "down"):
+            self.timer -= dt
+            if self.state == "stagger" or self.timer > DOWN_TIME - 0.25:
+                move_body(self, self.push[0] * dt, self.push[1] * dt)
+                self.push = (self.push[0] * 0.88, self.push[1] * 0.88)
+            if self.timer <= 0:
+                self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE   # back up, angry
         elif self.state in ("windup", "strike", "recover"):
             self.timer -= dt
             if self.timer <= 0:
@@ -196,6 +224,12 @@ class Zombie:
             self.look.draw("attack", 0.5 + 0.5 * (1 - self.timer / ZOMBIE_RECOVER), x, y, self.facing)
         elif self.state == "poised":
             self.look.draw("attack", 0.08, x, y, self.facing)        # arms up, not yet striking
+        elif self.state == "stagger":
+            self.look.draw("hurt", 1 - self.timer / STAGGER_TIME, x, y, self.facing)
+        elif self.state == "down":                                   # falls, lies, gets up
+            t = DOWN_TIME - self.timer
+            progress = min(1.0, t / 0.35) if self.timer > 0.4 else self.timer / 0.4
+            self.look.draw("down", progress, x, y, self.facing)
         elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
             if self.state == "search":

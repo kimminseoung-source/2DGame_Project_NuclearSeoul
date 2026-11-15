@@ -50,6 +50,8 @@ def main(window_x=None):
                 game.click(event.x, event.y)
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT and EXPOSURE_ON:
                 game.slow = True
+            elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT:
+                game.right_click(event.x, event.y)       # shove (time crawl is off for now)
             elif event.type == sdl2.SDL_MOUSEBUTTONUP and event.button == sdl2.SDL_BUTTON_RIGHT:
                 game.slow = False
         game.update(dt, keys)

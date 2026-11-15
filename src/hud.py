@@ -1,7 +1,6 @@
 """Screen UI over the world (2026-11-15 "UI적인 측면을 많이 개선해 보자, 인벤토리 등등").
 
-- bottom left: the status panel - health, a heartbeat line (its speed follows tension) and the
-  status icons (tension/panic, bleeding, wounds, slowed, sneaking: condition.py)
+- bottom left: the status panel - the health bar and the status icons (tension/panic, bleeding, wounds, slowed, sneaking: condition.py)
 - bottom middle: quick slots (bag contents with their keys)
 - top left: the goal and how many infected are left
 - above the slots: the latest message, fading away
@@ -89,7 +88,7 @@ def draw_hud(game):
     # message (fades away)
     age = game.clock - game.message_at
     if game.message and (age < MESSAGE_TIME or game.left):
-        ui.text_center(WIDTH / 2, size(92), game.message, (236, 214, 150), size(14))
+        ui.text_center(WIDTH / 2, size(112), game.message, (236, 214, 150), size(14))
 
 
 def health_bar(game, l, b, w, h):
@@ -109,36 +108,16 @@ def health_bar(game, l, b, w, h):
 
 
 def draw_status(game):
-    """Bottom left: health segments, a heartbeat line moving at the heart rate, status icons."""
+    """Bottom left: the health bar and, under it, the status icons (no heart rate: 2026-11-16
+    "심장 박동 수는 전혀 필요 없어 보이는데")."""
     hero, cond = game.hero, game.condition
     l, b, w, h = size(16), size(16), size(330), size(78)
     panel(l, b, l + w, b + h)
     ui.text(l + size(10), b + h - size(14), "체력", TEXT, size(12))
-    health_bar(game, l + size(46), b + h - size(20), size(116), size(11))
-    bpm = cond.heart_rate()
-    colour = (110, 200, 120) if cond.tension < 0.33 else (220, 170, 80) if cond.tension < 0.66 else (220, 80, 70)
-    ui.text(l + size(176), b + h - size(14), f"{bpm} bpm", colour, size(12))
-    # the heartbeat line: a flat trace with a spike every beat, scrolling with the clock
-    gx, gy, gw = l + size(10), b + size(30), size(150)
-    beat = 60.0 / bpm
-    prev = None
-    for k in range(61):
-        t = game.clock - (60 - k) * 0.025
-        phase = (t % beat) / beat
-        bump = 0.0
-        if phase < 0.06:
-            bump = phase / 0.06
-        elif phase < 0.12:
-            bump = 1 - (phase - 0.06) / 0.06 * 1.6
-        elif phase < 0.18:
-            bump = -0.6 + (phase - 0.12) / 0.06 * 0.6
-        point = (gx + gw * k / 60, gy + bump * size(12))
-        if prev:
-            pico2d.draw_line(*prev, *point, *colour)
-        prev = point
+    health_bar(game, l + size(46), b + h - size(20), size(270), size(11))
     # status icons: a coloured tile with a short word, the stronger the brighter
-    x = l + size(170)
-    for label, tint, level in cond.moodles(hero)[:4]:
+    x = l + size(10)
+    for label, tint, level in cond.moodles(hero)[:7]:
         tile = size(24)
         if x + tile * 1.45 > l + w - size(4):
             break
@@ -237,8 +216,7 @@ def draw_inventory(game):
     draw_body(ml + size(55), bottom + size(50), size(150), game.condition.injuries)
     sx = ml + size(110)
     ui.text(sx, top - size(52), f"체력 {round(100 * game.hero.hp / HERO_HP)}%", TEXT, size(12))
-    ui.text(sx, top - size(74), f"심박 {game.condition.heart_rate()}", DIM, size(12))
-    ui.text(sx, top - size(96), f"긴장 {game.condition.tension * 100:.0f}%", DIM, size(12))
+    ui.text(sx, top - size(74), f"긴장 {game.condition.tension * 100:.0f}%", DIM, size(12))
     wounds = game.condition.injuries
     for k, wound in enumerate(wounds[:3]):
         state = "출혈" if wound["bleed"] > 0 else ("치료됨" if wound.get("dressed") else "")
@@ -266,6 +244,19 @@ def draw_inventory(game):
     if not near:
         ui.text(rl + size(12), top - size(50), "주변에 주울 것이 없다", DIM, size(12))
     ui.text(rl + size(12), bottom + size(14), "F 모두 수집 · Tab 닫기", (236, 214, 150), size(11))
+
+
+def draw_death(game):
+    """Zomboid's "this is how you died", short (the area still restarts at once, DESIGN_LOCK)."""
+    w, hgt = size(360), size(120)
+    l, b = WIDTH / 2 - w / 2, HEIGHT / 2 - hgt / 2
+    panel(l, b, l + w, b + hgt, 235)
+    secs = int(game.death_time)
+    lines = [("이렇게 쓰러졌다", (220, 90, 80), 17),
+             (game.death_cause or "피폭체에게 당했다", TEXT, 14),
+             (f"버틴 시간 {secs // 60}분 {secs % 60:02d}초 · 쓰러뜨린 피폭체 {game.kills}", DIM, 12)]
+    for i, (line, colour, px) in enumerate(lines):
+        ui.text_center(WIDTH / 2, b + hgt - size(28) - i * size(32), line, colour, size(px))
 
 
 def draw_summary(game):
