@@ -73,8 +73,11 @@ class Zombie:
                 return False
         return dist < 1 or ray_hit(self.x, self.y, dx / dist, dy / dist, BLOCKS) >= dist
 
-    def hear(self, x, y, radius):
-        if hypot(x - self.x, y - self.y) > radius:
+    def hear(self, x, y, radius, origin=None):
+        """A noise of `radius` px; (x, y) is where it seems to come from (a muffled sound is
+        misplaced), `origin` where it really is - the distance check uses the real spot."""
+        ox, oy = origin or (x, y)
+        if hypot(ox - self.x, oy - self.y) > radius:
             return
         toward = atan2(y - self.y, x - self.x)
         ahead = abs((toward - self.heading + pi) % (2 * pi) - pi) <= FRONT_SOUND

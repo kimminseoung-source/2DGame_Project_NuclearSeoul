@@ -29,7 +29,7 @@ from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
 import supplies as supply_rules
 from supplies import KINDS, PILL_EFFECT, Supply
-from vision_cone import CONE_HALF, VisionCone
+from vision_cone import CONE_HALF, VisionCone, ray_hit
 
 
 WAVE_TOTAL = 12              # infected in this area, the starting ones included
@@ -38,6 +38,7 @@ SPAWN_EVERY = (6.0, 9.0)     # s between arrivals
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
+MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
 HUD_PAD = 40                 # world px the HUD bar covers at the top of the screen
@@ -215,9 +216,18 @@ class Game:
             if self.loud is None or self.clock - self.loud[2] > 0.5:
                 self.spawn_in = min(self.spawn_in, SPAWN_AFTER_NOISE)
             self.loud = (self.hero.x, self.hero.y, self.clock)
+        hx, hy = self.hero.x, self.hero.y
         for z in self.zombies:
-            if z.alive:
-                z.hear(self.hero.x, self.hero.y, radius)
+            if not z.alive:
+                continue
+            # Zomboid: a sound heard through a wreck or wall can't be placed exactly - the
+            # infected heads for a spot off by up to MUFFLED_OFFSET px (open ground: exact).
+            dist = hypot(hx - z.x, hy - z.y)
+            if dist > 1 and ray_hit(z.x, z.y, (hx - z.x) / dist, (hy - z.y) / dist, BLOCKS) < dist:
+                ox, oy = random.uniform(-1, 1) * MUFFLED_OFFSET, random.uniform(-1, 1) * MUFFLED_OFFSET
+                z.hear(hx + ox, hy + oy, radius, origin=(hx, hy))
+            else:
+                z.hear(hx, hy, radius)
 
     def spawn(self):
         """One more infected through an entrance the hero is not looking at, far enough away."""

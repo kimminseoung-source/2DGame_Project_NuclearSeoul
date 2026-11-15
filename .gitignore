@@ -25,3 +25,6 @@ assets/characters/**/_passes/
 # Zomboid reference screenshots: kept locally for study, not published (commercial game images)
 docs/references/zomboid_shots/*
 !docs/references/zomboid_shots/README.md
+
+# Zomboid reference notes from the user (video transcripts etc.): kept locally, not published
+Zombode/
