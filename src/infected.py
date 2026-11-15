@@ -1,6 +1,8 @@
 """The infected: senses (sight cone, hearing, memory), the poised hang-back, the alerted turn,
 and the warning -> strike -> recover attack. Rules from Project Zomboid's public rules and its
-state files (docs/research/ZOMBOID_REA_ANALYSIS.md); the numbers are ours."""
+state files and decompiled rules (docs/research/ZOMBOID_REA_ANALYSIS.md parts 1-3); the numbers
+are ours. Spotting is a chance, not instant: the nearer, the likelier, and a hero standing still or
+sneaking is spotted far less (Zomboid's spot chance)."""
 
 import random
 from math import atan2, cos, hypot, pi
@@ -17,7 +19,12 @@ NOTICE_NEAR = 36                # px: so close it notices whatever way it faces
 NOISE_STEP = 70                 # px the hero's footsteps carry
 NOISE_ROLL = 140
 NOISE_SLASH = 230
-MEMORY = 3.0                    # s it keeps going to the last place it saw or heard the hero
+MEMORY = 8.0                    # s it keeps going to the last place it saw or heard the hero (was 3)
+SPOT_RATE = 2.2                 # chance per second of spotting a hero in full view, right in front
+SPOT_SURE = 54                  # px: this close it spots at once
+SPOT_IDLE = 0.6                 # an idle (unalert) infected spots less...
+SPOT_ALERT = 1.5                # ...one already searching spots more
+FRONT_SOUND = 0.6               # radians: a sound this close to where it faces needs no turn
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
 BLIND_WINDUP = 0.25             # s of warning when it strikes from outside the hero's sight
@@ -69,7 +76,11 @@ class Zombie:
     def hear(self, x, y, radius):
         if hypot(x - self.x, y - self.y) > radius:
             return
-        if self.state == "idle":
+        toward = atan2(y - self.y, x - self.x)
+        ahead = abs((toward - self.heading + pi) % (2 * pi) - pi) <= FRONT_SOUND
+        if self.state == "idle" and ahead:                   # in front: no need to turn, just go
+            self.state, self.target, self.memory = "search", (x, y), MEMORY
+        elif self.state == "idle":
             # Zomboid's alerted turn: first look toward the noise, then go.
             self.state, self.timer = "alert", random.uniform(*ALERT_TURN)
             self.turn_from, self.turn_to = self.heading, atan2(y - self.y, x - self.x)
@@ -104,11 +115,16 @@ class Zombie:
         if not game.senses:
             if self.state in ("idle", "search") and dist < 300:          # the old rule
                 self.state = "chase"
-        elif self.state in ("idle", "alert", "search", "chase", "poised"):
+        elif self.state in ("idle", "alert", "search") and self.sees(hero):
+            # In view but not yet spotted: a chance each moment (Zomboid's spot chance).
+            rate = SPOT_RATE * max(0.0, 1 - dist / SIGHT_RANGE) * hero.noticeability()
+            rate *= SPOT_IDLE if self.state == "idle" else SPOT_ALERT
+            if dist <= SPOT_SURE or random.random() < rate * dt:
+                self.state, self.seen_time = "chase", 0.0
+                self.target, self.memory = (hero.x, hero.y), MEMORY
+        elif self.state in ("chase", "poised"):
             if self.sees(hero):
                 self.seen_time += dt
-                if self.state != "poised":
-                    self.state = "chase"
                 self.target, self.memory = (hero.x, hero.y), MEMORY
             else:
                 self.seen_time = 0.0

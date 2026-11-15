@@ -13,11 +13,20 @@ PICK_RANGE = 28            # px from the hero's feet
 PICK_NOISE = 100           # px the rummaging carries
 
 KINDS = {
-    # kind: (name, body colour, band colour, description shown in the bag)
-    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "상처를 감는다.\n체력 +1"),
-    "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200), "피폭을 늦춘다.\n피폭 -30"),
-    "can": ("통조림", (150, 150, 158), (190, 120, 60), "오래 버티는 식량.\n다음 구역 여정에 쓴다."),
+    # kind: (name, body colour, band colour, description shown in the bag, weight)
+    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "상처를 감는다.\n체력 +1", 0.1),
+    "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200), "피폭을 늦춘다.\n피폭 -30", 0.1),
+    "can": ("통조림", (150, 150, 158), (190, 120, 60), "오래 버티는 식량.\n다음 구역 여정에 쓴다.", 0.4),
 }
+BAG_CAPACITY = 2.0          # the bag holds this much weight (Zomboid: weight, not slots)
+
+
+def weight_of(kind):
+    return KINDS[kind][4]
+
+
+def bag_weight(bag):
+    return sum(weight_of(kind) * n for kind, n in bag.items())
 USE_KEYS = {"bandage": "1", "pill": "2"}
 PILL_EFFECT = 30.0
 

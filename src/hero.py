@@ -1,4 +1,5 @@
-"""The hero: WASD movement, the aimed slash with a short lunge, the roll, being grabbed."""
+"""The hero: WASD movement (Ctrl sneaks), the aimed slash with a short lunge, the roll, being
+grabbed, being slowed by blows (Zomboid: each hit slows you, up to half speed)."""
 
 from math import atan2, cos, hypot, sin
 
@@ -10,6 +11,10 @@ from settings import (CHEST, HERO_HP, ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, RUN_
 
 
 PICKUP_TIME = 0.35          # s of the pick-up motion (2026-11-15 "간단하게")
+SNEAK_SPEED = 0.45          # Ctrl held: share of the normal speed
+HIT_SLOW = 0.25             # each blow taken slows the hero this much more...
+MAX_SLOW = 0.5              # ...up to half speed (Zomboid's attack slow cap)
+SLOW_RECOVER = 0.2          # per second back to full speed
 
 
 class Hero:
@@ -31,10 +36,23 @@ class Hero:
         self.moving = False
         self.grabbed = 0.0           # held by two or more infected (only a roll breaks free)
         self.pickup = 0.0            # s left of the short pick-up motion (E)
+        self.sneaking = False        # Ctrl held: slow, quiet, harder to spot
+        self.slowed = 0.0            # 0..MAX_SLOW from blows taken
 
     @property
     def invulnerable(self):
         return self.roll > 0 or self.hurt > 0
+
+    def noticeability(self):
+        """How easily an infected that has the hero in view spots him (Zomboid: sneaking lowers it)."""
+        if self.roll > 0 or self.slash:
+            return 1.6
+        if not self.moving:
+            return 0.35
+        return 0.5 if self.sneaking else 1.0
+
+    def take_blow(self):
+        self.slowed = min(MAX_SLOW, self.slowed + HIT_SLOW)
 
     def start_slash(self, ax, ay):
         if self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead or self.grabbed > 0:
@@ -59,6 +77,8 @@ class Hero:
         self.hurt = max(0.0, self.hurt - dt)
         self.slash_cooldown = max(0.0, self.slash_cooldown - dt)
         self.roll_cooldown = max(0.0, self.roll_cooldown - dt)
+        self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
+        self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
         if self.dead:
             self.dead += dt
             return
@@ -85,8 +105,9 @@ class Hero:
                 self.slash_cooldown = SLASH_COOLDOWN
         elif mx or my:
             length = hypot(mx, my)
-            move_body(self, mx / length * RUN_SPEED * dt, my / length * RUN_SPEED * dt)
-            self.run_distance += RUN_SPEED * dt / 32
+            speed = RUN_SPEED * (SNEAK_SPEED if self.sneaking else 1.0) * (1 - self.slowed)
+            move_body(self, mx / length * speed * dt, my / length * speed * dt)
+            self.run_distance += speed * dt / 32
             self.moving = True
             if mx:
                 self.facing = mx
@@ -109,6 +130,7 @@ class Hero:
             self.look.draw("swing", self.slash["time"] / SLASH_TIME, x, y, self.facing,
                            contact=SLASH_HIT / SLASH_TIME)
         elif self.moving:
-            self.look.draw("run", self.time, x, y, self.facing, distance=self.run_distance)
+            pose = "sneak" if self.sneaking else "run"
+            self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance)
         else:
-            self.look.draw("idle", self.time, x, y, self.facing)
+            self.look.draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing)

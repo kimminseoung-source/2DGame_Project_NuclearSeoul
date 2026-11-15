@@ -70,8 +70,8 @@ class Game:
         self.wreck_imgs = [pico2d.load_image(str(area_dir / f"wreck_{i}.png")) if (area_dir / f"wreck_{i}.png").exists()
                            else None for i in range(len(BLOCKS))]
         self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
-        random.seed(4)
-        self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
+        fixed = random.Random(4)            # the same cracks every time, without fixing the game's own luck
+        self.cracks = [(fixed.uniform(0, ROOM_W), fixed.uniform(0, ROOM_H), fixed.uniform(-1, 1))
                        for _ in range(70)]
         self.reset()
 
@@ -131,14 +131,19 @@ class Game:
 
     def bag_key(self, key):
         items = hud.bag_items(self)
-        cols, total = hud.BAG_COLS, hud.BAG_COLS * hud.BAG_ROWS
-        moves = {sdl2.SDLK_LEFT: -1, sdl2.SDLK_RIGHT: 1, sdl2.SDLK_UP: -cols, sdl2.SDLK_DOWN: cols}
+        moves = {sdl2.SDLK_UP: -1, sdl2.SDLK_DOWN: 1, sdl2.SDLK_w: -1, sdl2.SDLK_s: 1}   # a list now
         if key in (sdl2.SDLK_TAB, sdl2.SDLK_ESCAPE):
             self.bag_open = False
         elif key in moves:
-            self.bag_cursor = (self.bag_cursor + moves[key]) % total
+            self.bag_cursor = (self.bag_cursor + moves[key]) % max(1, len(items))
         elif key in (sdl2.SDLK_RETURN, sdl2.SDLK_KP_ENTER) and self.bag_cursor < len(items):
             self.use(items[self.bag_cursor][0])
+        elif key == sdl2.SDLK_x and self.bag_cursor < len(items):        # drop one at the hero's feet
+            kind = items[self.bag_cursor][0]
+            self.bag[kind] -= 1
+            self.supplies.append(Supply(self.hero.x + 10, self.hero.y - 4, kind))
+            self.message = f"{supply_rules.with_object_particle(KINDS[kind][0])} 내려놓았다"
+            self.bag_cursor = min(self.bag_cursor, max(0, len(hud.bag_items(self)) - 1))
 
     def key_down(self, key, keys):
         if self.bag_open:                                  # the bag takes the keys while it is open
@@ -186,6 +191,9 @@ class Game:
             return
         item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
         if item is None or self.hero.pickup > 0 or self.hero.slash or self.hero.roll > 0:
+            return
+        if supply_rules.bag_weight(self.bag) + supply_rules.weight_of(item.kind) > supply_rules.BAG_CAPACITY + 1e-6:
+            self.message = "배낭이 무겁다 (Tab에서 X로 버리기)"
             return
         self.hero.pickup = PICKUP_TIME                     # a short crouch to pick it up
         item.taken = True
@@ -260,7 +268,7 @@ class Game:
         hero.update(real_dt, keys, aim_x)
         if int(hero.run_distance) != self.hero_steps:
             self.hero_steps = int(hero.run_distance)
-            self.sounds.play("step", 0.25)
+            self.sounds.play("step", 0.1 if hero.sneaking else 0.25)
         if self.aim[0] is not None:          # the hero looks toward the mouse
             ax, ay = self.mouse_world(*self.aim)
             self.look = atan2(ay - (hero.y + CHEST), ax - hero.x)
@@ -300,7 +308,7 @@ class Game:
             elif hero.roll > 0 and hero.roll >= ROLL_TIME - real_dt:
                 self.make_noise(NOISE_ROLL)
             elif hero.moving:
-                self.make_noise(NOISE_STEP)
+                self.make_noise(NOISE_STEP * (0.4 if hero.sneaking else 1.0))   # sneaking is quiet
         for z in self.zombies:
             state, steps = z.state, int(z.walk)
             event = z.update(world_dt, hero, self)
@@ -322,6 +330,7 @@ class Game:
                 self.sounds.play("infected_step", 0.35, at=(z.x, z.y))
             if event == "hit" and not hero.invulnerable and not hero.dead:
                 self.sounds.play("hurt", 1.0)
+                hero.take_blow()                              # slowed, more with every blow
                 hero.hp -= 1
                 hero.hurt = HURT_INVULNERABLE
                 others = sum(1 for o in self.zombies if o is not z and o.alive

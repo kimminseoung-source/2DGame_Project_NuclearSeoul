@@ -16,7 +16,7 @@ import pico2d
 import ui
 from area import EXIT_NAME
 from settings import EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
-from supplies import KINDS
+from supplies import BAG_CAPACITY, KINDS, bag_weight, weight_of
 
 U = UI_SCALE
 PANEL = (14, 16, 20)
@@ -24,7 +24,7 @@ EDGE = (70, 74, 80)
 TEXT = (226, 222, 210)
 DIM = (150, 150, 150)
 MESSAGE_TIME = 4.0
-BAG_COLS, BAG_ROWS = 4, 3
+BAG_ROWS = 7                  # rows shown in the bag list
 
 
 def size(px):
@@ -83,7 +83,10 @@ def draw_hud(game):
             key = {"bandage": "1", "pill": "2"}.get(kind)
             if key:
                 ui.text(sl + size(4), sb + slot - size(10), key, DIM, size(11))
-    ui.text(x0 + total * (slot + size(6)) + size(4), size(30), "Tab 배낭", DIM, size(12))
+    ui.text(x0 + total * (slot + size(6)) + size(4), size(44), "Tab 배낭", DIM, size(12))
+    ui.text(x0 + total * (slot + size(6)) + size(4), size(24), f"무게 {bag_weight(game.bag):.1f}/{BAG_CAPACITY:.1f}", DIM, size(11))
+    if hero.sneaking:
+        ui.text(l + size(10), b + size(56), "살금살금", (150, 190, 220), size(12))
     # goal (top left)
     left = game.to_spawn + sum(z.alive for z in game.zombies)
     panel(size(12), HEIGHT - size(62), size(380), HEIGHT - size(12), 170)
@@ -96,41 +99,54 @@ def draw_hud(game):
         ui.text_center(WIDTH / 2, size(92), game.message, (236, 214, 150), size(14))
 
 
+def weight_bar(l, b, w, used, cap):
+    pico2d.draw_rectangle(l, b, l + w, b + size(10), 30, 32, 36, filled=True)
+    share = min(1.0, used / cap)
+    colour = (120, 170, 110) if share < 0.75 else (200, 170, 80) if share < 1.0 else (190, 70, 60)
+    pico2d.draw_rectangle(l, b, l + w * share, b + size(10), *colour, filled=True)
+    ui.text(l + w + size(8), b + size(5), f"{used:.1f} / {cap:.1f}", TEXT, size(12))
+
+
 def draw_inventory(game):
-    """The bag: a grid of stacks, the selected one described, Enter (or its key) uses it."""
-    w, h = size(560), size(300)
+    """The bag as a list (Zomboid style): picture, name, count, weight; the weight bar on top;
+    the selected row described. Up/Down select, Enter uses, X drops one, Tab closes."""
+    w, h = size(600), size(330)
     l, b = WIDTH / 2 - w / 2, HEIGHT / 2 - h / 2
     pico2d.draw_rectangle(0, 0, WIDTH, HEIGHT, 0, 0, 0, 110, filled=True)
     panel(l, b, l + w, b + h, 235)
     ui.text(l + size(18), b + h - size(22), "배낭", TEXT, size(16))
-    ui.text(l + w - size(210), b + h - size(22), "방향키 선택 · Enter 사용 · Tab 닫기", DIM, size(11))
+    ui.text(l + size(80), b + h - size(22), "무게", DIM, size(12))
+    weight_bar(l + size(120), b + h - size(27), size(150), bag_weight(game.bag), BAG_CAPACITY)
+    ui.text(l + w - size(250), b + h - size(22), "W·S 또는 위·아래 선택 · Enter 사용 · X 버리기 · Tab 닫기", DIM, size(11))
     items = bag_items(game)
-    slot, gap = size(64), size(8)
-    gx, gy = l + size(18), b + h - size(52)
-    for i in range(BAG_COLS * BAG_ROWS):
-        c, r = i % BAG_COLS, i // BAG_COLS
-        sl, st = gx + c * (slot + gap), gy - r * (slot + gap)
-        panel(sl, st - slot, sl + slot, st, 255)
-        if i == game.bag_cursor:
-            pico2d.draw_rectangle(sl - 2, st - slot - 2, sl + slot + 2, st + 2, 220, 190, 110)
+    list_w = size(330)
+    lx, top = l + size(14), b + h - size(52)
+    row = size(30)
+    ui.text(lx + size(40), top + size(4), "물건", DIM, size(11))
+    ui.text(lx + size(220), top + size(4), "개수", DIM, size(11))
+    ui.text(lx + size(275), top + size(4), "무게", DIM, size(11))
+    for i in range(7):
+        rt = top - size(12) - i * row
         if i < len(items):
             kind, n = items[i]
-            draw_icon(kind, sl + slot / 2, st - slot / 2, slot * 0.3)
-            ui.text(sl + slot - size(18), st - slot + size(10), str(n), TEXT, size(12))
-    # description of the selected item
-    dl = gx + BAG_COLS * (slot + gap) + size(10)
+            if i == game.bag_cursor:
+                pico2d.draw_rectangle(lx, rt - row + size(3), lx + list_w, rt, 60, 54, 40, filled=True)
+            draw_icon(kind, lx + size(18), rt - row / 2 + size(1), size(10))
+            ui.text(lx + size(40), rt - row / 2, KINDS[kind][0], TEXT, size(13))
+            ui.text(lx + size(225), rt - row / 2, str(n), TEXT, size(13))
+            ui.text(lx + size(275), rt - row / 2, f"{weight_of(kind) * n:.1f}", DIM, size(12))
+        pico2d.draw_line(lx, rt - row + size(2), lx + list_w, rt - row + size(2), 40, 42, 46)
+    dl = lx + list_w + size(22)
     if game.bag_cursor < len(items):
         kind, n = items[game.bag_cursor]
-        name, desc = KINDS[kind][0], KINDS[kind][3]
-        ui.text(dl, gy - size(14), f"{name} ×{n}", TEXT, size(15))
-        for k, line in enumerate(desc.split("\n")):
-            ui.text(dl, gy - size(44) - k * size(22), line, DIM, size(12))
-        if kind in ("bandage",) or (kind == "pill" and EXPOSURE_ON):
+        ui.text(dl, top - size(16), f"{KINDS[kind][0]} ×{n}", TEXT, size(15))
+        for k, line in enumerate(KINDS[kind][3].split("\n")):
+            ui.text(dl, top - size(46) - k * size(22), line, DIM, size(12))
+        ui.text(dl, top - size(110), f"하나 무게 {weight_of(kind):.1f}", DIM, size(11))
+        if kind == "bandage" or (kind == "pill" and EXPOSURE_ON):
             ui.text(dl, b + size(24), "Enter: 사용", (236, 214, 150), size(13))
     else:
-        ui.text(dl, gy - size(14), "빈 칸", DIM, size(14))
-    filled = sum(n for _, n in items)
-    ui.text(gx, b + size(16), f"{len(items)}/{BAG_COLS * BAG_ROWS}칸 · 물건 {filled}개", DIM, size(11))
+        ui.text(dl, top - size(16), "비어 있음", DIM, size(14))
 
 
 def draw_summary(game):
