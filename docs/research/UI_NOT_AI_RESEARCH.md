@@ -68,3 +68,10 @@
 - 도트 UI: [Defold 포럼: 도트 게임 GUI](https://forum.defold.com/t/gui-for-pixel-art-games-heres-how/77704), [Unity: 게임 UI 기초(디제틱)](https://unity.com/blog/video-game-ui-ux-basics), [Wayline: 게임 UI 도트 강좌](https://www.wayline.io/learn/game-ui-art/0), [Cinevva: 도트 렌더링](https://app.cinevva.com/tutorials/pixel-art-rendering)
 - 디제틱 UI 예: [Wayline: 디제틱 인터페이스](https://www.wayline.io/blog/diegetic-interfaces-game-design), [Somniphobia](https://nathanfallon.squarespace.com/somniphobia), [gamedev.net: 수사관 책상 UI](https://gamedev.net/blogs/entry/572-designing-a-diegetic-ui-layout-psychological-survi), [10 immersive interfaces(Chasing Static)](https://gametyrantindustries.squarespace.com/news/10-immersive-interfaces-every-game-should-have), [indieklem: 디제틱 딜레마](https://indieklem.substack.com/p/19-the-diegetic-dilemma-benefits)
 - 글꼴: [Galmuri](https://github.com/quiple/galmuri)
+
+## 7. 2차 뒤 사용자 판단과 배낭 3차 시안 (2026-11-16)
+- 사용자: "2차 느낌이 조금 더 괜찮은 것 같다. 다만 인벤토리 부분이 종이에 있다는 게 살짝 부자연스럽다." → 2차의 방향(도트 격자·Galmuri·세상 색, 테이프 쪽지 목표)은 유지, **배낭만** 다시.
+- 이유: 쪽지는 원래 목표를 적는 물건이라 자연스럽지만, 가방 속 물건은 눈으로 보는 것이라 종이 목록이 어색하다(디제틱은 그 물건이 실제로 그 정보를 담을 때만).
+- 시안 두 개(`tools/ui/ui_mockup_bag.py`): **A. 펼친 배낭 속 보기**(덮개를 젖힌 배낭 안에 물건이 놓임) / **B. 바닥 천에 늘어놓기**(올리브색 천 위에 꺼내 펼침, 빈 배낭은 모서리에). 공통: 몸은 종이 없이 어둡게 한 화면 위 선 그림, 근처 물건은 아스팔트 칸, 고른 물건은 네모 모서리 표시, 물건은 16px 도트 아이콘을 같은 격자에서 2배로.
+- 처음 그린 판은 배낭·천이 화면 대부분을 덮어 물건 2개가 허전했고(예전 빈 격자 15칸과 같은 문제) 개수 글자가 아이콘에 겹쳤다 → 그릇 크기를 가방 용량에 맞게 줄이고, 개수는 옆에, 이름은 아래에.
+- 그림: [A](../planning/ui_redesign/v3_bag_a_open_pack.png), [B](../planning/ui_redesign/v3_bag_b_ground_sheet.png), [2차·A·B 비교](../planning/ui_redesign/compare_bag_v2_a_b.png).

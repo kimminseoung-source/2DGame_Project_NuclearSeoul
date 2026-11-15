@@ -5,13 +5,15 @@ a pixel font (Galmuri), colours taken from the world, things the hero would carr
 a pocket notebook) instead of app panels.
 
 usage: python tools/ui/ui_mockup_v2.py <frame dir with bg_play.png> <project root> <out dir>
+(the root argument is no longer needed but still accepted)
 """
 import random
 import sys
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-FRAMES, ROOT, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+ROOT = str(Path(__file__).resolve().parents[2])     # the helpers below are shared (ui_mockup_bag.py)
 W, H, K = 640, 360, 2                         # pixel canvas, scale to the 1280x720 screen
 REG = ROOT + "/assets/fonts/galmuri/Galmuri11.ttf"
 BOLD = ROOT + "/assets/fonts/galmuri/Galmuri11-Bold.ttf"
@@ -245,19 +247,24 @@ def over(frame, ui):
     return Image.alpha_composite(frame.convert("RGBA"), big).convert("RGB")
 
 
-bg = Image.open(FRAMES + "/bg_play.png")
-a, b = over(bg, hud()), over(bg, bag())
-a.save(OUT + "/v2_play.png")
-b.save(OUT + "/v2_bag.png")
-v1p, v1b = Image.open(OUT + "/new_play.png"), Image.open(OUT + "/new_bag.png")
-lab = ImageFont.truetype(BOLD, 24)
-for one, two, name in ((v1p, a, "compare_v1_v2_play.png"), (v1b, b, "compare_v1_v2_bag.png")):
-    c = Image.new("RGB", (1280 * 2 + 20, 770), (24, 24, 26))
-    c.paste(one, (0, 50))
-    c.paste(two, (1300, 50))
-    cd = ImageDraw.Draw(c)
-    cd.fontmode = "1"
-    cd.text((16, 12), "1차 제안 (AI 느낌)", font=lab, fill=(200, 200, 200))
-    cd.text((1316, 12), "2차 제안", font=lab, fill=ROAD)
-    c.save(OUT + "/" + name)
-print("ok")
+def main(frames, out):
+    bg = Image.open(frames + "/bg_play.png")
+    a, b = over(bg, hud()), over(bg, bag())
+    a.save(out + "/v2_play.png")
+    b.save(out + "/v2_bag.png")
+    v1p, v1b = Image.open(out + "/new_play.png"), Image.open(out + "/new_bag.png")
+    lab = ImageFont.truetype(BOLD, 24)
+    for one, two, name in ((v1p, a, "compare_v1_v2_play.png"), (v1b, b, "compare_v1_v2_bag.png")):
+        c = Image.new("RGB", (1280 * 2 + 20, 770), (24, 24, 26))
+        c.paste(one, (0, 50))
+        c.paste(two, (1300, 50))
+        cd = ImageDraw.Draw(c)
+        cd.fontmode = "1"
+        cd.text((16, 12), "1차 제안 (AI 느낌)", font=lab, fill=(200, 200, 200))
+        cd.text((1316, 12), "2차 제안", font=lab, fill=ROAD)
+        c.save(out + "/" + name)
+    print("ok")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[3])     # argv[2] (project root) is kept for the old call
