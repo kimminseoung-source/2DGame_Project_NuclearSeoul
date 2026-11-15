@@ -27,8 +27,8 @@ PASSES = [
     (LIB1,
      ["idle=Idle_Loop", "sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.3", "walk=Walk_Loop",
       "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "run=Jog_Fwd_Loop", "hurt=Hit_Chest", "down=Death01",
-      "pickup=Fixing_Kneeling@0-20"],
-     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4"],
+      "pickup=Fixing_Kneeling@0-20", "push=Push_Loop@0-20"],      # push: the two-handed shove (2026-11-16)
+     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (2026-11-13, the user's pick from the sheets: "back to this one"):

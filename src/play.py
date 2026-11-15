@@ -19,12 +19,12 @@ import ui
 from hero import PICKUP_TIME
 from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
 from character_look import SheetLook
-from condition import PANIC_RECOVER, Condition
+from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
-                      ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, UI_SCALE, VIEW_H,
+                      ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, VIEW_H,
                       VIEW_W, WIDTH)
 from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
@@ -45,12 +45,6 @@ MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by 
 
 DEATH_SUMMARY = 2.2          # s the short "how you died" card shows before the area restarts
 HUD_PAD = 40                 # world px the HUD bar covers at the top of the screen
-HUD_H = round(52 * UI_SCALE)  # screen px of the HUD bar
-MESSAGE_TIME = 4.0           # s a message stays (realistic look: messages fade instead of staying)
-
-
-def hud_size(size):
-    return round(size * UI_SCALE)
 
 
 class Game:
@@ -156,9 +150,10 @@ class Game:
         if kind == "bandage" and (self.hero.hp < HERO_HP or self.condition.injuries):
             self.bag[kind] -= 1
             treated = self.condition.treat()
-            healed = self.hero.hp < HERO_HP
-            self.hero.hp = min(HERO_HP, self.hero.hp + 1)
-            self.message = "붕대를 감았다" + (f" ({treated} 치료)" if treated else "") + (" 체력 +1" if healed else "")
+            before = self.hero.hp
+            self.hero.hp = min(HERO_HP, self.hero.hp + BANDAGE_HEAL)
+            gained = self.hero.hp - before
+            self.message = "붕대를 감았다" + (f" ({treated} 치료)" if treated else "") +                 (f" 체력 +{gained:.0f}%" if gained >= 1 else "")
             self.sounds.play("pickup", 0.6)
         elif kind == "pill" and EXPOSURE_ON:
             self.bag[kind] -= 1
@@ -408,12 +403,11 @@ class Game:
             if event == "hit" and not hero.invulnerable and not hero.dead:
                 self.sounds.play("hurt", 1.0)
                 hero.take_blow()                              # slowed, more with every blow
-                wound = self.condition.wound()
-                if wound:
-                    self.message = f"{wound}! (붕대로 치료)"
-                    if wound != "긁힘":
-                        self.hint("bleed", f"{wound}: 피를 흘린다 · 1 또는 Tab에서 붕대로 멈춰라")
-                hero.hp -= 1
+                wound, damage = self.condition.wound()        # the blow's kind sets how much it takes
+                hero.hp = max(0.0, hero.hp - damage)
+                self.message = f"{wound}! 체력 -{damage}%"
+                if wound != "긁힘":
+                    self.hint("bleed", f"{wound}: 피를 흘린다 · 1 또는 Tab에서 붕대로 멈춰라")
                 hero.hurt = HURT_INVULNERABLE
                 others = sum(1 for o in self.zombies if o is not z and o.alive
                              and hypot(o.x - hero.x, o.y - hero.y) <= GRAB_NEAR)
@@ -433,11 +427,11 @@ class Game:
                     self.deaths += 1
                     self.death_cause = "피폭체에게 당했다"
                     self.death_time = self.clock
-        if self.condition.update(real_dt, hero, self.zombies) == "bled" and not hero.dead:
-            hero.hp -= 1                                       # an untreated wound bled out
-            self.message = "피를 많이 흘렸다 (체력 -1)"
-            self.death_cause, self.death_time = "피를 너무 많이 흘렸다", self.clock
+        bled = self.condition.update(real_dt, hero, self.zombies)
+        if bled and not hero.dead:                             # bleeding drains health until bandaged
+            hero.hp = max(0.0, hero.hp - bled)
             if hero.hp <= 0:
+                self.death_cause, self.death_time = "피를 너무 많이 흘렸다", self.clock
                 hero.dead = 0.001
                 self.deaths += 1
         if self.condition.panic and hero.slash_cooldown > 0 and not getattr(hero, "_panic_slowed", False):
@@ -562,28 +556,3 @@ class Game:
             hud.draw_summary(self)
         if self.hero.dead > 0.4:
             hud.draw_death(self)
-        return
-        u, t1, t2 = UI_SCALE, hud_size(14), hud_size(13)       # (old HUD, kept below for reference)
-        pico2d.draw_rectangle(0, HEIGHT - HUD_H, WIDTH, HEIGHT, 10, 12, 16, 200, filled=True)
-        if not self.real or self.clock - self.message_at < MESSAGE_TIME or self.left:
-            ui.text(12 * u, HEIGHT - 20 * u, self.message, ui.ACCENT, t1)
-        ui.text(12 * u, HEIGHT - 42 * u, "체력", ui.PARTY, t2)
-        for i in range(HERO_HP):                 # boxes drawn, the font has no square glyphs
-            pico2d.draw_rectangle((52 + i * 18) * u, HEIGHT - 48 * u, (64 + i * 18) * u, HEIGHT - 36 * u,
-                                  200, 70, 64, filled=i < self.hero.hp)
-        left = self.to_spawn + sum(z.alive for z in self.zombies)
-        status = (f"피폭 {self.exposure:3.0f}%  " if EXPOSURE_ON else "") + f"남은 피폭체 {left}  쓰러진 횟수 {self.deaths}"
-        ui.text(110 * u, HEIGHT - 42 * u, status, (170, 190, 170), t2)
-        bag = f"붕대 {self.bag['bandage']}  " + (f"억제제 {self.bag['pill']}  " if EXPOSURE_ON else "") + \
-            f"통조림 {self.bag['can']}"
-        ui.text(470 * u, HEIGHT - 42 * u, bag, (220, 210, 180), t2)
-        if self.left:                                      # area summary
-            pico2d.draw_rectangle(WIDTH / 2 - 190 * u, HEIGHT / 2 - 80 * u, WIDTH / 2 + 190 * u,
-                                  HEIGHT / 2 + 80 * u, 10, 12, 16, 230, filled=True)
-            lines = [(f"{EXIT_NAME}으로 빠져나왔다", ui.ACCENT),
-                     (f"챙긴 물자: {bag}", (230, 220, 180)),
-                     (f"쓰러뜨린 피폭체 {self.kills}" + (f" · 피폭 {self.exposure:.0f}%" if EXPOSURE_ON else ""),
-                      (150, 230, 160)),
-                     ("다음 구역(지하철)은 3단계에서 · R 다시", (180, 180, 190))]
-            for i, (line, colour) in enumerate(lines):
-                ui.text_center(WIDTH / 2, HEIGHT / 2 + (48 - i * 32) * u, line, colour, hud_size(16 if i == 0 else 14))

@@ -143,8 +143,8 @@ class Hero:
             return
         elif self.pickup > 0:
             self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing)
-        elif self.shove > 0:                   # the first frames of the swing read as a push
-            self.look.draw("swing", 0.15 * (1 - self.shove / SHOVE_TIME), x, y, self.facing)
+        elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
+            self.look.draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing)
         elif self.roll > 0:
             face = 1 if self.roll_dir[0] >= 0 else -1
             self.look.draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,

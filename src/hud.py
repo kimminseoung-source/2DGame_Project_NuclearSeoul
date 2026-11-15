@@ -94,7 +94,7 @@ def draw_hud(game):
 def health_bar(game, l, b, w, h):
     """Health as one bar (2026-11-15 "칸으로 말고 바 형식으로"). The red part follows the real
     health quickly; a pale part shows what was just lost and drains after it (damage trail)."""
-    share = max(0.0, game.hero.hp / HERO_HP)
+    share = max(0.0, min(1.0, game.hero.hp / HERO_HP))
     shown = getattr(game, "hud_health", share)
     trail = getattr(game, "hud_trail", share)
     shown += (share - shown) * 0.35                          # eased toward the real value
@@ -114,7 +114,10 @@ def draw_status(game):
     l, b, w, h = size(16), size(16), size(330), size(78)
     panel(l, b, l + w, b + h)
     ui.text(l + size(10), b + h - size(14), "체력", TEXT, size(12))
-    health_bar(game, l + size(46), b + h - size(20), size(270), size(11))
+    health_bar(game, l + size(46), b + h - size(20), size(220), size(11))
+    pct = max(0, round(hero.hp / HERO_HP * 100))
+    colour = TEXT if pct > 50 else (230, 170, 90) if pct > 25 else (230, 90, 80)
+    ui.text(l + size(274), b + h - size(14), f"{pct}%", colour, size(13))
     # status icons: a coloured tile with a short word, the stronger the brighter
     x = l + size(10)
     for label, tint, level in cond.moodles(hero)[:7]:
@@ -215,7 +218,7 @@ def draw_inventory(game):
     ui.text(ml + size(12), top - size(18), "몸", TEXT, size(15))
     draw_body(ml + size(55), bottom + size(50), size(150), game.condition.injuries)
     sx = ml + size(110)
-    ui.text(sx, top - size(52), f"체력 {round(100 * game.hero.hp / HERO_HP)}%", TEXT, size(12))
+    ui.text(sx, top - size(52), f"체력 {max(0, round(100 * game.hero.hp / HERO_HP))}%", TEXT, size(12))
     ui.text(sx, top - size(74), f"긴장 {game.condition.tension * 100:.0f}%", DIM, size(12))
     wounds = game.condition.injuries
     for k, wound in enumerate(wounds[:3]):

@@ -24,7 +24,7 @@ SLASH_LUNGE = 46.0              # px travelled along the aim
 SLASH_REACH = 58.0
 SLASH_ARC = 1.25                # radians either side of the aim
 SLASH_COOLDOWN = 0.08
-HERO_HP = 2
+HERO_HP = 100.0                 # health in percent (2026-11-16 "퍼센트로": was 2 hits)
 HURT_INVULNERABLE = 0.8
 SLOW_WORLD = 0.12               # world speed while time crawls (right button)
 # Exposure (time crawls on the right button, pillar 2) is put off for later (2026-11-15 "피폭 관련된
