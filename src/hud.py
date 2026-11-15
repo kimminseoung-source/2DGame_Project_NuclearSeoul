@@ -92,17 +92,29 @@ def draw_hud(game):
         ui.text_center(WIDTH / 2, size(92), game.message, (236, 214, 150), size(14))
 
 
+def health_bar(game, l, b, w, h):
+    """Health as one bar (2026-11-15 "칸으로 말고 바 형식으로"). The red part follows the real
+    health quickly; a pale part shows what was just lost and drains after it (damage trail)."""
+    share = max(0.0, game.hero.hp / HERO_HP)
+    shown = getattr(game, "hud_health", share)
+    trail = getattr(game, "hud_trail", share)
+    shown += (share - shown) * 0.35                          # eased toward the real value
+    trail = share if share > trail else max(share, trail - 0.012)
+    game.hud_health, game.hud_trail = shown, trail
+    pico2d.draw_rectangle(l, b, l + w, b + h, 40, 22, 22, filled=True)
+    pico2d.draw_rectangle(l, b, l + w * trail, b + h, 210, 170, 150, filled=True)
+    colour = (176, 54, 48) if share > 0.5 else (206, 60, 44)
+    pico2d.draw_rectangle(l, b, l + w * shown, b + h, *colour, filled=True)
+    pico2d.draw_rectangle(l, b, l + w, b + h, 90, 60, 58)
+
+
 def draw_status(game):
     """Bottom left: health segments, a heartbeat line moving at the heart rate, status icons."""
     hero, cond = game.hero, game.condition
     l, b, w, h = size(16), size(16), size(330), size(78)
     panel(l, b, l + w, b + h)
     ui.text(l + size(10), b + h - size(14), "체력", TEXT, size(12))
-    seg_w = size(110) / HERO_HP
-    for i in range(HERO_HP):
-        x0 = l + size(46) + i * seg_w
-        colour = (176, 54, 48) if i < hero.hp else (46, 30, 30)
-        pico2d.draw_rectangle(x0 + size(2), b + h - size(20), x0 + seg_w - size(2), b + h - size(9), *colour, filled=True)
+    health_bar(game, l + size(46), b + h - size(20), size(116), size(11))
     bpm = cond.heart_rate()
     colour = (110, 200, 120) if cond.tension < 0.33 else (220, 170, 80) if cond.tension < 0.66 else (220, 80, 70)
     ui.text(l + size(176), b + h - size(14), f"{bpm} bpm", colour, size(12))
@@ -224,7 +236,7 @@ def draw_inventory(game):
     ui.text(ml + size(12), top - size(18), "몸", TEXT, size(15))
     draw_body(ml + size(55), bottom + size(50), size(150), game.condition.injuries)
     sx = ml + size(110)
-    ui.text(sx, top - size(52), f"체력 {game.hero.hp}/{HERO_HP}", TEXT, size(12))
+    ui.text(sx, top - size(52), f"체력 {round(100 * game.hero.hp / HERO_HP)}%", TEXT, size(12))
     ui.text(sx, top - size(74), f"심박 {game.condition.heart_rate()}", DIM, size(12))
     ui.text(sx, top - size(96), f"긴장 {game.condition.tension * 100:.0f}%", DIM, size(12))
     wounds = game.condition.injuries
