@@ -3,7 +3,7 @@
     .venv\\Scripts\\python.exe src\\main.py
 
 WASD move, left click slash toward the mouse, Space roll, E pick up / leave, 1 bandage,
-Tab bag (inventory), R restart, F2 infected senses on/off, F3 realistic look on/off, Esc quit.
+Tab bag (inventory), mouse wheel zoom, R restart, F2 infected senses on/off, F3 realistic look on/off, Esc quit.
 (Right button time crawl with exposure is switched off for now: settings.EXPOSURE_ON.)
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
 """
@@ -58,6 +58,8 @@ def main(window_x=None):
             elif game.bag_open and event.type in (sdl2.SDL_MOUSEMOTION, sdl2.SDL_MOUSEBUTTONDOWN,
                                                   sdl2.SDL_MOUSEBUTTONUP):
                 bag_mouse(game, event)               # the bag takes the mouse while it is open
+            elif event.type == sdl2.SDL_MOUSEWHEEL and event.y:
+                game.wheel(event.y)                  # zoom in / out
             elif event.type == sdl2.SDL_MOUSEMOTION:
                 game.aim = (event.x, event.y)
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:

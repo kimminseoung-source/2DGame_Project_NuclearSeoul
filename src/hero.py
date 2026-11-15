@@ -1,10 +1,13 @@
 """The hero: WASD movement (Ctrl sneaks), the aimed slash with a short lunge, the roll, being
-grabbed, being slowed by blows (Zomboid: each hit slows you, up to half speed)."""
+grabbed, being slowed by blows (Zomboid: each hit slows you, up to half speed), stamina
+(stamina.py: every swing, shove and roll costs breath) and the quiet takedown of an unaware
+infected (its own motion: take hold, a short stab)."""
 
 from math import atan2, cos, hypot, sin
 
 import sdl2
 
+import stamina as breath
 from area import HERO_START, move_body
 from settings import (CHEST, CHOP_HIT, CHOP_LUNGE, CHOP_TIME, HERO_HP, HURT_REACT, ROLL_COOLDOWN,
                       ROLL_SPEED, ROLL_TIME, RUN_SPEED, SLASH_COOLDOWN, SLASH_HIT, SLASH_LUNGE, SLASH_TIME,
@@ -19,6 +22,11 @@ SLOW_RECOVER = 0.2          # per second back to full speed
 SHOVE_TIME = 0.25 * TEMPO   # s of the shove (right click)
 SHOVE_COOLDOWN = 0.6
 LUNGE_SPEED = 60 * (1 - 0.82)   # the lunge fades by 0.82 a frame: start speed = distance x this
+# The takedown (2026-11-16 "기습을 성공하는 건 애니메이션을 따로, 조용히 죽이는 걸로"): the hero takes
+# hold of an infected that has not seen him and stabs it, feet planted, no sound to speak of.
+TAKEDOWN_TIME = 0.8 * TEMPO
+TAKEDOWN_STAB = 0.55        # share of the takedown when the blade goes in
+TAKEDOWN_REACH = 40         # px: close enough to take hold
 
 
 class Hero:
@@ -46,6 +54,10 @@ class Hero:
         self.shove = 0.0             # s left of a shove
         self.shove_angle = 0.0
         self.shove_cooldown = 0.0
+        self.shove_weak = False      # a tired shove cannot knock anything down
+        self.stamina = breath.Stamina()
+        self.takedown = 0.0          # s left of the quiet takedown
+        self.victim = None           # the infected being taken down
 
     @property
     def invulnerable(self):
@@ -67,35 +79,56 @@ class Hero:
 
     def start_slash(self, ax, ay, chop=False):
         """A slash toward (ax, ay); `chop` makes it the overhead chop at something on the ground."""
-        if self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead or self.grabbed > 0 \
-                or self.reeling > 0:
+        if not self.free:
             return
         angle = atan2(ay - (self.y + CHEST), ax - self.x)
         self.facing = 1 if cos(angle) >= 0 else -1
         whole, hit, lunge = (CHOP_TIME, CHOP_HIT, CHOP_LUNGE) if chop else (SLASH_TIME, SLASH_HIT, SLASH_LUNGE)
+        if not self.stamina.spend("chop" if chop else "slash"):       # out of breath: a slow swing
+            whole, hit = whole * breath.TIRED_SLOW, hit * breath.TIRED_SLOW
         self.slash = {"time": 0.0, "angle": angle, "hit": False, "chop": chop,
                       "whole": whole, "hit_at": hit, "pose": "swing3" if chop else "swing"}
         speed = lunge * LUNGE_SPEED                     # covers about `lunge` px whatever the tempo
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
 
+    @property
+    def free(self):
+        """Not busy with another action: a new slash, shove or takedown may start."""
+        return not (self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead or self.grabbed > 0
+                    or self.reeling > 0 or self.shove > 0 or self.pickup > 0 or self.takedown > 0)
+
+    def start_takedown(self, victim):
+        """Take hold of an unaware infected from close by and stab it (no stamina, no noise)."""
+        if not self.free:
+            return False
+        self.takedown, self.victim = TAKEDOWN_TIME, victim
+        self.facing = 1 if victim.x >= self.x else -1
+        return True
+
     def start_shove(self, ax, ay):
         """Right click: push whatever is in front away (Zomboid's shove)."""
-        if self.shove > 0 or self.shove_cooldown > 0 or self.slash or self.roll > 0 or self.dead \
-                or self.grabbed > 0 or self.pickup > 0 or self.reeling > 0:
+        if not self.free or self.shove_cooldown > 0:
             return False
+        self.shove_weak = not self.stamina.spend("shove")
         self.shove_angle = atan2(ay - (self.y + CHEST), ax - self.x)
         self.facing = 1 if cos(self.shove_angle) >= 0 else -1
         self.shove = SHOVE_TIME
         return True
 
     def start_roll(self, mx, my):
-        if self.roll > 0 or self.roll_cooldown > 0 or self.dead:
-            return
+        """False when it could not roll: busy, or no breath left for it."""
+        if self.roll > 0 or self.roll_cooldown > 0 or self.dead or self.takedown > 0:
+            return False
+        if not self.stamina.can("roll"):
+            self.stamina.tired_flash = 0.6
+            return False
+        self.stamina.spend("roll")
         length = hypot(mx, my)
         self.roll_dir = (mx / length, my / length) if length else (float(self.facing), 0.0)
         self.roll = ROLL_TIME
         self.slash = None
         self.grabbed = 0.0           # rolling tears free
+        return True
 
     def update(self, dt, keys, aim_x):
         self.time += dt
@@ -106,6 +139,7 @@ class Hero:
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
         self.shove_cooldown = max(0.0, self.shove_cooldown - dt)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
+        self.stamina.update(dt, self.moving)
         if self.dead:
             self.dead += dt
             return
@@ -116,6 +150,11 @@ class Hero:
             self.grabbed -= dt
             return
         if self.reeling > 0:                   # knocked back a step by the blow
+            return
+        if self.takedown > 0:                  # holding it, stabbing: feet planted
+            self.takedown = max(0.0, self.takedown - dt)
+            if self.takedown <= 0:
+                self.victim = None
             return
         if self.pickup > 0:                    # crouched for a moment, picking something up
             self.pickup -= dt
@@ -152,6 +191,8 @@ class Hero:
         x, y = self.x - cx, self.y - cy
         if self.dead:
             self.look.draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
+        elif self.takedown > 0:
+            self.look.draw("takedown", 1 - self.takedown / TAKEDOWN_TIME, x, y, self.facing)
         elif self.reeling > 0:                 # reels from the blow (was: blinking)
             self.look.draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing)
         elif self.pickup > 0:

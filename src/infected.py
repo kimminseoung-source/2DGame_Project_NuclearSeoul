@@ -43,6 +43,10 @@ HITS = (2, 3)                   # slashes an aware infected takes
 FLINCH_TIME = 0.35 * TEMPO      # s it reels from a slash that does not kill it (not helpless)
 HIT_DOWN_CHANCE = 0.2           # chance such a slash knocks it down instead
 HIT_PUSH = 55                   # px/s a slash knocks it back
+# Reading the infected (2026-11-16 "전투적인 측면을 많이 다듬어야"; DESIGN_LOCK pillar 1 "빈틈을 노리면
+# 한 방"): after its claw swings it is open while it recovers - one slash ends it - and a shove
+# timed to the end of its warning always knocks it down (a counter), an early one only staggers.
+COUNTER_WINDOW = 0.22 * TEMPO   # s at the end of the wind-up when a shove is a counter
 # Crawlers (2026-11-16 "쓰러지면 기어서도 오는 요소"; Zomboid's zombie-crawler): an infected that
 # was knocked down sometimes does not get up but drags itself on toward the hero, slow and on the
 # ground (one slash ends it), and bites at the ankles if it is left to reach him.
@@ -80,7 +84,13 @@ class Zombie:
 
     @property
     def alive(self):
-        return self.state != "dead"
+        return self.state not in ("dead", "slump")
+
+    def slump(self, time):
+        """Taken hold of and stabbed by the hero (takedown): it sinks down where it stands, then
+        lies dead. No sound, no blood burst."""
+        self.state, self.timer, self.slump_time = "slump", time, time
+        self.push = (0.0, 0.0)
 
     def kill(self, dx, dy):
         self.on_ground = self.prone or self.state == "down"     # killed lying down: no second fall
@@ -98,12 +108,17 @@ class Zombie:
         self.seen_time = 0.0
         self.target, self.memory = (from_x, from_y), MEMORY    # it knows where the blow came from
 
-    def shoved(self, from_x, from_y):
-        """Pushed by the hero: it reels or falls."""
-        if random.random() < DOWN_CHANCE:
+    def shoved(self, from_x, from_y, weak=False):
+        """Pushed by the hero: it reels or falls (a tired, weak shove only makes it reel). A shove
+        right at the end of its warning is a counter: it always goes down. Returns True for that."""
+        if not weak and self.state == "windup" and self.timer <= COUNTER_WINDOW:
+            self.reel(from_x, from_y, SHOVE_PUSH, "down", DOWN_TIME)
+            return True
+        if not weak and random.random() < DOWN_CHANCE:
             self.reel(from_x, from_y, SHOVE_PUSH, "down", DOWN_TIME)
         else:
             self.reel(from_x, from_y, SHOVE_PUSH, "stagger", STAGGER_TIME)
+        return False
 
     def hurt(self, from_x, from_y):
         """A slash on an aware infected: True when it was the last one it could take."""
@@ -118,8 +133,8 @@ class Zombie:
 
     @property
     def helpless(self):
-        """Reeling, on the ground, or unaware of the hero: a sure, quiet finisher."""
-        return self.prone or self.state in ("idle", "alert", "search", "stagger", "down")
+        """Reeling, on the ground, open after its swing, or unaware of the hero: one slash ends it."""
+        return self.prone or self.state in ("idle", "alert", "search", "stagger", "down", "recover")
 
     def sees(self, hero):
         dx, dy = hero.x - self.x, hero.y - self.y
@@ -166,6 +181,12 @@ class Zombie:
     def update(self, dt, hero, game):
         self.time += dt
         self.spotted = max(0.0, self.spotted - dt)
+        if self.state == "slump":
+            self.timer -= dt
+            if self.timer <= 0:
+                self.state, self.timer, self.on_ground = "dead", 0.0, True
+                self.death = (0.0, 0.0)
+            return None
         if self.state == "dead":
             self.timer += dt
             move_body(self, self.death[0] * dt, self.death[1] * dt)
@@ -267,6 +288,9 @@ class Zombie:
 
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
+        if self.state == "slump":
+            self.look.draw("slump", 1 - self.timer / self.slump_time, x, y, self.facing)
+            return
         if self.state == "dead":
             if not self.blink_corpse or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
                 if self.on_ground:                   # already lying there: stays as it lay

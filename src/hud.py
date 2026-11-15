@@ -108,6 +108,24 @@ def health_bar(game, l, b, w, h):
     pico2d.draw_rectangle(l, b, l + w, b + h, 90, 60, 58)
 
 
+def draw_stamina(game):
+    """Breath (stamina.py) as a thin pixel bar under the hero's feet, only while it is not full:
+    what to watch is where the fight is, not in a corner (2026-11-16 "기력을 넣자")."""
+    from stamina import MAX
+    hero, st = game.hero, game.hero.stamina
+    if hero.dead or (st.value >= MAX - 0.5 and st.tired_flash <= 0):
+        return
+    sx = (hero.x - game.cam[0]) * game.zoom / px.K
+    sy = (HEIGHT - (hero.y - game.cam[1]) * game.zoom) / px.K + 4
+    l, t, w = round(sx) - 11, round(sy), 22
+    colour = BLOOD if st.tired_flash > 0 else ORANGE if st.winded else ROAD
+    px.rect(l - 1, t - 1, l + w, t + 2, BLOOD if st.tired_flash > 0 else INK_C)   # out of breath: red edge
+    px.rect(l, t, l + w - 1, t + 1, (40, 40, 38))
+    filled = round(w * st.value / MAX)
+    if filled:
+        px.rect(l, t, l + filled - 1, t + 1, colour)
+
+
 def draw_status(game):
     """Bottom left: the health bar and, under it, the status icons (no heart rate: 2026-11-16
     "심장 박동 수는 전혀 필요 없어 보이는데")."""

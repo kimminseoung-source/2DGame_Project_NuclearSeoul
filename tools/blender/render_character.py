@@ -31,8 +31,12 @@ PASSES = [
       # push: a light two-handed shove, the legs held still in the idle stance (2026-11-16: "벽을
       #미는 것 같다" -> cross punch + Push_Loop for both hands; then "하체는 거의 가만히, 상체만
       #가볍게" -> '~Idle_Loop' keeps hips and legs in Idle_Loop's first pose, render_sprites.get_action)
-      "push=Punch_Cross~Idle_Loop@0-14+Push_Loop~Idle_Loop*0.45"],
-     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4"],
+      "push=Punch_Cross~Idle_Loop@0-14+Push_Loop~Idle_Loop*0.45",
+      # takedown: the quiet kill of an unaware infected (2026-11-16 "기습을 성공하는 건 애니메이션을
+      # 따로, 조용히 죽이는 걸로"): reach out and take hold, then a short stab, feet planted
+      "takedown=Interact@0-14,Punch_Cross~Idle_Loop@2-14"],
+     ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4",
+      "takedown=4,4"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (2026-11-13, the user's pick from the sheets: "back to this one"):
@@ -57,9 +61,10 @@ INFECTED_PASSES = [
     (LIB1,
      # crawl: a downed infected that drags itself on (2026-11-16 "기어서도 오는 요소"); the
      # front crawl stroke seen from the side reads as pulling along the ground
-     ["hurt=Hit_Chest", "down=Death01", "crawl=Swim_Fwd_Loop"],
-     ["hurt=3", "down=5", "crawl=8"],
-     ["--shift-for", "down=16"]),
+     # slump: taken hold of from behind and stabbed, it jerks and sinks down (the takedown's victim)
+     ["hurt=Hit_Chest", "down=Death01", "crawl=Swim_Fwd_Loop", "slump=Hit_Head,Death01"],
+     ["hurt=3", "down=5", "crawl=8", "slump=2,6"],
+     ["--shift-for", "down=16", "slump=16"]),
 ]
 ACTION_SETS = {"hero": PASSES, "infected": INFECTED_PASSES}
 

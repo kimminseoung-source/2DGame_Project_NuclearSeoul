@@ -16,17 +16,18 @@ from pico2d import pico2d as canvas
 
 import bag_screen
 import hud
+import stamina as stamina_rules
 import ui
 from hero import PICKUP_TIME
 from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
 from character_look import SheetLook
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
-from hero import Hero
+from hero import TAKEDOWN_REACH, TAKEDOWN_STAB, TAKEDOWN_TIME, Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
-                      ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_LUNGE, SLASH_REACH, SLOW_WORLD, VIEW_H,
-                      VIEW_W, WIDTH)
+                      ROLL_TIME, ROOT, SLASH_ARC, SLASH_LUNGE, SLASH_REACH, SLOW_WORLD, WIDTH,
+                      ZOOM_DEFAULT, ZOOM_STEPS)
 from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
 import supplies as supply_rules
@@ -42,6 +43,8 @@ NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 SHOVE_REACH = 46             # px a shove reaches
 BODY_CONTACT = 20            # px: an infected this close is against the hero's body (2026-11-16 판정)
+SURE_KILL = {"recover": "빈틈을 베었다!", "idle": "들키기 전에 조용히 처리했다",
+             "alert": "들키기 전에 조용히 처리했다", "search": "들키기 전에 조용히 처리했다"}
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
@@ -61,6 +64,7 @@ class Game:
         self.real = True                    # F3: realistic look on/off (compare)
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
         infected.Zombie.blink_corpse = not self.real
+        self.zoom = ZOOM_DEFAULT            # mouse wheel zoom (kept across restarts)
         self.bag_open = False               # Tab: the bag (inventory)
         bag_screen.reset(self)
         self.look = 0.0
@@ -106,7 +110,25 @@ class Game:
         self.left = False            # reached the exit: the area is done
 
     def mouse_world(self, sx, sy):
-        return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
+        return sx / self.zoom + self.cam[0], (HEIGHT - 1 - sy) / self.zoom + self.cam[1]
+
+    @property
+    def view_w(self):
+        return round(WIDTH / self.zoom)          # world px across the screen at this zoom
+
+    @property
+    def view_h(self):
+        return round(HEIGHT / self.zoom)
+
+    def wheel(self, steps):
+        """Mouse wheel: up zooms in, down zooms out, through ZOOM_STEPS; the camera keeps the hero
+        in the middle."""
+        i = ZOOM_STEPS.index(self.zoom) if self.zoom in ZOOM_STEPS else ZOOM_STEPS.index(ZOOM_DEFAULT)
+        i = max(0, min(len(ZOOM_STEPS) - 1, i + (1 if steps > 0 else -1)))
+        if ZOOM_STEPS[i] != self.zoom:
+            self.zoom = ZOOM_STEPS[i]
+            self.cam = [self.hero.x - self.view_w / 2, self.hero.y - self.view_h / 2]
+            self.clamp_camera()
 
     def wound_fx(self, z, zx, zy, sx, sy):
         """A slash that does not drop the infected: a little blood or a spark, a short hitstop."""
@@ -129,9 +151,13 @@ class Game:
                 continue
             diff = (atan2(z.y - hero.y, z.x - hero.x) - hero.shove_angle + pi) % (2 * pi) - pi
             if hypot(z.x - hero.x, z.y - hero.y) <= SHOVE_REACH and abs(diff) <= 0.9:
-                z.shoved(hero.x, hero.y)
-                self.sounds.play("slash_hit", 0.35, at=(z.x, z.y))
-                self.message = "넘어뜨렸다! 지금 베면 확실하다" if z.state == "down" else "밀쳐냈다"
+                countered = z.shoved(hero.x, hero.y, weak=hero.shove_weak)
+                self.sounds.play("slash_hit", 0.6 if countered else 0.35, at=(z.x, z.y))
+                if countered:                                  # timed to its swing: a heavier jolt
+                    self.hitstop, self.shake = max(self.hitstop, 0.08), 0.1
+                self.message = ("받아쳐 넘어뜨렸다! 내려찍어라" if countered
+                                else "넘어뜨렸다! 지금 베면 확실하다" if z.state == "down"
+                                else "숨이 차서 힘없이 밀었다" if hero.shove_weak else "밀쳐냈다")
         if self.senses:
             self.make_noise(NOISE_STEP)
 
@@ -159,11 +185,32 @@ class Game:
                 best = (dist, z)
         return best is not None and (best[1].state == "down" or best[1].prone)
 
+    def takedown_target(self, angle):
+        """An infected that has not noticed the hero, standing within reach in front: the click
+        becomes the quiet takedown (2026-11-16 "기습을 성공하는 건 애니메이션을 따로")."""
+        hero, best = self.hero, None
+        for z in self.zombies:
+            if not z.alive or z.prone or z.state not in ("idle", "alert", "search"):
+                continue
+            dist = hypot(z.x - hero.x, z.y - hero.y)
+            diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
+            if dist <= TAKEDOWN_REACH and abs(diff) <= SLASH_ARC and (best is None or dist < best[0]):
+                best = (dist, z)
+        return best and best[1]
+
     def click(self, sx, sy):
         self.aim = (sx, sy)
         before = self.hero.slash
         ax, ay = self.mouse_world(sx, sy)
-        self.hero.start_slash(ax, ay, chop=self.ground_target(atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)))
+        angle = atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)
+        victim = self.takedown_target(angle)
+        if victim is not None and self.hero.start_takedown(victim):
+            victim.slump(TAKEDOWN_TIME)
+            victim.stabbed = False
+            self.kills += 1
+            self.sounds.play("slash", 0.2)                       # cloth and a breath, nothing more
+            return
+        self.hero.start_slash(ax, ay, chop=self.ground_target(angle))
         if self.hero.slash is not None and self.hero.slash is not before:
             self.hero.slash["quiet"] = bool(self.unaware_in_reach(self.hero.slash["angle"]))
             self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
@@ -200,10 +247,12 @@ class Game:
             self.slow = False
             return
         if key == sdl2.SDLK_SPACE:
-            self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
-                                 keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
-            if self.hero.roll >= ROLL_TIME:
+            rolled = self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
+                                          keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
+            if rolled:
                 self.sounds.play("roll", 0.6)
+            elif self.hero.stamina.tired_flash > 0:
+                self.message = "숨이 차서 구를 수 없다"
         elif key == sdl2.SDLK_r:
             self.reset()
         elif key == sdl2.SDLK_e and not self.left and not self.hero.dead:
@@ -340,6 +389,14 @@ class Game:
         else:
             self.look = 0.0 if hero.facing > 0 else pi
 
+        victim = hero.victim
+        if victim is not None and not victim.stabbed and hero.takedown <= TAKEDOWN_TIME * (1 - TAKEDOWN_STAB):
+            victim.stabbed = True                                # the blade goes in: quiet, a little blood
+            self.message = "들키기 전에 조용히 처리했다"
+            self.sounds.play("slash_hit", 0.35)
+            if self.real:
+                self.effects.append(Blood(victim.x, victim.y + CHEST - 4, atan2(victim.y - hero.y, victim.x - hero.x), 8))
+            self.hitstop = max(self.hitstop, 0.05)
         if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= hero.slash["hit_at"]:
             hero.slash["hit"] = True
             sx, sy = hero.x, hero.y + CHEST
@@ -347,6 +404,8 @@ class Game:
                 self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
             else:
                 self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
+            if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= SLASH_REACH for z in self.zombies):
+                hero.stamina.pay(stamina_rules.MISS)          # swung at nothing: more breath gone
             for z in self.zombies:
                 if not z.alive:
                     continue
@@ -354,16 +413,17 @@ class Game:
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 dist = hypot(zx - sx, zy - sy)
                 if dist <= BODY_CONTACT or (dist <= SLASH_REACH and abs(diff) <= SLASH_ARC):  # touching: hit
-                    unaware = z.helpless                         # helpless: one slash is enough
-                    if not unaware and not z.hurt(hero.x, hero.y):
+                    opening = z.state if z.helpless else None   # helpless: one slash is enough
+                    if opening is None and not z.hurt(hero.x, hero.y):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         continue
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
-                    if unaware:                                  # finisher: a clean, quiet kill
-                        self.message = "들키기 전에 조용히 처리했다"
+                    if opening is not None:                      # a sure kill: it should feel like one
+                        self.message = SURE_KILL.get(opening, "확실하게 끝냈다")
                         self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
-                        self.hitstop = max(self.hitstop, 0.09)
+                        self.hitstop = max(self.hitstop, 0.1)
+                        self.shake = max(self.shake, 0.08)
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     if self.real:
@@ -470,19 +530,26 @@ class Game:
             self.cleared = True
             self.message = "구역 정리! R로 다시 해 보기"
         # the camera may go HUD_PAD past the top edge so nothing up there hides under the HUD bar
-        for i, (pos, view, room) in enumerate(((hero.x, VIEW_W, ROOM_W), (hero.y, VIEW_H, ROOM_H + HUD_PAD))):
+        for i, (pos, view, room) in enumerate(((hero.x, self.view_w, ROOM_W), (hero.y, self.view_h, ROOM_H + HUD_PAD))):
             target = max(0, min(room - view, pos - view / 2))
             self.cam[i] += (target - self.cam[i]) * min(1.0, real_dt * 8)
 
+    def clamp_camera(self):
+        for i, (view, room) in enumerate(((self.view_w, ROOM_W), (self.view_h, ROOM_H + HUD_PAD))):
+            self.cam[i] = max(0, min(room - view, self.cam[i]))
+
     def draw(self):
-        if not hasattr(self, "target"):
+        if getattr(self, "target_zoom", None) != self.zoom:     # the world texture at this zoom
+            if getattr(self, "target", None) is not None:
+                sdl2.SDL_DestroyTexture(self.target)
             self.target = sdl2.SDL_CreateTexture(canvas.renderer, sdl2.SDL_PIXELFORMAT_RGBA8888,
-                                                 sdl2.SDL_TEXTUREACCESS_TARGET, VIEW_W, VIEW_H)
+                                                 sdl2.SDL_TEXTUREACCESS_TARGET, self.view_w, self.view_h)
             sdl2.SDL_SetTextureBlendMode(self.target, sdl2.SDL_BLENDMODE_BLEND)
+            self.target_zoom = self.zoom
         sdl2.SDL_SetRenderTarget(canvas.renderer, self.target)
         sdl2.SDL_SetRenderDrawColor(canvas.renderer, 30, 30, 34, 255)
         sdl2.SDL_RenderClear(canvas.renderer)
-        canvas.canvas_height = VIEW_H
+        canvas.canvas_height = self.view_h
         shake = random.uniform(-2, 2) if self.shake > 0 else 0
         cx, cy = self.cam[0] + shake, self.cam[1]
         if self.ground_img is not None:                    # the rendered street
@@ -543,9 +610,9 @@ class Game:
         for e in self.effects:
             e.draw(cx, cy)
         self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y + CHEST - cy),
-                         VIEW_W, VIEW_H)
+                         self.view_w, self.view_h)
         if self.real:                                      # a muted, colder tone over everything
-            pico2d.draw_rectangle(0, 0, VIEW_W, VIEW_H, 26, 30, 34, 70, filled=True)
+            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 26, 30, 34, 70, filled=True)
         el, eb, er, _ = EXIT                               # the green exit sign (in front) stays lit in the dark
         ex, ey = (el + er) / 2 - cx, eb - 12 - cy
         pico2d.draw_rectangle(ex - 34, ey - 7, ex + 34, ey + 9, 30, 120, 70, filled=True)
@@ -553,13 +620,14 @@ class Game:
         if self.near_exit() and not self.left:
             ui.text_center(self.hero.x - cx, self.hero.y - cy + 74, "E 나가기", (220, 255, 225), 12)
         if self.slow_blend > 0:
-            pico2d.draw_rectangle(0, 0, VIEW_W, VIEW_H, 20, 60, 70, round(80 * self.slow_blend), filled=True)
+            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
         canvas.canvas_height = HEIGHT
         sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
         if self.bag_open:                                  # the bag screen replaces the HUD
             hud.draw_inventory(self)
         else:
+            hud.draw_stamina(self)
             hud.draw_hud(self)
         if self.left:
             hud.draw_summary(self)

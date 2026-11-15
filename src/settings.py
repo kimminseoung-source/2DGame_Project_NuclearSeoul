@@ -9,9 +9,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 WIDTH, HEIGHT = 1280, 720       # window (2026-11-15 "화면이 더 크면 좋겠음": was 768 x 432)
-SCALE = 2.5                     # the world is drawn zoomed in, so the pixels read chunky
+# World zoom (2026-11-16 "화면 크기를 키우는 건 좋은데 내부 캐릭터들은 줄이자", "확대 축소가 가능하게
+# 하자 휠로"): the mouse wheel steps through these; the default shows the characters smaller than
+# before (was a fixed 2.5) and 2.0 keeps every world pixel a whole 2 x 2 block, like the UI.
+ZOOM_STEPS = (1.5, 2.0, 2.5, 3.0)
+ZOOM_DEFAULT = 2.0
+SCALE = ZOOM_DEFAULT            # starting zoom (play.Game.zoom changes with the wheel)
 UI_SCALE = HEIGHT / 432         # HUD text and bars grow with the window
-VIEW_W, VIEW_H = round(WIDTH / SCALE), round(HEIGHT / SCALE)   # 512 x 288 world px on screen
 
 CHEST = 22                      # chest height above the feet, where blows land
 # Action tempo (2026-11-16 "모든 행동들이 조금 빠른 감이 있다"): every timed action of the hero and
