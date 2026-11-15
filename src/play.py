@@ -25,7 +25,7 @@ from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
-                      ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, VIEW_H,
+                      ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_LUNGE, SLASH_REACH, SLOW_WORLD, VIEW_H,
                       VIEW_W, WIDTH)
 from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
@@ -41,6 +41,7 @@ SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 SHOVE_REACH = 46             # px a shove reaches
+BODY_CONTACT = 20            # px: an infected this close is against the hero's body (2026-11-16 판정)
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
@@ -145,10 +146,24 @@ class Game:
                     found.append(z)
         return found
 
+    def ground_target(self, angle):
+        """True when the nearest infected the slash would reach is on the ground (down or
+        crawling): the slash becomes the overhead chop (2026-11-16 "자동 내려찍기")."""
+        hero, best = self.hero, None
+        for z in self.zombies:
+            if not z.alive:
+                continue
+            dist = hypot(z.x - hero.x, z.y - hero.y)
+            diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
+            if dist <= SLASH_REACH + SLASH_LUNGE and abs(diff) <= SLASH_ARC and (best is None or dist < best[0]):
+                best = (dist, z)
+        return best is not None and (best[1].state == "down" or best[1].prone)
+
     def click(self, sx, sy):
         self.aim = (sx, sy)
         before = self.hero.slash
-        self.hero.start_slash(*self.mouse_world(sx, sy))
+        ax, ay = self.mouse_world(sx, sy)
+        self.hero.start_slash(ax, ay, chop=self.ground_target(atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)))
         if self.hero.slash is not None and self.hero.slash is not before:
             self.hero.slash["quiet"] = bool(self.unaware_in_reach(self.hero.slash["angle"]))
             self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
@@ -313,6 +328,8 @@ class Game:
             return
         world_dt = real_dt * (1 + (SLOW_WORLD - 1) * self.slow_blend)
         aim_x = self.mouse_world(*self.aim)[0] if self.aim[0] is not None else None
+        if hero.slash and any(z.alive and hypot(z.x - hero.x, z.y - hero.y) <= BODY_CONTACT for z in self.zombies):
+            hero.lunge = (0.0, 0.0)           # bodies stop the lunge: no sliding past the one in front
         hero.update(real_dt, keys, aim_x)
         if int(hero.run_distance) != self.hero_steps:
             self.hero_steps = int(hero.run_distance)
@@ -323,16 +340,20 @@ class Game:
         else:
             self.look = 0.0 if hero.facing > 0 else pi
 
-        if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= SLASH_HIT:
+        if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= hero.slash["hit_at"]:
             hero.slash["hit"] = True
             sx, sy = hero.x, hero.y + CHEST
-            self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
+            if hero.slash["chop"]:                       # the blade comes down at its feet
+                self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
+            else:
+                self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
             for z in self.zombies:
                 if not z.alive:
                     continue
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
-                if hypot(zx - sx, zy - sy) <= SLASH_REACH + 12 and abs(diff) <= SLASH_ARC:
+                dist = hypot(zx - sx, zy - sy)
+                if dist <= BODY_CONTACT or (dist <= SLASH_REACH and abs(diff) <= SLASH_ARC):  # touching: hit
                     unaware = z.helpless                         # helpless: one slash is enough
                     if not unaware and not z.hurt(hero.x, hero.y):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming

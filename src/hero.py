@@ -6,17 +6,19 @@ from math import atan2, cos, hypot, sin
 import sdl2
 
 from area import HERO_START, move_body
-from settings import (CHEST, HERO_HP, ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, RUN_SPEED, SLASH_COOLDOWN,
-                      SLASH_HIT, SLASH_LUNGE, SLASH_TIME)
+from settings import (CHEST, CHOP_HIT, CHOP_LUNGE, CHOP_TIME, HERO_HP, HURT_REACT, ROLL_COOLDOWN,
+                      ROLL_SPEED, ROLL_TIME, RUN_SPEED, SLASH_COOLDOWN, SLASH_HIT, SLASH_LUNGE, SLASH_TIME,
+                      TEMPO)
 
 
-PICKUP_TIME = 0.35          # s of the pick-up motion (2026-11-15 "간단하게")
+PICKUP_TIME = 0.35 * TEMPO  # s of the pick-up motion (2026-11-15 "간단하게")
 SNEAK_SPEED = 0.45          # Ctrl held: share of the normal speed
 HIT_SLOW = 0.25             # each blow taken slows the hero this much more...
 MAX_SLOW = 0.5              # ...up to half speed (Zomboid's attack slow cap)
 SLOW_RECOVER = 0.2          # per second back to full speed
-SHOVE_TIME = 0.25           # s of the shove (right click)
+SHOVE_TIME = 0.25 * TEMPO   # s of the shove (right click)
 SHOVE_COOLDOWN = 0.6
+LUNGE_SPEED = 60 * (1 - 0.82)   # the lunge fades by 0.82 a frame: start speed = distance x this
 
 
 class Hero:
@@ -25,7 +27,8 @@ class Hero:
         self.x, self.y = HERO_START
         self.facing = 1
         self.hp = HERO_HP
-        self.hurt = 0.0
+        self.hurt = 0.0              # s left of being safe from another blow (not shown)
+        self.reeling = 0.0           # s left of reeling from a blow (hurt sheet, no control)
         self.slash = None
         self.slash_cooldown = 0.0
         self.roll = 0.0
@@ -58,20 +61,27 @@ class Hero:
 
     def take_blow(self):
         self.slowed = min(MAX_SLOW, self.slowed + HIT_SLOW)
+        self.reeling = HURT_REACT
+        self.slash = None                       # a blow breaks off the hero's own swing
+        self.shove = 0.0
 
-    def start_slash(self, ax, ay):
-        if self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead or self.grabbed > 0:
+    def start_slash(self, ax, ay, chop=False):
+        """A slash toward (ax, ay); `chop` makes it the overhead chop at something on the ground."""
+        if self.slash or self.roll > 0 or self.slash_cooldown > 0 or self.dead or self.grabbed > 0 \
+                or self.reeling > 0:
             return
         angle = atan2(ay - (self.y + CHEST), ax - self.x)
         self.facing = 1 if cos(angle) >= 0 else -1
-        self.slash = {"time": 0.0, "angle": angle, "hit": False}
-        speed = SLASH_LUNGE / SLASH_HIT * 0.5
+        whole, hit, lunge = (CHOP_TIME, CHOP_HIT, CHOP_LUNGE) if chop else (SLASH_TIME, SLASH_HIT, SLASH_LUNGE)
+        self.slash = {"time": 0.0, "angle": angle, "hit": False, "chop": chop,
+                      "whole": whole, "hit_at": hit, "pose": "swing3" if chop else "swing"}
+        speed = lunge * LUNGE_SPEED                     # covers about `lunge` px whatever the tempo
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
 
     def start_shove(self, ax, ay):
         """Right click: push whatever is in front away (Zomboid's shove)."""
         if self.shove > 0 or self.shove_cooldown > 0 or self.slash or self.roll > 0 or self.dead \
-                or self.grabbed > 0 or self.pickup > 0:
+                or self.grabbed > 0 or self.pickup > 0 or self.reeling > 0:
             return False
         self.shove_angle = atan2(ay - (self.y + CHEST), ax - self.x)
         self.facing = 1 if cos(self.shove_angle) >= 0 else -1
@@ -90,6 +100,7 @@ class Hero:
     def update(self, dt, keys, aim_x):
         self.time += dt
         self.hurt = max(0.0, self.hurt - dt)
+        self.reeling = max(0.0, self.reeling - dt)
         self.slash_cooldown = max(0.0, self.slash_cooldown - dt)
         self.roll_cooldown = max(0.0, self.roll_cooldown - dt)
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
@@ -103,6 +114,8 @@ class Hero:
         self.moving = False
         if self.grabbed > 0:
             self.grabbed -= dt
+            return
+        if self.reeling > 0:                   # knocked back a step by the blow
             return
         if self.pickup > 0:                    # crouched for a moment, picking something up
             self.pickup -= dt
@@ -121,7 +134,7 @@ class Hero:
             self.slash["time"] += dt
             move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)
             self.lunge = (self.lunge[0] * 0.82, self.lunge[1] * 0.82)
-            if self.slash["time"] >= SLASH_TIME:
+            if self.slash["time"] >= self.slash["whole"]:
                 self.slash = None
                 self.slash_cooldown = SLASH_COOLDOWN
         elif mx or my:
@@ -139,8 +152,8 @@ class Hero:
         x, y = self.x - cx, self.y - cy
         if self.dead:
             self.look.draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
-        elif self.hurt > 0 and int(self.hurt * 20) % 2 == 0:
-            return
+        elif self.reeling > 0:                 # reels from the blow (was: blinking)
+            self.look.draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing)
         elif self.pickup > 0:
             self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing)
         elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
@@ -150,8 +163,8 @@ class Hero:
             self.look.draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,
                            distance=self.run_distance + (1 - self.roll / ROLL_TIME) * 3)
         elif self.slash:
-            self.look.draw("swing", self.slash["time"] / SLASH_TIME, x, y, self.facing,
-                           contact=SLASH_HIT / SLASH_TIME)
+            s = self.slash
+            self.look.draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"])
         elif self.moving:
             pose = "sneak" if self.sneaking else "run"
             self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance)

@@ -9,7 +9,7 @@ from math import atan2, cos, hypot, pi
 
 import ui
 from area import BLOCKS, move_body
-from settings import ZOMBIE_REACH, ZOMBIE_RECOVER, ZOMBIE_SPEED, ZOMBIE_STRIKE, ZOMBIE_WINDUP
+from settings import TEMPO, ZOMBIE_ARC, ZOMBIE_REACH, ZOMBIE_RECOVER, ZOMBIE_SPEED, ZOMBIE_STRIKE, ZOMBIE_WINDUP
 from vision_cone import ray_hit
 
 # Infected senses (numbers are ours; the rules come from Zomboid's sight / hearing / memory).
@@ -27,12 +27,12 @@ SPOT_ALERT = 1.5                # ...one already searching spots more
 FRONT_SOUND = 0.6               # radians: a sound this close to where it faces needs no turn
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
-BLIND_WINDUP = 0.25             # s of warning when it strikes from outside the hero's sight
+BLIND_WINDUP = 0.25 * TEMPO     # s of warning when it strikes from outside the hero's sight
 SEEN_BEFORE_STRIKE = 0.5        # s it must have seen the hero before it strikes (Zomboid: 0.5)
 ALERT_TURN = (0.3, 0.6)         # s it spends turning toward a noise before going
 GRAB_TIME = 0.9                 # s the hero is held when a blow lands with another one on him
 GRAB_NEAR = ZOMBIE_REACH + 12   # px: "on the hero"
-STAGGER_TIME = 0.8              # s it reels after a shove
+STAGGER_TIME = 0.8 * TEMPO      # s it reels after a shove
 DOWN_TIME = 1.8                 # s on the ground after a shove knocks it over
 DOWN_CHANCE = 0.35              # chance a shove knocks it over (Zomboid: shove, then stomp)
 SHOVE_PUSH = 70                 # px/s it is pushed back
@@ -40,7 +40,7 @@ SHOVE_PUSH = 70                 # px/s it is pushed back
 # each one makes it flinch (its attack is broken off) or, sometimes, knocks it down. One that is
 # unaware, reeling from a shove or on the ground still dies to a single slash (helpless).
 HITS = (2, 3)                   # slashes an aware infected takes
-FLINCH_TIME = 0.35              # s it reels from a slash that does not kill it (not helpless)
+FLINCH_TIME = 0.35 * TEMPO      # s it reels from a slash that does not kill it (not helpless)
 HIT_DOWN_CHANCE = 0.2           # chance such a slash knocks it down instead
 HIT_PUSH = 55                   # px/s a slash knocks it back
 # Crawlers (2026-11-16 "쓰러지면 기어서도 오는 요소"; Zomboid's zombie-crawler): an infected that
@@ -50,7 +50,7 @@ CRAWL_CHANCE = 0.4              # chance a downed infected crawls instead of get
 CRAWL_TIME = (3.0, 6.0)         # s it crawls before it gets back up
 CRAWL_SPEED = 0.35              # share of the walking speed
 CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
-RISE_TIME = 0.4                 # s of getting up (the end of the down sheet played back)
+RISE_TIME = 0.4 * TEMPO         # s of getting up (the end of the down sheet played back)
 
 
 class Zombie:
@@ -74,6 +74,7 @@ class Zombie:
         self.push = (0.0, 0.0)
         self.health = random.randint(*HITS)
         self.prone = False           # crawling: on the ground, moves and bites from there
+        self.on_ground = False       # it was lying down when it died
         self.crawl_left = 0.0        # s of crawling left (kept apart: a bite uses self.timer)
         self.rising = False          # getting up after a crawl (no second crawl roll)
 
@@ -82,6 +83,7 @@ class Zombie:
         return self.state != "dead"
 
     def kill(self, dx, dy):
+        self.on_ground = self.prone or self.state == "down"     # killed lying down: no second fall
         self.state, self.timer = "dead", 0.0
         length = hypot(dx, dy) or 1
         self.death = (dx / length * 160, dy / length * 160)
@@ -250,7 +252,9 @@ class Zombie:
             if self.timer <= 0:
                 if self.state == "windup":
                     self.state, self.timer = "strike", ZOMBIE_STRIKE
-                    if dist <= (CRAWL_REACH if self.prone else ZOMBIE_REACH) + 8:
+                    # the claw lands where it lunged: out of reach or around its side, it misses
+                    off = abs((atan2(dy, dx) - self.heading + pi) % (2 * pi) - pi)
+                    if dist <= (CRAWL_REACH if self.prone else ZOMBIE_REACH) + 8 and off <= ZOMBIE_ARC:
                         event = "hit"
                 elif self.state == "strike":
                     self.state, self.timer = "recover", ZOMBIE_RECOVER
@@ -265,8 +269,10 @@ class Zombie:
         x, y = self.x - cx, self.y - cy
         if self.state == "dead":
             if not self.blink_corpse or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
-                fall = 1.0 if self.prone else min(1.0, self.timer * 2)    # a crawler is down already
-                self.look.draw("down", fall, x, y, 1 if self.death[0] < 0 else -1)
+                if self.on_ground:                   # already lying there: stays as it lay
+                    self.look.draw("down", 1.0, x, y, self.facing)
+                else:
+                    self.look.draw("down", min(1.0, self.timer * 2), x, y, 1 if self.death[0] < 0 else -1)
         elif self.prone:                                     # crawling, or clawing from the ground
             self.look.draw("crawl", self.time * (1.6 if self.state != "crawl" else 1.0), x, y, self.facing)
             if self.state == "windup" and self.show_marks:
@@ -286,7 +292,7 @@ class Zombie:
             self.look.draw("hurt", 1 - self.timer / whole, x, y, self.facing)
         elif self.state == "down":                                   # falls, lies, gets up
             t = DOWN_TIME - self.timer
-            progress = min(1.0, t / 0.35) if self.timer > RISE_TIME else self.timer / RISE_TIME
+            progress = min(1.0, t / (0.35 * TEMPO)) if self.timer > RISE_TIME else self.timer / RISE_TIME
             self.look.draw("down", progress, x, y, self.facing)
         elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
