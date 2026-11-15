@@ -192,6 +192,106 @@ def option_b():
     return img
 
 
+CELL = 34                      # one cell of the sheet = 0.1 weight (2.0 = 5 x 4 cells)
+GRID = (5, 4)
+NEAR_GRID = (3, 2)
+ORANGE = (214, 128, 52)
+
+
+def cells(d, x0, y0, cols, rows, dark, light):
+    """Faint stitched squares: every free place reads as room left."""
+    for c in range(cols):
+        for r in range(rows):
+            l, t = x0 + c * CELL, y0 + r * CELL
+            for k in range(0, CELL - 3, 2):
+                d.point((l + 2 + k, t + 2), fill=dark)
+                d.point((l + 2 + k, t + CELL - 2), fill=dark)
+                d.point((l + 2, t + 2 + k), fill=dark)
+                d.point((l + CELL - 2, t + 2 + k), fill=dark)
+            d.point((l + 3, t + 3), fill=light)
+
+
+def put(img, d, name, x0, y0, col, row, w, h, chosen=False, small=None, label=None):
+    """A thing taking w x h cells (its weight); the chosen one gets a lighter cell and corners."""
+    l, t = x0 + col * CELL, y0 + row * CELL
+    r, b = l + w * CELL, t + h * CELL
+    d.rectangle((l + 2, t + 2, r - 2, b - 2), fill=TARP_LIGHT if chosen else (74, 80, 58),
+                outline=(50, 54, 38))                    # its footprint: the cells it takes
+    big_icon(img, name, l + (w * CELL - 32) // 2, t + (h * CELL - 32) // 2)
+    if label:
+        outlined(d, (r - 3, b - 13), label, small, LIGHT, anchor="ra")
+    if chosen:
+        brackets(d, (l, t, r, b))
+
+
+def weight_bar(d, x, y, used, cap=2.0):
+    """20 segments of 0.1; orange past 1.6, red past the limit (Zomboid's heavy load)."""
+    colour = BLOOD if used > cap else ORANGE if used > 1.6 else ROAD
+    for i in range(20):
+        sx = x + i * 9
+        d.rectangle((sx, y, sx + 7, y + 5), fill=colour if i < round(used * 10) else (40, 40, 38),
+                    outline=INK)
+
+
+def option_b_grid():
+    """B refined from the ground-inventory research (GROUND_INVENTORY_UI_RESEARCH.md 2-4):
+    the sheet is a 5x4 grid of 0.1 cells, things take as many cells as they weigh, a 20-segment
+    weight bar, counts not names on the sheet, the ground beside it on the same grid."""
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = crisp(ImageDraw.Draw(img))
+    dim(d)
+    small, bold = f(REG), f(BOLD)
+    body_column(d, small, bold)
+    rnd = random.Random(9)
+    gx, gy = 212, 96                                     # grid origin on the sheet
+    l, t = gx - 12, gy - 12
+    r, b = gx + GRID[0] * CELL + 12, gy + GRID[1] * CELL + 12
+    pts = [(l, t + 2), (r - 1, t), (r, b - 1), (l + 2, b)]
+    d.polygon([(x + 3, y + 3) for x, y in pts], fill=(4, 4, 6))
+    d.polygon(pts, fill=TARP, outline=INK)
+    for _ in range((r - l) * (b - t) // 12):
+        x, y = rnd.randint(l + 2, r - 2), rnd.randint(t + 3, b - 3)
+        d.point((x, y), fill=TARP_DARK if (x * y) % 5 else TARP_LIGHT)
+    for (cx, cy) in ((l + 5, t + 5), (r - 6, t + 4), (r - 5, b - 6), (l + 6, b - 5)):
+        d.rectangle((cx - 2, cy - 2, cx + 2, cy + 2), outline=METAL)
+    cells(d, gx, gy, *GRID, (50, 54, 38), TARP_LIGHT)
+    pix_icon(d, "backpack", l, t - 30)
+    outlined(d, (l + 20, t - 27), "배낭", bold, LIGHT)
+    outlined(d, (r, t - 27), "0.6 / 2.0", small, LIGHT, anchor="ra")
+    weight_bar(d, l + 8, b + 6, 0.6)
+    put(img, d, "bandage", gx, gy, 0, 0, 1, 1, chosen=True)
+    put(img, d, "bandage", gx, gy, 1, 0, 1, 1)
+    put(img, d, "can", gx, gy, 2, 0, 2, 2)
+    # the ground beside the sheet, same cell size, one place at a time (more with < >)
+    nx, ny = r + 26, gy
+    outlined(d, (nx, ny - 39), "근처", bold, LIGHT)
+    outlined(d, (nx, ny - 23), "< 바닥 >", small, GREY)
+    d.rectangle((nx - 4, ny - 4, nx + NEAR_GRID[0] * CELL + 4, ny + NEAR_GRID[1] * CELL + 4),
+                fill=(30, 32, 36), outline=ASPHALT_HI)
+    for _ in range(140):
+        d.point((rnd.randint(nx - 3, nx + NEAR_GRID[0] * CELL + 3),
+                 rnd.randint(ny - 3, ny + NEAR_GRID[1] * CELL + 3)), fill=ASPHALT_HI)
+    cells(d, nx, ny, *NEAR_GRID, (70, 72, 76), ASPHALT_HI)
+    d.rectangle((nx + 2, ny + 2, nx + 2 * CELL - 2, ny + 2 * CELL - 2), fill=(40, 42, 46), outline=(70, 72, 76))
+    big_icon(img, "can", nx + (2 * CELL - 32) // 2, ny + (2 * CELL - 32) // 2)
+    # the chosen thing and the keys (two rows: F picks the same kind, Shift+F everything)
+    y = H - 56
+    outlined(d, (150, y), "붕대", bold, ROAD)
+    outlined(d, (186, y), "피를 멈추고 체력 +15%", small, LIGHT)
+    outlined(d, (W - 22, y), "칸 1 · 0.1", small, GREY, anchor="ra")
+    for row, keys in enumerate(((("Enter", "쓰기"), ("X", "내려놓기"), ("F", "같은 것 줍기"),
+                                 ("Shift+F", "모두 줍기")),
+                                (("WASD", "고르기 (D: 근처로)"), ("끌어 놓기", "옮기기"), ("Tab", "닫기")))):
+        kx, ky = 150, y + 16 + row * 16
+        for key, label in keys:
+            kw = int(d.textlength(key, font=small)) + 5
+            d.rectangle((kx, ky, kx + kw, ky + 12), fill=LIGHT, outline=INK)
+            d.text((kx + 3, ky + 1), key, font=small, fill=INK)
+            outlined(d, (kx + kw + 4, ky + 1), label, small, LIGHT)
+            kx += kw + int(d.textlength(label, font=small)) + 14
+    return img
+
+
 def main(frames, out):
     bg = Image.open(frames + "/bg_play.png")
     a, b = over(bg, option_a()), over(bg, option_b())
@@ -208,6 +308,15 @@ def main(frames, out):
         c.paste(im, (x, y))
         cd.text((x + 16, y - 38), title, font=lab, fill=colour)
     c.save(out + "/compare_bag_v2_a_b.png")
+    g = over(bg, option_b_grid())
+    g.save(out + "/v4_bag_b_grid.png")
+    c = Image.new("RGB", (1280 * 2 + 20, 770), (24, 24, 26))
+    cd = ImageDraw.Draw(c)
+    cd.fontmode = "1"
+    for (im, x, title, colour) in ((b, 0, "B 첫 시안", (200, 200, 200)), (g, 1300, "B 다듬음 (조사 적용)", ROAD)):
+        c.paste(im, (x, 50))
+        cd.text((x + 16, 12), title, font=lab, fill=colour)
+    c.save(out + "/compare_bag_b_v3_v4.png")
     print("ok")
 
 
