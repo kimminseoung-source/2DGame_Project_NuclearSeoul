@@ -92,6 +92,11 @@ RECIPES = {
     "infected_down": lambda: mix(layer(0.35, "saw", 110, 45, attack=0.005, lowpass=0.1, gain=0.8),  # falls
                                  layer(0.18, "noise", 700, 200, attack=0.002, lowpass=0.25, gain=0.6, seed=8)),
     "infected_step": lambda: layer(0.08, "noise", 700, 300, attack=0.004, lowpass=0.12, seed=9),    # shuffling feet
+    # exploring
+    "pickup": lambda: mix(layer(0.09, "noise", 2600, 1200, attack=0.002, lowpass=0.3, gain=0.6, seed=12),  # rummage
+                          layer(0.12, "square", 660, 990, attack=0.003, lowpass=0.25, gain=0.35)),
+    "exit": lambda: mix(layer(0.5, "noise", 900, 250, attack=0.02, lowpass=0.15, gain=0.7, seed=13),       # heavy door
+                        layer(0.6, "sine", 110, 70, attack=0.01, gain=0.6)),
     # time crawl (exposure)
     "slow_in": lambda: layer(0.45, "sine", 320, 70, attack=0.01, lowpass=0.6, vibrato=0.03, vib_rate=6),
     "slow_out": lambda: layer(0.30, "sine", 70, 300, attack=0.01, lowpass=0.6),

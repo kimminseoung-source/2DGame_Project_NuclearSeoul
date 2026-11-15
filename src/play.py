@@ -15,7 +15,7 @@ import sdl2
 from pico2d import pico2d as canvas
 
 import ui
-from area import BLOCKS, ENTRANCES, ROOM_H, ROOM_W, ZOMBIE_STARTS
+from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
 from character_look import SheetLook
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
@@ -23,6 +23,8 @@ from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT
                       ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, VIEW_H, VIEW_W, WIDTH)
 from slash_fx import Crescent, Spark
 from sound import Sounds
+import supplies as supply_rules
+from supplies import KINDS, PILL_EFFECT, Supply
 from vision_cone import CONE_HALF, VisionCone
 
 
@@ -32,6 +34,9 @@ SPAWN_EVERY = (6.0, 9.0)     # s between arrivals
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
+
+
+HUD_PAD = 40                 # world px the HUD bar covers at the top of the screen
 
 
 class Game:
@@ -59,7 +64,7 @@ class Game:
         self.slow = False
         self.slow_blend = 0.0
         self.exposure = 0.0
-        self.message = "WASD 이동 · 좌클릭 베기 · Space 구르기 · 우클릭 시간 느리게 · R 다시 · F2 감각 비교"
+        self.message = "물자를 챙겨 지하철 입구로 · E 줍기/나가기 · 1 붕대 · 2 억제제 · 좌클릭 베기 · Space 구르기 · 우클릭 느리게"
         self.cleared = False
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
         self.spawn_in = random.uniform(*SPAWN_EVERY)
@@ -68,6 +73,10 @@ class Game:
         self.was_slow = False
         self.hero_steps = 0
         self.siren_in = random.uniform(15, 30)
+        self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES]
+        self.bag = {kind: 0 for kind in KINDS}
+        self.kills = 0
+        self.left = False            # reached the exit: the area is done
 
     def mouse_world(self, sx, sy):
         return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
@@ -87,11 +96,46 @@ class Game:
                 self.sounds.play("roll", 0.6)
         elif key == sdl2.SDLK_r:
             self.reset()
+        elif key == sdl2.SDLK_e and not self.left and not self.hero.dead:
+            self.interact()
+        elif key == sdl2.SDLK_1 and self.bag["bandage"] and self.hero.hp < HERO_HP and not self.hero.dead:
+            self.bag["bandage"] -= 1
+            self.hero.hp += 1
+            self.message = "붕대를 감았다 (체력 +1)"
+            self.sounds.play("pickup", 0.6)
+        elif key == sdl2.SDLK_2 and self.bag["pill"] and not self.hero.dead:
+            self.bag["pill"] -= 1
+            self.exposure = max(0.0, self.exposure - PILL_EFFECT)
+            self.message = f"피폭 억제제를 먹었다 (피폭 -{PILL_EFFECT:.0f})"
+            self.sounds.play("pickup", 0.6)
         elif key == sdl2.SDLK_F2:
             self.senses = not self.senses
             self.reset()
             self.message = ("피폭체 감각 켬: 보고 듣고 찾음, 시야 밖 공격은 예고가 짧음" if self.senses
                             else "피폭체 감각 끔: 예전 규칙(300px 안이면 무조건 쫓아옴)")
+
+    def near_exit(self):
+        l, b, r, t = EXIT
+        return l - 14 <= self.hero.x <= r + 14 and b - 14 <= self.hero.y <= t + 14
+
+    def interact(self):
+        """E: leave through the exit, or pick up the nearest supply (rummaging is heard)."""
+        if self.near_exit():
+            self.left = True
+            self.slow = False
+            self.message = "구역을 빠져나왔다 · R 다시"
+            self.sounds.play("exit", 0.8)
+            return
+        item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
+        if item is None:
+            return
+        item.taken = True
+        self.bag[item.kind] += 1
+        self.message = f"{supply_rules.with_object_particle(item.name)} 챙겼다" + (f" ({supply_rules.USE_KEYS[item.kind]}로 사용)"
+                                                   if item.kind in supply_rules.USE_KEYS else "")
+        self.sounds.play("pickup", 0.8)
+        if self.senses:
+            self.make_noise(supply_rules.PICK_NOISE)
 
     def hero_sees(self, zombie):
         """Is the infected inside the hero's view cone? (The small lit circle around the body
@@ -131,6 +175,8 @@ class Game:
 
     def update(self, real_dt, keys):
         hero = self.hero
+        if self.left:                                      # out of the area: only the summary shows
+            return
         self.clock += real_dt
         self.sounds.listener = (hero.x, hero.y)
         if self.slow != self.was_slow and not hero.dead:
@@ -173,6 +219,7 @@ class Game:
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 if hypot(zx - sx, zy - sy) <= SLASH_REACH + 12 and abs(diff) <= SLASH_ARC:
                     z.kill(zx - sx, zy - sy)
+                    self.kills += 1
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     self.effects.append(Spark(zx, zy + 4, big=True))
@@ -236,7 +283,8 @@ class Game:
         if not self.cleared and self.to_spawn == 0 and all(not z.alive for z in self.zombies):
             self.cleared = True
             self.message = "구역 정리! R로 다시 해 보기"
-        for i, (pos, view, room) in enumerate(((hero.x, VIEW_W, ROOM_W), (hero.y, VIEW_H, ROOM_H))):
+        # the camera may go HUD_PAD past the top edge so nothing up there hides under the HUD bar
+        for i, (pos, view, room) in enumerate(((hero.x, VIEW_W, ROOM_W), (hero.y, VIEW_H, ROOM_H + HUD_PAD))):
             target = max(0, min(room - view, pos - view / 2))
             self.cam[i] += (target - self.cam[i]) * min(1.0, real_dt * 8)
 
@@ -264,6 +312,15 @@ class Game:
             gy = {"top": ROOM_H - 2, "bottom": -d}.get(side, y - w / 2 - 6)
             gw, gh = (d + 2, w + 12) if side in ("left", "right") else (w + 12, d + 2)
             pico2d.draw_rectangle(gx - cx, gy - cy, gx + gw - cx, gy + gh - cy, 12, 12, 16, filled=True)
+        l, b, r, t = EXIT                                  # subway stairs going down
+        pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 18, 20, 22, filled=True)
+        for i in range(5):
+            pico2d.draw_line(l + 4 - cx, b + 6 + i * 12 - cy, r - 4 - cx, b + 6 + i * 12 - cy, 60, 64, 66)
+        pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 90, 96, 92)
+        near_item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
+        for s in self.supplies:
+            if not s.taken:
+                s.draw(cx, cy, near=s is near_item and not self.near_exit())
         # sort everything on the ground by depth: lower on screen = nearer = drawn later
         things = [(b[1], "block", b) for b in BLOCKS]
         things += [(z.y, "z", z) for z in self.zombies]
@@ -283,6 +340,12 @@ class Game:
             e.draw(cx, cy)
         self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y + CHEST - cy),
                          VIEW_W, VIEW_H)
+        el, eb, er, _ = EXIT                               # the green exit sign (in front) stays lit in the dark
+        ex, ey = (el + er) / 2 - cx, eb - 12 - cy
+        pico2d.draw_rectangle(ex - 34, ey - 7, ex + 34, ey + 9, 30, 120, 70, filled=True)
+        ui.text_center(ex, ey + 1, EXIT_NAME, (220, 255, 225), 11)
+        if self.near_exit() and not self.left:
+            ui.text_center(self.hero.x - cx, self.hero.y - cy + 74, "E 나가기", (220, 255, 225), 12)
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, VIEW_W, VIEW_H, 20, 60, 70, round(80 * self.slow_blend), filled=True)
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
@@ -295,5 +358,17 @@ class Game:
             pico2d.draw_rectangle(52 + i * 18, HEIGHT - 48, 64 + i * 18, HEIGHT - 36, 230, 90, 80,
                                   filled=i < self.hero.hp)
         left = self.to_spawn + sum(z.alive for z in self.zombies)
-        ui.text(150, HEIGHT - 42, f"피폭 {self.exposure:4.0f}%   남은 피폭체 {left}   쓰러진 횟수 {self.deaths}",
+        ui.text(110, HEIGHT - 42, f"피폭 {self.exposure:3.0f}%  남은 피폭체 {left}  쓰러진 횟수 {self.deaths}",
                 (150, 230, 160), 14)
+        ui.text(470, HEIGHT - 42, f"붕대 {self.bag['bandage']}  억제제 {self.bag['pill']}  통조림 {self.bag['can']}",
+                (230, 220, 180), 14)
+        if self.left:                                      # area summary
+            pico2d.draw_rectangle(WIDTH / 2 - 190, HEIGHT / 2 - 80, WIDTH / 2 + 190, HEIGHT / 2 + 80,
+                                  10, 12, 16, 230, filled=True)
+            lines = [(f"{EXIT_NAME}으로 빠져나왔다", ui.ACCENT),
+                     (f"챙긴 물자: 붕대 {self.bag['bandage']} · 억제제 {self.bag['pill']} · 통조림 {self.bag['can']}",
+                      (230, 220, 180)),
+                     (f"쓰러뜨린 피폭체 {self.kills} · 피폭 {self.exposure:.0f}%", (150, 230, 160)),
+                     ("다음 구역(지하철)은 3단계에서 · R 다시", (180, 180, 190))]
+            for i, (line, colour) in enumerate(lines):
+                ui.text_center(WIDTH / 2, HEIGHT / 2 + 48 - i * 32, line, colour, 16 if i == 0 else 14)

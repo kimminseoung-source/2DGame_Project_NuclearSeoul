@@ -10,6 +10,12 @@ ZOMBIE_STARTS = [(520, 380), (820, 200), (380, 560)]
 ENTRANCES = [((12, 420), "left"), ((988, 300), "right"), ((988, 90), "right"),
              ((520, 628), "top"), ((120, 628), "top"), ((760, 12), "bottom")]
 HERO_START = (100.0, 300.0)
+# Supplies lying around: (x, y, kind) - see supplies.py
+SUPPLIES = [(330, 380, "can"), (560, 200, "pill"), (700, 500, "bandage"), (180, 470, "can"),
+            (880, 140, "pill"), (450, 90, "bandage"), (760, 320, "can")]
+# The way out of this area: a subway entrance in the far corner (left, bottom, right, top).
+EXIT = (905, 560, 985, 628)
+EXIT_NAME = "지하철 입구"
 
 
 def blocked(x, y, pad=8):
