@@ -2,7 +2,7 @@
 
 사용자: "UI가 너무 조잡해, 깔끔하게 다 바꿔야 해. 너가 잘 생각해 봐. 그리고 어떻게 바꾸면 좋을지 나한테 제안해. 여러 곳에서 조사했었잖아? 어떤 UI가 좋을지 최종 이미지를 나한테 보여 줘."
 
-상태: **제안**. 사용자가 고른 뒤 게임 코드(`src/hud.py`)에 옮긴다.
+상태: **1차 제안, 사용자 "AI 느낌이 강하다" → 2차로 대체.** 2차: [UI_NOT_AI_RESEARCH.md](../../research/UI_NOT_AI_RESEARCH.md), [v2_play.png](v2_play.png), [v2_bag.png](v2_bag.png). 아래는 1차 기록.
 그림: [지금 vs 제안: 게임 화면](compare_play.png), [지금 vs 제안: 배낭](compare_bag.png).
 그림은 실제 게임 화면(HUD를 끈 것) 위에 제안 UI를 그린 것이다. 만든 도구: `tools/ui/ui_capture.py`, `tools/ui/ui_mockup.py`.
 
