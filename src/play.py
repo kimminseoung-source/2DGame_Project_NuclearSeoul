@@ -19,6 +19,7 @@ import ui
 from hero import PICKUP_TIME
 from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
 from character_look import SheetLook
+from condition import PANIC_RECOVER, Condition
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
@@ -95,6 +96,8 @@ class Game:
         self.hero_steps = 0
         self.siren_in = random.uniform(15, 30)
         self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES if EXPOSURE_ON or kind != "pill"]
+        self.condition = Condition()         # tension, wounds (status icons)
+        self.beat_in = 0.0
         self.stains = []             # blood on the ground (realistic look)
         self.bag_open = False
         self.bag_cursor = 0
@@ -106,21 +109,35 @@ class Game:
     def mouse_world(self, sx, sy):
         return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
 
+    def unaware_in_reach(self, angle):
+        """Infected within the slash that have not spotted the hero (Zomboid: a blow on an
+        unaware zombie is a sure, quiet finisher)."""
+        hero, found = self.hero, []
+        for z in self.zombies:
+            if z.alive and z.state in ("idle", "alert", "search"):
+                diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
+                if hypot(z.x - hero.x, z.y - hero.y) <= SLASH_REACH + 30 and abs(diff) <= SLASH_ARC:
+                    found.append(z)
+        return found
+
     def click(self, sx, sy):
         self.aim = (sx, sy)
         before = self.hero.slash
         self.hero.start_slash(*self.mouse_world(sx, sy))
         if self.hero.slash is not None and self.hero.slash is not before:
-            self.sounds.play("slash", 0.8)
+            self.hero.slash["quiet"] = bool(self.unaware_in_reach(self.hero.slash["angle"]))
+            self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
 
     def use(self, kind):
         """Use one supply from the bag (keys 1/2 or Enter in the bag)."""
         if self.hero.dead or not self.bag.get(kind):
             return
-        if kind == "bandage" and self.hero.hp < HERO_HP:
+        if kind == "bandage" and (self.hero.hp < HERO_HP or self.condition.injuries):
             self.bag[kind] -= 1
-            self.hero.hp += 1
-            self.message = "붕대를 감았다 (체력 +1)"
+            treated = self.condition.treat()
+            healed = self.hero.hp < HERO_HP
+            self.hero.hp = min(HERO_HP, self.hero.hp + 1)
+            self.message = "붕대를 감았다" + (f" ({treated} 치료)" if treated else "") + (" 체력 +1" if healed else "")
             self.sounds.play("pickup", 0.6)
         elif kind == "pill" and EXPOSURE_ON:
             self.bag[kind] -= 1
@@ -132,11 +149,26 @@ class Game:
 
     def bag_key(self, key):
         items = hud.bag_items(self)
-        moves = {sdl2.SDLK_UP: -1, sdl2.SDLK_DOWN: 1, sdl2.SDLK_w: -1, sdl2.SDLK_s: 1}   # a list now
+        cols = hud.BAG_COLS                                # a grid again (the reference picture)
+        moves = {sdl2.SDLK_LEFT: -1, sdl2.SDLK_RIGHT: 1, sdl2.SDLK_UP: -cols, sdl2.SDLK_DOWN: cols,
+                 sdl2.SDLK_a: -1, sdl2.SDLK_d: 1, sdl2.SDLK_w: -cols, sdl2.SDLK_s: cols}
         if key in (sdl2.SDLK_TAB, sdl2.SDLK_ESCAPE):
             self.bag_open = False
         elif key in moves:
-            self.bag_cursor = (self.bag_cursor + moves[key]) % max(1, len(items))
+            self.bag_cursor = (self.bag_cursor + moves[key]) % (hud.BAG_COLS * hud.BAG_ROWS)
+        elif key == sdl2.SDLK_f:                                         # take all nearby
+            taken = 0
+            for item in hud.nearby_items(self):
+                if supply_rules.bag_weight(self.bag) + supply_rules.weight_of(item.kind) > supply_rules.BAG_CAPACITY + 1e-6:
+                    break
+                item.taken = True
+                self.bag[item.kind] += 1
+                taken += 1
+            self.message = f"물건 {taken}개를 챙겼다" if taken else "더 챙길 수 없다"
+            if taken:
+                self.sounds.play("pickup", 0.8)
+                if self.senses:
+                    self.make_noise(supply_rules.PICK_NOISE)
         elif key in (sdl2.SDLK_RETURN, sdl2.SDLK_KP_ENTER) and self.bag_cursor < len(items):
             self.use(items[self.bag_cursor][0])
         elif key == sdl2.SDLK_x and self.bag_cursor < len(items):        # drop one at the hero's feet
@@ -295,8 +327,13 @@ class Game:
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 if hypot(zx - sx, zy - sy) <= SLASH_REACH + 12 and abs(diff) <= SLASH_ARC:
+                    unaware = z.state in ("idle", "alert", "search")
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
+                    if unaware:                                  # finisher: a clean, quiet kill
+                        self.message = "들키기 전에 조용히 처리했다"
+                        self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
+                        self.hitstop = max(self.hitstop, 0.09)
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     if self.real:
@@ -314,7 +351,7 @@ class Game:
 
         if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
             if hero.slash and hero.slash["time"] <= real_dt:
-                self.make_noise(NOISE_SLASH)
+                self.make_noise(NOISE_STEP if hero.slash.get("quiet") else NOISE_SLASH)
             elif hero.roll > 0 and hero.roll >= ROLL_TIME - real_dt:
                 self.make_noise(NOISE_ROLL)
             elif hero.moving:
@@ -341,6 +378,9 @@ class Game:
             if event == "hit" and not hero.invulnerable and not hero.dead:
                 self.sounds.play("hurt", 1.0)
                 hero.take_blow()                              # slowed, more with every blow
+                wound = self.condition.wound()
+                if wound:
+                    self.message = f"{wound}! (붕대로 치료)"
                 hero.hp -= 1
                 hero.hurt = HURT_INVULNERABLE
                 others = sum(1 for o in self.zombies if o is not z and o.alive
@@ -360,6 +400,22 @@ class Game:
                     hero.dead = 0.001
                     self.deaths += 1
                     self.message = "쓰러졌다… 바로 다시 시작"
+        if self.condition.update(real_dt, hero, self.zombies) == "bled" and not hero.dead:
+            hero.hp -= 1                                       # an untreated wound bled out
+            self.message = "피를 많이 흘렸다 (체력 -1)"
+            if hero.hp <= 0:
+                hero.dead = 0.001
+                self.deaths += 1
+        if self.condition.panic and hero.slash_cooldown > 0 and not getattr(hero, "_panic_slowed", False):
+            hero.slash_cooldown *= PANIC_RECOVER               # shaking hands: slower to swing again
+            hero._panic_slowed = True
+        if hero.slash_cooldown <= 0:
+            hero._panic_slowed = False
+        if self.condition.tension >= 0.33:                   # the heart, louder when panicking
+            self.beat_in -= real_dt
+            if self.beat_in <= 0:
+                self.sounds.play("heartbeat", 0.35 + 0.5 * self.condition.tension)
+                self.beat_in = 60.0 / self.condition.heart_rate()
         self.effects = [e for e in self.effects if e.update(real_dt)]
         for e in self.effects:
             if isinstance(e, Blood):

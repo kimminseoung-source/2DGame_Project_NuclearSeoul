@@ -97,6 +97,9 @@ RECIPES = {
                           layer(0.12, "square", 660, 990, attack=0.003, lowpass=0.25, gain=0.35)),
     "exit": lambda: mix(layer(0.5, "noise", 900, 250, attack=0.02, lowpass=0.15, gain=0.7, seed=13),       # heavy door
                         layer(0.6, "sine", 110, 70, attack=0.01, gain=0.6)),
+    # condition
+    "heartbeat": lambda: mix(layer(0.09, "sine", 62, 45, attack=0.004, gain=1.0),             # lub
+                             layer(0.22, "sine", 55, 40, attack=0.12, hold=0.0, decay=0.1, gain=0.8)),  # dub
     # time crawl (exposure)
     "slow_in": lambda: layer(0.45, "sine", 320, 70, attack=0.01, lowpass=0.6, vibrato=0.03, vib_rate=6),
     "slow_out": lambda: layer(0.30, "sine", 70, 300, attack=0.01, lowpass=0.6),
