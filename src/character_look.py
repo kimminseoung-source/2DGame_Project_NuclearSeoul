@@ -1,6 +1,6 @@
 """How a character looks: draws a named pose at a point in time, whatever sprite sheets it uses.
 
-Units ask for a pose ("idle", "walk", "sneak", "swing", "pickup", "hurt", "down") and a
+Units ask for a pose ("idle", "walk", "sneak", "swing", "pickup", "hurt", "down", "crawl") and a
 time; the look picks the frame. Looping poses take seconds, one-shot poses take
 progress from 0 to 1. Every unit (hero, companions, zombies, hostile survivors) can use
 the same calls, so swapping a character's art never touches the unit's code.
@@ -32,9 +32,9 @@ import pico2d
 from nav import PX_PER_M_X
 
 
-LOOPING = {"idle", "walk", "sneak", "sneak_idle", "run"}
+LOOPING = {"idle", "walk", "sneak", "sneak_idle", "run", "crawl"}
 # A pose a character's sheets lack falls back to a close one: (pose, fixed frame or None).
-FALLBACK = {"sneak_idle": ("sneak", 0), "run": ("walk", None)}
+FALLBACK = {"sneak_idle": ("sneak", 0), "run": ("walk", None), "crawl": ("down", 4)}
 
 
 class SheetLook:
@@ -43,7 +43,7 @@ class SheetLook:
     FEET_FROM_BOTTOM = 4
     # Seconds per frame for looping poses.
     # Seconds per frame for looping poses that are not driven by distance (breathing idles).
-    FRAME_TIME = {"idle": 0.55, "sneak_idle": 0.6, "walk": 0.13, "sneak": 0.17}
+    FRAME_TIME = {"idle": 0.55, "sneak_idle": 0.6, "walk": 0.13, "sneak": 0.17, "crawl": 0.17}
     # Head and torso of the first idle frame: (left, bottom, width, height) in the cell.
     PORTRAIT = (25, 23, 46, 36)
 

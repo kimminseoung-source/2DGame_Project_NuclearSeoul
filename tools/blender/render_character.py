@@ -27,7 +27,10 @@ PASSES = [
     (LIB1,
      ["idle=Idle_Loop", "sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.3", "walk=Walk_Loop",
       "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "run=Jog_Fwd_Loop", "hurt=Hit_Chest", "down=Death01",
-      "pickup=Fixing_Kneeling@0-20", "push=Push_Loop@0-20"],      # push: the two-handed shove (2026-11-16)
+      "pickup=Fixing_Kneeling@0-20",
+      # push: a quick two-handed shove that thrusts something off (2026-11-16 "벽을 미는 것 같다":
+      # Push_Loop alone leans on a wall; a cross punch lunges, Push_Loop mixed in brings both hands out)
+      "push=Punch_Cross@0-14+Push_Loop*0.45"],
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4"],
      ["--shift-for", "down=16"]),
     (LIB2,
@@ -51,8 +54,10 @@ INFECTED_PASSES = [
      ["idle=4", "walk=12", "attack=8"],
      []),
     (LIB1,
-     ["hurt=Hit_Chest", "down=Death01"],
-     ["hurt=3", "down=5"],
+     # crawl: a downed infected that drags itself on (2026-11-16 "기어서도 오는 요소"); the
+     # front crawl stroke seen from the side reads as pulling along the ground
+     ["hurt=Hit_Chest", "down=Death01", "crawl=Swim_Fwd_Loop"],
+     ["hurt=3", "down=5", "crawl=8"],
      ["--shift-for", "down=16"]),
 ]
 ACTION_SETS = {"hero": PASSES, "infected": INFECTED_PASSES}

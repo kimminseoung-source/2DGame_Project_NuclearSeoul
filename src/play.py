@@ -123,7 +123,7 @@ class Game:
             return
         self.sounds.play("roll", 0.5)
         for z in self.zombies:
-            if not z.alive or z.state in ("down",):
+            if not z.alive or z.state == "down" or z.prone:          # nothing to shove on the ground
                 continue
             diff = (atan2(z.y - hero.y, z.x - hero.x) - hero.shove_angle + pi) % (2 * pi) - pi
             if hypot(z.x - hero.x, z.y - hero.y) <= SHOVE_REACH and abs(diff) <= 0.9:
@@ -395,7 +395,7 @@ class Game:
         for z in self.zombies:
             state, steps = z.state, int(z.walk)
             event = z.update(world_dt, hero, self)
-            if z.alive and z.state in ("chase", "search", "poised"):   # they groan as they come
+            if z.alive and z.state in ("chase", "search", "poised", "crawl"):   # they groan as they come
                 z.groan_in = getattr(z, "groan_in", random.uniform(0.5, 3.0)) - world_dt
                 if z.groan_in <= 0:
                     self.sounds.play(random.choice(("ai_infected_groan_1", "ai_infected_groan_2")), 0.55,
@@ -406,6 +406,8 @@ class Game:
                     z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
                     self.hint("spotted", "들켰다! 우클릭으로 밀치고, 넘어지면 베어라")
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
+                elif z.state == "crawl" and state == "down":
+                    self.hint("crawl", "쓰러진 피폭체가 기어 온다 · 한 번 베면 끝난다")
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
                 elif z.state == "alert":
