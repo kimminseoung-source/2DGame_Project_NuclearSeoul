@@ -106,6 +106,15 @@ class Game:
     def mouse_world(self, sx, sy):
         return sx / SCALE + self.cam[0], (HEIGHT - 1 - sy) / SCALE + self.cam[1]
 
+    def wound_fx(self, z, zx, zy, sx, sy):
+        """A slash that does not drop the infected: a little blood or a spark, a short hitstop."""
+        ang = atan2(zy - sy, zx - sx)
+        self.sounds.play("slash_hit", 0.7)
+        self.effects.append(Blood(zx, zy - 6, ang, 8) if self.real else Spark(zx, zy + 4))
+        self.hitstop = max(self.hitstop, 0.04)
+        if z.state == "down":
+            self.message = "넘어뜨렸다! 지금 베면 끝난다"
+
     def right_click(self, sx, sy):
         """Shove: infected right in front reel (or fall) and any attack they wind up is broken off."""
         self.aim = (sx, sy)
@@ -351,7 +360,10 @@ class Game:
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 if hypot(zx - sx, zy - sy) <= SLASH_REACH + 12 and abs(diff) <= SLASH_ARC:
-                    unaware = z.helpless
+                    unaware = z.helpless                         # helpless: one slash is enough
+                    if not unaware and not z.hurt(hero.x, hero.y):
+                        self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
+                        continue
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
                     if unaware:                                  # finisher: a clean, quiet kill

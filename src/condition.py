@@ -5,7 +5,8 @@
 - injuries from blows: a scratch, a laceration (bleeds) or a bite (bleeds, and will matter for
   exposure later). Each blow takes health by its kind (percent); a bleeding wound keeps draining
   health every second until a bandage stops it.
-- `moodles()` lists what the HUD shows as status icons (also slowed and sneaking).
+- `moodles()` lists what the HUD shows as status icons: bleeding, wounds, slowed, sneaking.
+  Tension and panic are not shown (2026-11-16 "왜 표시하는지 모르겠음"); they are felt instead.
 """
 
 import random
@@ -13,7 +14,7 @@ import random
 TENSION_RISE = 0.22          # per second for each close infected that has spotted the hero
 TENSION_FALL = 0.12          # per second when none are close
 TENSION_NEAR = 170           # px
-TENSE, PANIC = 0.33, 0.66    # tension levels
+PANIC = 0.66                 # tension level where panic starts
 PANIC_RECOVER = 1.5          # slash cooldown multiplier while panicking
 INJURIES = (("scratch", "긁힘", 0.6, 12, 0.0), ("laceration", "찢어짐", 0.3, 22, 1.2), ("bite", "물림", 0.1, 35, 2.0))
 # (kind, name, chance, health % the blow takes, health % lost per second while it bleeds)
@@ -77,11 +78,7 @@ class Condition:
     # ------------------------------------------------------------------ HUD
     def moodles(self, hero):
         """(label, colour, level 1-3) for each status icon to show."""
-        out = []
-        if self.tension >= PANIC:
-            out.append(("공황", (200, 70, 60), 3))
-        elif self.tension >= TENSE:
-            out.append(("긴장", (210, 160, 70), 2))
+        out = []                     # tension/panic is felt (narrow view, slow blade), not shown
         if self.bleeding:
             out.append(("출혈", (190, 40, 40), 3))
         for kind, label in (("bite", "물림"), ("laceration", "찢김"), ("scratch", "긁힘")):

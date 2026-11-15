@@ -36,6 +36,13 @@ STAGGER_TIME = 0.8              # s it reels after a shove
 DOWN_TIME = 1.8                 # s on the ground after a shove knocks it over
 DOWN_CHANCE = 0.35              # chance a shove knocks it over (Zomboid: shove, then stomp)
 SHOVE_PUSH = 70                 # px/s it is pushed back
+# Toughness (2026-11-16 "좀보이드처럼"): an infected that is facing the hero takes several slashes;
+# each one makes it flinch (its attack is broken off) or, sometimes, knocks it down. One that is
+# unaware, reeling from a shove or on the ground still dies to a single slash (helpless).
+HITS = (2, 3)                   # slashes an aware infected takes
+FLINCH_TIME = 0.35              # s it reels from a slash that does not kill it (not helpless)
+HIT_DOWN_CHANCE = 0.2           # chance such a slash knocks it down instead
+HIT_PUSH = 55                   # px/s a slash knocks it back
 
 
 class Zombie:
@@ -57,6 +64,7 @@ class Zombie:
         self.walk = 0.0
         self.death = (0.0, 0.0)
         self.push = (0.0, 0.0)
+        self.health = random.randint(*HITS)
 
     @property
     def alive(self):
@@ -67,16 +75,32 @@ class Zombie:
         length = hypot(dx, dy) or 1
         self.death = (dx / length * 160, dy / length * 160)
 
-    def shoved(self, from_x, from_y):
-        """Pushed by the hero: an attack being wound up is broken off; it reels or falls."""
+    def reel(self, from_x, from_y, push, state, time):
+        """Knocked back from (from_x, from_y) into `state` (stagger, flinch or down) for `time` s;
+        an attack being wound up is broken off."""
         dx, dy = self.x - from_x, self.y - from_y
         length = hypot(dx, dy) or 1
-        self.push = (dx / length * SHOVE_PUSH, dy / length * SHOVE_PUSH)
-        if random.random() < DOWN_CHANCE:
-            self.state, self.timer = "down", DOWN_TIME
-        else:
-            self.state, self.timer = "stagger", STAGGER_TIME
+        self.push = (dx / length * push, dy / length * push)
+        self.state, self.timer = state, time
         self.seen_time = 0.0
+
+    def shoved(self, from_x, from_y):
+        """Pushed by the hero: it reels or falls."""
+        if random.random() < DOWN_CHANCE:
+            self.reel(from_x, from_y, SHOVE_PUSH, "down", DOWN_TIME)
+        else:
+            self.reel(from_x, from_y, SHOVE_PUSH, "stagger", STAGGER_TIME)
+
+    def hurt(self, from_x, from_y):
+        """A slash on an aware infected: True when it was the last one it could take."""
+        self.health -= 1
+        if self.health <= 0:
+            return True
+        if random.random() < HIT_DOWN_CHANCE:
+            self.reel(from_x, from_y, HIT_PUSH, "down", DOWN_TIME)
+        else:
+            self.reel(from_x, from_y, HIT_PUSH, "flinch", FLINCH_TIME)
+        return False
 
     @property
     def helpless(self):
@@ -186,9 +210,9 @@ class Zombie:
             else:
                 self.state = "chase"
                 self.walk_to(hero.x, hero.y, dt)
-        elif self.state in ("stagger", "down"):
+        elif self.state in ("stagger", "flinch", "down"):
             self.timer -= dt
-            if self.state == "stagger" or self.timer > DOWN_TIME - 0.25:
+            if self.state != "down" or self.timer > DOWN_TIME - 0.25:
                 move_body(self, self.push[0] * dt, self.push[1] * dt)
                 self.push = (self.push[0] * 0.88, self.push[1] * 0.88)
             if self.timer <= 0:
@@ -224,8 +248,9 @@ class Zombie:
             self.look.draw("attack", 0.5 + 0.5 * (1 - self.timer / ZOMBIE_RECOVER), x, y, self.facing)
         elif self.state == "poised":
             self.look.draw("attack", 0.08, x, y, self.facing)        # arms up, not yet striking
-        elif self.state == "stagger":
-            self.look.draw("hurt", 1 - self.timer / STAGGER_TIME, x, y, self.facing)
+        elif self.state in ("stagger", "flinch"):
+            whole = STAGGER_TIME if self.state == "stagger" else FLINCH_TIME
+            self.look.draw("hurt", 1 - self.timer / whole, x, y, self.facing)
         elif self.state == "down":                                   # falls, lies, gets up
             t = DOWN_TIME - self.timer
             progress = min(1.0, t / 0.35) if self.timer > 0.4 else self.timer / 0.4

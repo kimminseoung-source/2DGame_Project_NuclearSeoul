@@ -1,6 +1,6 @@
 """Screen UI over the world (2026-11-15 "UI적인 측면을 많이 개선해 보자, 인벤토리 등등").
 
-- bottom left: the status panel - the health bar and the status icons (tension/panic, bleeding, wounds, slowed, sneaking: condition.py)
+- bottom left: the status panel - the health bar and the status icons (bleeding, wounds, slowed, sneaking: condition.py)
 - bottom middle: quick slots (bag contents with their keys)
 - top left: the goal and how many infected are left
 - above the slots: the latest message, fading away
@@ -219,7 +219,6 @@ def draw_inventory(game):
     draw_body(ml + size(55), bottom + size(50), size(150), game.condition.injuries)
     sx = ml + size(110)
     ui.text(sx, top - size(52), f"체력 {max(0, round(100 * game.hero.hp / HERO_HP))}%", TEXT, size(12))
-    ui.text(sx, top - size(74), f"긴장 {game.condition.tension * 100:.0f}%", DIM, size(12))
     wounds = game.condition.injuries
     for k, wound in enumerate(wounds[:3]):
         state = "출혈" if wound["bleed"] > 0 else ("치료됨" if wound.get("dressed") else "")
