@@ -28,9 +28,10 @@ PASSES = [
      ["idle=Idle_Loop", "sneak_idle=Idle_Loop+Crouch_Idle_Loop*0.3", "walk=Walk_Loop",
       "sneak=Walk_Loop+Crouch_Idle_Loop*0.3", "run=Jog_Fwd_Loop", "hurt=Hit_Chest", "down=Death01",
       "pickup=Fixing_Kneeling@0-20",
-      # push: a quick two-handed shove that thrusts something off (2026-11-16 "벽을 미는 것 같다":
-      # Push_Loop alone leans on a wall; a cross punch lunges, Push_Loop mixed in brings both hands out)
-      "push=Punch_Cross@0-14+Push_Loop*0.45"],
+      # push: a light two-handed shove, the legs held still in the idle stance (2026-11-16: "벽을
+      #미는 것 같다" -> cross punch + Push_Loop for both hands; then "하체는 거의 가만히, 상체만
+      #가볍게" -> '~Idle_Loop' keeps hips and legs in Idle_Loop's first pose, render_sprites.get_action)
+      "push=Punch_Cross~Idle_Loop@0-14+Push_Loop~Idle_Loop*0.45"],
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4"],
      ["--shift-for", "down=16"]),
     (LIB2,

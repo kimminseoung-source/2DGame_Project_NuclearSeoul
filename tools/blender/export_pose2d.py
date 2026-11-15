@@ -65,8 +65,8 @@ def main():
         sheet_counts = [int(c) for c in str(counts.get(sheet, 8)).split(",")]
         frames = []
         for i, (name, frame_range, blend) in enumerate(parts):
-            action = bpy.data.actions[name]
-            over = (bpy.data.actions[blend[0]], blend[1]) if blend else None
+            action = rs.get_action(name)
+            over = (rs.get_action(blend[0]), blend[1]) if blend else None
             rs.assign_action(arm, action, over)
             for f in rs.frames_of(action, sheet_counts[min(i, len(sheet_counts) - 1)], frame_range):
                 scene.frame_set(int(f), subframe=f - int(f))

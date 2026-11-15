@@ -246,6 +246,43 @@ def frames_of(action, count, frame_range=None):
     return [round(start + i * step, 3) for i in range(count)]
 
 
+LOWER_BODY = ("root", "pelvis", "thigh_", "calf_", "foot_", "ball_")
+
+
+def channel_fcurves(action):
+    """F-curves of an action (Blender 4.4+ layered actions keep them in channel bags)."""
+    if hasattr(action, "fcurves"):
+        return list(action.fcurves)
+    return [fc for layer in action.layers for strip in layer.strips
+            for bag in strip.channelbags for fc in bag.fcurves]
+
+
+def get_action(name):
+    """An action by name. 'A~B' is A with the hips and legs held still in B's first pose, so an
+    upper-body move (a light shove) plays while the feet stay planted (2026-11-16)."""
+    if "~" not in name:
+        return bpy.data.actions.get(name)
+    made = bpy.data.actions.get(name)
+    if made is not None:
+        return made
+    base_name, legs_name = name.split("~", 1)
+    base, legs = bpy.data.actions.get(base_name), bpy.data.actions.get(legs_name)
+    if base is None or legs is None:
+        return None
+    made = base.copy()
+    made.name = name
+    held = {(fc.data_path, fc.array_index): fc.evaluate(legs.frame_range[0]) for fc in channel_fcurves(legs)}
+    start = base.frame_range[0]
+    for fc in channel_fcurves(made):
+        bone = fc.data_path.split('"')[1] if '"' in fc.data_path else ""
+        if not bone.startswith(LOWER_BODY):
+            continue
+        value = held.get((fc.data_path, fc.array_index), fc.evaluate(start))
+        fc.keyframe_points.clear()
+        fc.keyframe_points.insert(start, value)
+    return made
+
+
 def assign_action(armature, action, blend=None):
     """Play one action, or mix a second one over it: blend = (action, weight 0..1).
 
@@ -448,8 +485,8 @@ def main():
         sheet_counts = [int(c) for c in str(counts.get(sheet_name, args.frames)).split(",")]
         segments = []
         for seg_index, (action_name, frame_range, blend) in enumerate(parts):
-            action = bpy.data.actions.get(action_name)
-            over = bpy.data.actions.get(blend[0]) if blend else None
+            action = get_action(action_name)
+            over = get_action(blend[0]) if blend else None
             if action is None or (blend and over is None):
                 print(f"missing action {action_name if action is None else blend[0]}")
                 segments = None
