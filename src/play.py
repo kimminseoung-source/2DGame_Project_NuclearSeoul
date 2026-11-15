@@ -8,7 +8,7 @@ one comes in through an entrance the hero is not looking at, heading for the las
 them are down."""
 
 import random
-from math import atan2, hypot, pi
+from math import atan2, cos, hypot, pi, sin
 
 import pico2d
 import sdl2
@@ -19,9 +19,11 @@ from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, Z
 from character_look import SheetLook
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
-from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE, ROLL_TIME,
-                      ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, VIEW_H, VIEW_W, WIDTH)
-from slash_fx import Crescent, Spark
+import infected
+from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
+                      ROLL_TIME, ROOT, SCALE, SLASH_ARC, SLASH_HIT, SLASH_REACH, SLOW_WORLD, UI_SCALE, VIEW_H,
+                      VIEW_W, WIDTH)
+from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
 import supplies as supply_rules
 from supplies import KINDS, PILL_EFFECT, Supply
@@ -37,6 +39,12 @@ SPAWN_MIN_DIST = 240         # px: never right next to the hero
 
 
 HUD_PAD = 40                 # world px the HUD bar covers at the top of the screen
+HUD_H = round(52 * UI_SCALE)  # screen px of the HUD bar
+MESSAGE_TIME = 4.0           # s a message stays (realistic look: messages fade instead of staying)
+
+
+def hud_size(size):
+    return round(size * UI_SCALE)
 
 
 class Game:
@@ -47,6 +55,8 @@ class Game:
         self.deaths = 0
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
         self.senses = True                  # F2: infected senses on/off (compare)
+        self.real = True                    # F3: realistic look on/off (compare)
+        infected.Zombie.show_marks = not self.real
         self.look = 0.0
         self.sounds = Sounds()
         self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
@@ -64,7 +74,7 @@ class Game:
         self.slow = False
         self.slow_blend = 0.0
         self.exposure = 0.0
-        self.message = "물자를 챙겨 지하철 입구로 · E 줍기/나가기 · 1 붕대 · 2 억제제 · 좌클릭 베기 · Space 구르기 · 우클릭 느리게"
+        self.message = "물자를 챙겨 지하철 입구로 · E 줍기/나가기 · 1 붕대 · 좌클릭 베기 · Space 구르기 · F3 연출 비교"
         self.cleared = False
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
         self.spawn_in = random.uniform(*SPAWN_EVERY)
@@ -73,7 +83,9 @@ class Game:
         self.was_slow = False
         self.hero_steps = 0
         self.siren_in = random.uniform(15, 30)
-        self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES]
+        self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES if EXPOSURE_ON or kind != "pill"]
+        self.stains = []             # blood on the ground (realistic look)
+        self.message_at = 0.0
         self.bag = {kind: 0 for kind in KINDS}
         self.kills = 0
         self.left = False            # reached the exit: the area is done
@@ -103,11 +115,16 @@ class Game:
             self.hero.hp += 1
             self.message = "붕대를 감았다 (체력 +1)"
             self.sounds.play("pickup", 0.6)
-        elif key == sdl2.SDLK_2 and self.bag["pill"] and not self.hero.dead:
+        elif key == sdl2.SDLK_2 and EXPOSURE_ON and self.bag["pill"] and not self.hero.dead:
             self.bag["pill"] -= 1
             self.exposure = max(0.0, self.exposure - PILL_EFFECT)
             self.message = f"피폭 억제제를 먹었다 (피폭 -{PILL_EFFECT:.0f})"
             self.sounds.play("pickup", 0.6)
+        elif key == sdl2.SDLK_F3:
+            self.real = not self.real
+            infected.Zombie.show_marks = not self.real
+            self.message = "사실적 연출 켬: 머리 위 표시 없음, 피, 시체, 어두운 색" if self.real \
+                else "사실적 연출 끔: 예전 연출(반달 궤적, !·? 표시)"
         elif key == sdl2.SDLK_F2:
             self.senses = not self.senses
             self.reset()
@@ -211,7 +228,7 @@ class Game:
         if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= SLASH_HIT:
             hero.slash["hit"] = True
             sx, sy = hero.x, hero.y + CHEST
-            self.effects.append(Crescent(sx, sy, hero.slash["angle"]))
+            self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
             for z in self.zombies:
                 if not z.alive:
                     continue
@@ -222,8 +239,18 @@ class Game:
                     self.kills += 1
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
-                    self.effects.append(Spark(zx, zy + 4, big=True))
-                    self.hitstop, self.shake = max(self.hitstop, 0.07), 0.12
+                    if self.real:
+                        self.effects.append(Blood(zx, zy - 6, atan2(zy - sy, zx - sx), 18))
+                        ang = atan2(zy - sy, zx - sx)          # a pool where the body will lie
+                        for k in range(9):
+                            d = random.uniform(4, 22)
+                            self.stains.append((z.x + cos(ang) * d + random.uniform(-6, 6),
+                                                z.y + sin(ang) * d * 0.5 + random.uniform(-4, 3),
+                                                random.randint(3, 6)))
+                        self.hitstop, self.shake = max(self.hitstop, 0.035), 0.05
+                    else:
+                        self.effects.append(Spark(zx, zy + 4, big=True))
+                        self.hitstop, self.shake = max(self.hitstop, 0.07), 0.12
 
         if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
             if hero.slash and hero.slash["time"] <= real_dt:
@@ -261,13 +288,22 @@ class Game:
                     hero.slash = None
                     self.message = "붙잡혔다! Space로 구르면 빠져나감"
                     self.sounds.play("grab", 1.0)
-                self.effects.append(Spark(hero.x, hero.y + 26))
-                self.hitstop, self.shake = 0.1, 0.2
+                if self.real:
+                    self.effects.append(Blood(hero.x, hero.y + 16, atan2(hero.y - z.y, hero.x - z.x), 10))
+                    self.hitstop, self.shake = 0.06, 0.12
+                else:
+                    self.effects.append(Spark(hero.x, hero.y + 26))
+                    self.hitstop, self.shake = 0.1, 0.2
                 if hero.hp <= 0:
                     hero.dead = 0.001
                     self.deaths += 1
                     self.message = "쓰러졌다… 바로 다시 시작"
         self.effects = [e for e in self.effects if e.update(real_dt)]
+        for e in self.effects:
+            if isinstance(e, Blood):
+                self.stains.extend(e.landed())
+        if self.message != getattr(self, "_shown", None):
+            self._shown, self.message_at = self.message, self.clock
         if hero.dead > 0.9:
             self.reset()
             return
@@ -317,6 +353,7 @@ class Game:
         for i in range(5):
             pico2d.draw_line(l + 4 - cx, b + 6 + i * 12 - cy, r - 4 - cx, b + 6 + i * 12 - cy, 60, 64, 66)
         pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 90, 96, 92)
+        draw_stains(self.stains, cx, cy)
         near_item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
         for s in self.supplies:
             if not s.taken:
@@ -340,6 +377,8 @@ class Game:
             e.draw(cx, cy)
         self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y + CHEST - cy),
                          VIEW_W, VIEW_H)
+        if self.real:                                      # a muted, colder tone over everything
+            pico2d.draw_rectangle(0, 0, VIEW_W, VIEW_H, 26, 30, 34, 70, filled=True)
         el, eb, er, _ = EXIT                               # the green exit sign (in front) stays lit in the dark
         ex, ey = (el + er) / 2 - cx, eb - 12 - cy
         pico2d.draw_rectangle(ex - 34, ey - 7, ex + 34, ey + 9, 30, 120, 70, filled=True)
@@ -351,24 +390,27 @@ class Game:
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
         canvas.canvas_height = HEIGHT
         sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
-        pico2d.draw_rectangle(0, HEIGHT - 50, WIDTH, HEIGHT, 10, 12, 16, 200, filled=True)
-        ui.text(12, HEIGHT - 20, self.message, ui.ACCENT, 14)
-        ui.text(12, HEIGHT - 42, "체력", ui.PARTY, 14)
+        u, t1, t2 = UI_SCALE, hud_size(14), hud_size(13)
+        pico2d.draw_rectangle(0, HEIGHT - HUD_H, WIDTH, HEIGHT, 10, 12, 16, 200, filled=True)
+        if not self.real or self.clock - self.message_at < MESSAGE_TIME or self.left:
+            ui.text(12 * u, HEIGHT - 20 * u, self.message, ui.ACCENT, t1)
+        ui.text(12 * u, HEIGHT - 42 * u, "체력", ui.PARTY, t2)
         for i in range(HERO_HP):                 # boxes drawn, the font has no square glyphs
-            pico2d.draw_rectangle(52 + i * 18, HEIGHT - 48, 64 + i * 18, HEIGHT - 36, 230, 90, 80,
-                                  filled=i < self.hero.hp)
+            pico2d.draw_rectangle((52 + i * 18) * u, HEIGHT - 48 * u, (64 + i * 18) * u, HEIGHT - 36 * u,
+                                  200, 70, 64, filled=i < self.hero.hp)
         left = self.to_spawn + sum(z.alive for z in self.zombies)
-        ui.text(110, HEIGHT - 42, f"피폭 {self.exposure:3.0f}%  남은 피폭체 {left}  쓰러진 횟수 {self.deaths}",
-                (150, 230, 160), 14)
-        ui.text(470, HEIGHT - 42, f"붕대 {self.bag['bandage']}  억제제 {self.bag['pill']}  통조림 {self.bag['can']}",
-                (230, 220, 180), 14)
+        status = (f"피폭 {self.exposure:3.0f}%  " if EXPOSURE_ON else "") + f"남은 피폭체 {left}  쓰러진 횟수 {self.deaths}"
+        ui.text(110 * u, HEIGHT - 42 * u, status, (170, 190, 170), t2)
+        bag = f"붕대 {self.bag['bandage']}  " + (f"억제제 {self.bag['pill']}  " if EXPOSURE_ON else "") + \
+            f"통조림 {self.bag['can']}"
+        ui.text(470 * u, HEIGHT - 42 * u, bag, (220, 210, 180), t2)
         if self.left:                                      # area summary
-            pico2d.draw_rectangle(WIDTH / 2 - 190, HEIGHT / 2 - 80, WIDTH / 2 + 190, HEIGHT / 2 + 80,
-                                  10, 12, 16, 230, filled=True)
+            pico2d.draw_rectangle(WIDTH / 2 - 190 * u, HEIGHT / 2 - 80 * u, WIDTH / 2 + 190 * u,
+                                  HEIGHT / 2 + 80 * u, 10, 12, 16, 230, filled=True)
             lines = [(f"{EXIT_NAME}으로 빠져나왔다", ui.ACCENT),
-                     (f"챙긴 물자: 붕대 {self.bag['bandage']} · 억제제 {self.bag['pill']} · 통조림 {self.bag['can']}",
-                      (230, 220, 180)),
-                     (f"쓰러뜨린 피폭체 {self.kills} · 피폭 {self.exposure:.0f}%", (150, 230, 160)),
+                     (f"챙긴 물자: {bag}", (230, 220, 180)),
+                     (f"쓰러뜨린 피폭체 {self.kills}" + (f" · 피폭 {self.exposure:.0f}%" if EXPOSURE_ON else ""),
+                      (150, 230, 160)),
                      ("다음 구역(지하철)은 3단계에서 · R 다시", (180, 180, 190))]
             for i, (line, colour) in enumerate(lines):
-                ui.text_center(WIDTH / 2, HEIGHT / 2 + 48 - i * 32, line, colour, 16 if i == 0 else 14)
+                ui.text_center(WIDTH / 2, HEIGHT / 2 + (48 - i * 32) * u, line, colour, hud_size(16 if i == 0 else 14))

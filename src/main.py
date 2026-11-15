@@ -2,8 +2,9 @@
 
     .venv\\Scripts\\python.exe src\\main.py
 
-WASD move, left click slash toward the mouse, Space roll, right button held slows time
-(exposure rises), R restart, F2 infected senses on/off (compare), Esc quit.
+WASD move, left click slash toward the mouse, Space roll, E pick up / leave, 1 bandage,
+R restart, F2 infected senses on/off, F3 realistic look on/off (compare), Esc quit.
+(Right button time crawl with exposure is switched off for now: settings.EXPOSURE_ON.)
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
 """
 
@@ -15,7 +16,7 @@ from pico2d import pico2d as canvas
 
 import ui
 from play import Game
-from settings import HEIGHT, WIDTH
+from settings import EXPOSURE_ON, HEIGHT, WIDTH
 
 
 def main(window_x=None):
@@ -42,7 +43,7 @@ def main(window_x=None):
                 game.aim = (event.x, event.y)
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
                 game.click(event.x, event.y)
-            elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT:
+            elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT and EXPOSURE_ON:
                 game.slow = True
             elif event.type == sdl2.SDL_MOUSEBUTTONUP and event.button == sdl2.SDL_BUTTON_RIGHT:
                 game.slow = False

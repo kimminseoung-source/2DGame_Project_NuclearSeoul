@@ -156,14 +156,17 @@ class Zombie:
                     self.state = "chase"
         return event
 
+    show_marks = True        # "!" / "?" over the head and a blinking corpse; off in the realistic look
+
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
         if self.state == "dead":
-            if self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
+            if not self.show_marks or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:
                 self.look.draw("down", min(1.0, self.timer * 2), x, y, 1 if self.death[0] < 0 else -1)
         elif self.state == "windup":
             self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
-            ui.text_center(x, y + 66, "!", (255, 120, 80), 22)
+            if self.show_marks:
+                ui.text_center(x, y + 66, "!", (255, 120, 80), 22)
         elif self.state == "strike":
             self.look.draw("attack", 0.45, x, y, self.facing)
         elif self.state == "recover":
@@ -173,6 +176,7 @@ class Zombie:
         elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
             if self.state == "search":
-                ui.text_center(x, y + 66, "?", (220, 200, 120), 18)
+                if self.show_marks:
+                    ui.text_center(x, y + 66, "?", (220, 200, 120), 18)
         else:
             self.look.draw("idle", self.time, x, y, self.facing)

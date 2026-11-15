@@ -1,5 +1,8 @@
-"""Slash effects: the big white crescent along the aim and the burst where a blow lands."""
+"""Slash effects: the big white crescent along the aim and the burst where a blow lands, and
+the realistic set (F3, 2026-11-15 "리얼리티 느낌"): a faint quick blade streak, blood spraying from
+a wound and the stains it leaves on the ground."""
 
+import random
 from math import cos, pi, sin
 
 import pico2d
@@ -32,6 +35,73 @@ class Crescent:
                 pts.append((cx + cos(self.angle + t) * r, cy + sin(self.angle + t) * r))
             for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
                 pico2d.draw_line(x1, y1, x2, y2, 255, 255, 255, round(alpha * fade))
+
+
+class Streak:
+    """Realistic slash: one thin, faint, quick arc where the blade passed."""
+
+    LIFE = 0.08
+
+    def __init__(self, x, y, angle):
+        self.x, self.y, self.angle = x, y, angle
+        self.age = 0.0
+
+    def update(self, dt):
+        self.age += dt
+        return self.age < self.LIFE
+
+    def draw(self, cam_x, cam_y):
+        fade = 1 - self.age / self.LIFE
+        cx, cy = self.x - cam_x, self.y - cam_y
+        pts = [(cx + cos(self.angle + t) * 44, cy + sin(self.angle + t) * 44)
+               for t in (-SLASH_ARC + 2 * SLASH_ARC * k / 10 for k in range(11))]
+        for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+            pico2d.draw_line(x1, y1, x2, y2, 200, 205, 210, round(110 * fade))
+
+
+class Blood:
+    """Dark drops thrown from a wound along the blow; where they land they leave stains
+    (handed back by `landed()` so the play loop can keep them on the ground)."""
+
+    def __init__(self, x, y, angle, amount=14):
+        rng = random.Random()
+        self.drops = []
+        for _ in range(amount):
+            a = angle + rng.uniform(-0.7, 0.7)
+            speed = rng.uniform(40, 150)
+            self.drops.append([x, y, cos(a) * speed, sin(a) * speed, rng.uniform(14, 26), rng.randint(1, 2)])
+        self.age = 0.0
+        self.stains = []
+
+    def update(self, dt):
+        self.age += dt
+        for d in self.drops:
+            if d[4] > 0:
+                d[0] += d[2] * dt
+                d[1] += d[3] * dt
+                d[4] -= 90 * dt                      # height above the ground falls
+                d[2] *= 0.9
+                d[3] *= 0.9
+                if d[4] <= 0:
+                    self.stains.append((d[0], d[1], d[5]))
+        return any(d[4] > 0 for d in self.drops)
+
+    def landed(self):
+        stains, self.stains = self.stains, []
+        return stains
+
+    def draw(self, cam_x, cam_y):
+        for x, y, vx, vy, h, size in self.drops:
+            if h > 0:
+                pico2d.draw_rectangle(x - cam_x, y + h - cam_y, x - cam_x + size, y + h - cam_y + size,
+                                      110, 12, 14, filled=True)
+
+
+def draw_stains(stains, cam_x, cam_y):
+    """Blood on the ground (stays for the whole area)."""
+    for x, y, size in stains:
+        pico2d.draw_rectangle(x - cam_x, y - cam_y, x - cam_x + size + 1, y - cam_y + size, 70, 10, 12, 220,
+                              filled=True)
 
 
 class Spark:
