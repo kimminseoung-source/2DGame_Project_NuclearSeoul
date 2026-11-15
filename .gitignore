@@ -21,3 +21,7 @@ assets/source3d/*
 # Per-frame renders kept only while building a sheet
 assets/characters/**/_frames/
 assets/characters/**/_passes/
+
+# Zomboid reference screenshots: kept locally for study, not published (commercial game images)
+docs/references/zomboid_shots/*
+!docs/references/zomboid_shots/README.md
