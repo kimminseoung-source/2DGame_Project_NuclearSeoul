@@ -83,6 +83,7 @@ class Zombie:
         self.push = (dx / length * push, dy / length * push)
         self.state, self.timer = state, time
         self.seen_time = 0.0
+        self.target, self.memory = (from_x, from_y), MEMORY    # it knows where the blow came from
 
     def shoved(self, from_x, from_y):
         """Pushed by the hero: it reels or falls."""
