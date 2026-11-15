@@ -27,6 +27,12 @@
 - Quaternius, Universal Animation Library 2 [Standard], https://opengameart.org/content/universal-animation-library-2 , CC0 1.0. 휘두르기(나무 베기 동작) 등으로 사용.
 - 이 3D 원본을 Blender로 렌더해 만든 스프라이트 시트는 `assets/characters/` 아래에 있다. 원본 목록과 받는 방법은 `assets/source3d/README.md`.
 
+## 구역 배경 (2026-11-15)
+
+| 파일 | 만든 방법 | 출처 |
+|---|---|---|
+| `assets/area/ground.png`, `assets/area/wreck_*.png` | `tools/blender/render_area.py`(Blender 절차적 재질, 외부 모델·텍스처 없음) + `tools/sprites/crop_area_wrecks.py`(빈 여백 자르기) | 우리 것 |
+
 ## 소리 (2026-11-14~15)
 
 | 파일 | 만든 방법 | 출처·라이선스 |

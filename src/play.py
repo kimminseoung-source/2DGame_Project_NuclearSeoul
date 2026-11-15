@@ -64,6 +64,11 @@ class Game:
         self.bag_cursor = 0
         self.look = 0.0
         self.sounds = Sounds()
+        # Rendered in Blender (tools/blender/render_area.py): the ground, and a picture per wreck.
+        area_dir = ROOT / "assets" / "area"
+        self.ground_img = pico2d.load_image(str(area_dir / "ground.png")) if (area_dir / "ground.png").exists() else None
+        self.wreck_imgs = [pico2d.load_image(str(area_dir / f"wreck_{i}.png")) if (area_dir / f"wreck_{i}.png").exists()
+                           else None for i in range(len(BLOCKS))]
         self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
         random.seed(4)
         self.cracks = [(random.uniform(0, ROOM_W), random.uniform(0, ROOM_H), random.uniform(-1, 1))
@@ -373,12 +378,22 @@ class Game:
         canvas.canvas_height = VIEW_H
         shake = random.uniform(-2, 2) if self.shake > 0 else 0
         cx, cy = self.cam[0] + shake, self.cam[1]
-        # asphalt: lane lines and cracks
+        if self.ground_img is not None:                    # the rendered street
+            self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy)
+        else:
+            self.draw_plain_ground(cx, cy)
+        self.draw_area_edges(cx, cy)
+        self.draw_world(cx, cy)
+
+    def draw_plain_ground(self, cx, cy):
+        """The old drawn asphalt, used when the rendered ground is missing."""
         for lane in range(80, ROOM_H, 160):
             for x0 in range(0, ROOM_W, 60):
                 pico2d.draw_rectangle(x0 - cx, lane - cy, x0 + 30 - cx, lane + 2 - cy, 120, 110, 80, filled=True)
         for x, y, t in self.cracks:
             pico2d.draw_line(x - cx, y - cy, x + 14 - cx, y + 10 * t - cy, 20, 20, 24)
+
+    def draw_area_edges(self, cx, cy):
         pico2d.draw_rectangle(-cx, -cy, ROOM_W - cx, ROOM_H - cy, 70, 64, 60)
         for (x, y), side in ENTRANCES:                    # alley mouths and doorways
             w, d = (22, 34) if side in ("left", "right") else (34, 22)
@@ -386,6 +401,9 @@ class Game:
             gy = {"top": ROOM_H - 2, "bottom": -d}.get(side, y - w / 2 - 6)
             gw, gh = (d + 2, w + 12) if side in ("left", "right") else (w + 12, d + 2)
             pico2d.draw_rectangle(gx - cx, gy - cy, gx + gw - cx, gy + gh - cy, 12, 12, 16, filled=True)
+
+    def draw_world(self, cx, cy):
+        """Everything on the ground over the floor, the darkness, then the screen UI."""
         l, b, r, t = EXIT                                  # subway stairs going down
         pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 18, 20, 22, filled=True)
         for i in range(5):
@@ -404,7 +422,11 @@ class Game:
         for _, kind, obj in sorted(things, key=lambda t: -t[0]):
             if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y):
                 continue                                   # out of sight: not drawn at all
-            if kind == "block":
+            if kind == "block" and self.wreck_imgs[BLOCKS.index(obj)] is not None:
+                img = self.wreck_imgs[BLOCKS.index(obj)]           # rendered wreck, standing on its block
+                l, b, r, t = obj
+                img.draw((l + r) / 2 - cx, b - 3 + img.h / 2 - cy)
+            elif kind == "block":
                 l, b, r, t = obj
                 pico2d.draw_rectangle(l - cx, b - cy, r - cx, t + 18 - cy, 44, 38, 36, filled=True)
                 pico2d.draw_rectangle(l - cx, t - cy, r - cx, t + 18 - cy, 70, 60, 54, filled=True)
