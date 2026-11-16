@@ -118,6 +118,12 @@ def draw_status(game):
     that ask for something - bleeding (bandage), slowed - plus sneaking. Wounds are in the bag."""
     hero, cond = game.hero, game.condition
     x, y = 14, 312
+    w = hero.weapon                                     # the weapon in hand, by the health
+    img = px.image(f"../weapons/{w['sprite']}.png")
+    wx = 160                                            # between the health bar and the quick slots
+    px.blit(f"../weapons/{w['sprite']}.png", wx, y + 6, 2)
+    px.text(wx + img.w * 2 + 4, y + 2, w["name"], LIGHT)
+    px.text(wx + img.w * 2 + 4, y + 16, "Q 바꾸기", GREY_C)
     pct = max(0, round(hero.hp / HERO_HP * 100))
     px.text(x, y, f"{pct}", LIGHT if pct > 50 else ORANGE if pct > 25 else BLOOD, bold=True, scale=2)
     shown, trail = health_shares(game)

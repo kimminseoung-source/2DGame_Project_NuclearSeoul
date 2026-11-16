@@ -16,7 +16,12 @@ NEAR_GRID = (3, 2)
 
 
 def shape(kind):
-    """(columns, rows) a thing takes: 1 -> 1x1, 2 -> 2x1, 3 -> 3x1, 4 -> 2x2, more -> squarish."""
+    """(columns, rows) a thing takes: 1 -> 1x1, 2 -> 2x1, 3 -> 3x1, 4 -> 2x2, more -> squarish;
+    weapons lie flat in their own shape (weapons.SHAPE)."""
+    import weapons
+    key = weapons.key_of(kind)
+    if key:
+        return weapons.SHAPE[key]
     n = max(1, round(weight_of(kind) / CELL_WEIGHT))
     if n <= 3:
         return n, 1
@@ -49,10 +54,11 @@ def pack(things, grid):
 
 
 def bag_things(bag, shown=lambda kind: True):
-    """Every unit in the bag: supplies in the order supplies.KINDS lists them, then weapons."""
+    """Every unit in the bag (supplies, then weapons), the biggest first."""
     things = [(kind, None) for kind in KINDS if shown(kind) for _ in range(bag.get(kind, 0))]
     things += [(kind, None) for kind in sorted(bag) if kind.startswith("w:") for _ in range(bag[kind])]
-    return things
+    # the biggest first, so small things fill the gaps instead of breaking up the room
+    return sorted(things, key=lambda t: -(shape(t[0])[0] * shape(t[0])[1]))
 
 
 def at(placed, col, row):

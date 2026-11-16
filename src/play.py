@@ -232,7 +232,21 @@ class Game:
             part = weapons.path_part(z, py_ - z.y)
             if part and (best is None or t < best[0]):
                 best = (t, z, part)
-        return (best[1], best[2]) if best else None
+        if best:
+            return best[1], best[2]
+        # Nothing standing on the path: a crawler inside the range and its arc is the one, marked
+        # "밟기" (2026-11-16 "밟기 판정이 이상함": aimed at it at chest height it was stomped
+        # without a target and the foot hit nothing).
+        ang = atan2(dy, dx)
+        crawlers = []
+        for z in seen:
+            if not z.prone:
+                continue
+            d = hypot(z.x - sx0, z.y + 6 - sy0)
+            off = abs((atan2(z.y + 6 - sy0, z.x - sx0) - ang + pi) % (2 * pi) - pi)
+            if d <= reach and off <= w["arc"]:
+                crawlers.append((d, z))
+        return (min(crawlers, key=lambda c: c[0])[1], "ground") if crawlers else None
 
     def press(self, sx, sy):
         """Left button down: raise the weapon and hold it, aiming with the cursor."""
@@ -276,7 +290,7 @@ class Game:
         self.bag[weapons.item(held)] = self.bag.get(weapons.item(held), 0) + 1
         hero.weapon = weapons.WEAPONS[key]
         hero.ready = None
-        self.message = f"{supply_rules.with_object_particle(hero.weapon['name'])} 들었다"
+        self.message = f"{supply_rules.with_object_particle(hero.weapon['name'])} 들었다 · {hero.weapon['good']}"
         self.sounds.play("pickup", 0.6)
 
     def next_weapon(self):
@@ -527,10 +541,11 @@ class Game:
                     part = aim[1] if aim is not None and aim[0] is z else "torso"
                     part = "torso" if part == "ground" else part
                     damage = weapon["damage"][part]
-                    if part == "head" and not hero.slash.get("held"):
+                    if part == "head" and not hero.slash.get("held") and not weapon.get("head_always"):
                         damage = max(1, damage - weapons.HEAD_QUICK)   # the head: aim it to make it count
                     was_crawling = z.prone
-                    if opening is None and not z.hurt(hero.x, hero.y, damage, part, weapon["push"]):
+                    if opening is None and not z.hurt(hero.x, hero.y, damage, part, weapon["push"],
+                                                      weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         if z.prone and not was_crawling:
                             self.message = "다리를 베었다! 이제 기어 온다 · 밟아서 끝내라"
@@ -563,7 +578,7 @@ class Game:
 
         if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
             if hero.slash and hero.slash["time"] <= real_dt:
-                self.make_noise(NOISE_STEP if hero.slash.get("quiet") else NOISE_SLASH)
+                self.make_noise(NOISE_STEP if hero.slash.get("quiet") else hero.slash["weapon"].get("noise", NOISE_SLASH))
             elif hero.roll > 0 and hero.roll >= ROLL_TIME - real_dt:
                 self.make_noise(NOISE_ROLL)
             elif hero.moving:
@@ -732,14 +747,21 @@ class Game:
         ang = atan2(ty - sy, tx - sx)
         length = weapons.attack_range(w)                   # exactly the range the hit uses
         step = 6
-        for i in range(2, int(length // step) + 1):        # the path: a dotted line
-            px_, py_ = sx + cos(ang) * i * step - cx, sy + sin(ang) * i * step - cy
-            pico2d.draw_rectangle(px_ - 1, py_ - 1, px_ + 1, py_ + 1, *colour, filled=True)
-        n = max(2, int(length * w["arc"] / step))          # the arc it sweeps, at the end, dot every ~6
+
+        def dot(x, y, size=1):
+            pico2d.draw_rectangle(x - size - cx, y - size - cy, x + size - cx, y + size - cy, *colour, filled=True)
+
+        # the whole area the blow covers (2026-11-16 "공격 범위에 맞춰서 점선을"): both edges
+        # and the far arc, dotted; the middle line toward the cursor a little brighter
+        for edge in (-w["arc"], w["arc"]):
+            for i in range(2, int(length // step) + 1):
+                dot(sx + cos(ang + edge) * i * step, sy + sin(ang + edge) * i * step)
+        n = max(2, int(length * w["arc"] / step))
         for k in range(-n, n + 1):
             a = ang + k * w["arc"] / n
-            ex, ey = sx + cos(a) * length - cx, sy + sin(a) * length - cy
-            pico2d.draw_rectangle(ex - 1, ey - 1, ex + 1, ey + 1, *colour, filled=True)
+            dot(sx + cos(a) * length, sy + sin(a) * length)
+        for i in range(2, int(length // step) + 1, 2):    # the aim line
+            dot(sx + cos(ang) * i * step, sy + sin(ang) * i * step)
         if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
             if z.prone:                                   # a crawler: all of it, on the ground

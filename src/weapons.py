@@ -40,27 +40,39 @@ WEAPONS = {
         "damage": {"head": 3, "torso": 1, "legs": 1},   # an aware infected takes 2-3
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
+        "noise": 230,               # px the blow is heard
+        "stagger": False,           # a torso blow makes it reel (open), not just flinch
+        "head_always": False,       # a quick (not held) blow to the head still counts in full
+        "good": "균형·기는 놈까지", "bad": "큰 강점 없음",
     },
     "knife": {                      # quick, short, precise: a stab to the head ends it
         "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
         "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 18.0,
         "reach": 44.0, "arc": 0.45,
         "damage": {"head": 3, "torso": 1, "legs": 1},
-        "stamina": 8.0, "push": 25,
+        "stamina": 6.0, "push": 25,
+        "noise": 70, "stagger": False, "head_always": False,
+        "good": "빠름·조용·기력 적게", "bad": "짧고 좁음",
     },
+    # bat and pipe use the overhead chop like the machete and axe (2026-11-16 "야구 방망이 모션이
+    # 이상함, 이런 종류의 무기를 도끼나 마체테처럼 똑같이 통일"): their own traits are in the numbers
     "bat": {                        # wide and pushing, weak: keeps them off
-        "name": "야구방망이", "style": "swingh", "pose": "swingh", "sprite": "bat",
+        "name": "야구방망이", "style": "chop", "pose": "chop", "sprite": "bat",
         "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 16.0,
         "reach": 62.0, "arc": 1.35,
         "damage": {"head": 2, "torso": 1, "legs": 1},
         "stamina": 16.0, "push": 150,
+        "noise": 260, "stagger": True, "head_always": False,
+        "good": "넓게·몸통 치면 휘청", "bad": "피해 약함·시끄러움",
     },
     "pipe": {                       # like the bat, longer and heavier
-        "name": "쇠파이프", "style": "swingh", "pose": "swingh", "sprite": "pipe",
+        "name": "쇠파이프", "style": "chop", "pose": "chop", "sprite": "pipe",
         "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 16.0,
         "reach": 66.0, "arc": 1.3,
         "damage": {"head": 2, "torso": 1, "legs": 2},
         "stamina": 18.0, "push": 170,
+        "noise": 300, "stagger": True, "head_always": False,
+        "good": "가장 멀리·휘청·다리 2", "bad": "느림·가장 시끄러움",
     },
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
@@ -68,12 +80,17 @@ WEAPONS = {
         "reach": 60.0, "arc": 0.9,
         "damage": {"head": 3, "torso": 2, "legs": 2},
         "stamina": 22.0, "push": 80,
+        "noise": 260, "stagger": False, "head_always": True,
+        "good": "머리 바로 한 방·몸통 2", "bad": "가장 느림·기력 많이",
     },
 }
 DEFAULT = "machete"
 # Carried weapons are bag items "w:<key>" with a weight, so they take cells on the bag's sheet
 # (2026-11-16 "무기를 인벤토리나 어디를 통해서 바꿀 수 있게"); the weapon in hand weighs nothing.
 WEIGHT = {"machete": 0.4, "knife": 0.2, "bat": 0.6, "pipe": 0.6, "axe": 0.8}
+# Weapons are long: on the bag's sheet they lie flat, wide and low (cells >= weight / 0.1), so a
+# full bag still fits them (a 3 x 3 axe left no room for a bat, which was squeezed into one cell).
+SHAPE = {"knife": (2, 1), "machete": (4, 1), "bat": (3, 2), "pipe": (3, 2), "axe": (4, 2)}
 STYLE_TEXT = {"chop": "내려치기 · 바닥에 기는 놈에게도 닿는다", "stab": "찌르기 · 빠르고 짧다",
               "swingh": "가로 휘두르기 · 넓고 밀어낸다"}
 

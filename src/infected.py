@@ -52,6 +52,9 @@ COUNTER_PUSH = 290              # px/s it is thrown back (about 40 px)
 # have lost the use of their legs and drag themselves along on the ground - slow, always helpless
 # (the hero stamps on them), biting at the ankles if they are left to reach him.
 CRAWLER_SHARE = 0.25            # share of infected that crawl
+# Pace (2026-11-16 "좀비별로 이동 속도를 좀 다르게"): each infected walks slow, normal or fast; the
+# walk cycle follows the distance, so the legs show it. (share, speed share)
+PACES = (("slow", 0.25, 0.7), ("normal", 0.55, 1.0), ("fast", 0.2, 1.4))
 CRAWL_SPEED = 0.18              # share of the walking speed (2026-11-16 "속도가 많이 느려지게": was 0.35)
 CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
 
@@ -77,6 +80,12 @@ class Zombie:
         self.push = (0.0, 0.0)
         self.health = random.randint(*HITS)
         self.prone = crawler         # a crawler: on the ground, moves and bites from there
+        roll, self.pace = random.random(), 1.0
+        for name, share, pace in PACES:
+            if roll < share:
+                self.pace = pace
+                break
+            roll -= share
         self.on_ground = False       # it was lying down when it died
 
     @property
@@ -85,7 +94,7 @@ class Zombie:
 
     @property
     def speed(self):
-        return ZOMBIE_SPEED * (CRAWL_SPEED if self.prone else 1.0)
+        return ZOMBIE_SPEED * (CRAWL_SPEED if self.prone else self.pace)
 
     @property
     def reach(self):
@@ -119,7 +128,7 @@ class Zombie:
         self.stagger_time = self.timer
         return countered
 
-    def hurt(self, from_x, from_y, damage=1, part="torso", push=HIT_PUSH):
+    def hurt(self, from_x, from_y, damage=1, part="torso", push=HIT_PUSH, stagger=False):
         """A blow on an aware infected (weapons.py: damage by the part it lands on): True when it
         was more than it could take. Each part does its own thing (2026-11-16 "다리를 노릴 이유"):
         - legs: always takes them, whatever its health - it crawls from then on
@@ -133,7 +142,10 @@ class Zombie:
             self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE
             self.target, self.memory = (from_x, from_y), MEMORY
             return False
-        if part == "torso":
+        if part == "torso" and stagger:              # a heavy swing: it reels, open to the next blow
+            self.reel(from_x, from_y, push, "stagger", STAGGER_TIME)
+            self.stagger_time = self.timer
+        elif part == "torso":
             self.reel(from_x, from_y, push, "flinch", FLINCH_TIME)
         return False
 
