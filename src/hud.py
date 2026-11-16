@@ -19,7 +19,7 @@ import bag_grid
 import pixel_ui as px
 import ui
 from area import EXIT_NAME
-from settings import EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
+from settings import DOT, EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
 from supplies import BAG_CAPACITY, KINDS, bag_weight, weight_of
 
 U = UI_SCALE
@@ -115,8 +115,9 @@ def draw_stamina(game):
     hero, st = game.hero, game.hero.stamina
     if hero.dead or (st.value >= MAX - 0.5 and st.tired_flash <= 0):
         return
-    sx = (hero.x - game.cam[0]) * game.zoom / px.K
-    sy = (HEIGHT - (hero.y - game.cam[1]) * game.zoom) / px.K + 4
+    k = game.zoom * DOT                               # screen px per world unit
+    sx = (hero.x - game.cam[0]) * k / px.K
+    sy = (HEIGHT - (hero.y - game.cam[1]) * k) / px.K + 4
     l, t, w = round(sx) - 11, round(sy), 22
     colour = BLOOD if st.tired_flash > 0 else ORANGE if st.winded else ROAD
     px.rect(l - 1, t - 1, l + w, t + 2, BLOOD if st.tired_flash > 0 else INK_C)   # out of breath: red edge

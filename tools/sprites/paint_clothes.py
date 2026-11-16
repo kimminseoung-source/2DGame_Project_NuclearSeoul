@@ -37,7 +37,9 @@ from repaint import to_display  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 PARTS = ROOT / "assets/characters/concepts/hero_parts_a.webp"
 PACK_BOX = (320, 58, 418, 185)
-PACK_H = 15                                    # game pixels
+PACK_H = 15                                    # game pixels (for the 54 px person; scaled with --person-px)
+CELL = (96, 64)                                # cell size; --cell for the dot look (64 x 48)
+PERSON_PX = 54
 CUTS = (115, 160)
 OUTLINE = (16, 18, 26, 255)
 RAMPS = {
@@ -255,7 +257,8 @@ def blade_line(part, pose, weapon):
 def load_props():
     sheet = cc.key_out(Image.open(PARTS).convert("RGBA"), [255, 0, 255], 150)
     pack = sheet.crop(PACK_BOX)
-    pack = pack.resize((max(1, round(pack.width * PACK_H / pack.height)), PACK_H), Image.NEAREST)
+    height = max(4, round(PACK_H * PERSON_PX / 54))
+    pack = pack.resize((max(1, round(pack.width * height / pack.height)), height), Image.NEAREST)
     pack.putalpha(pack.getchannel("A").point(lambda a: 255 if a >= 128 else 0))
     return pack
 
@@ -270,8 +273,13 @@ def main():
     ap.add_argument("--weapon", default="machete", choices=sorted(weapons.WEAPONS) + ["none"],
                     help="weapon in the near hand")
     ap.add_argument("--outfit", help="costume json whose 'clothes' block sets colours and details")
+    ap.add_argument("--cell", type=int, nargs=2, default=None, metavar=("W", "H"))
+    ap.add_argument("--person-px", type=int, default=None)
     ap.add_argument("sheets", nargs="*")
     a = ap.parse_args()
+    global CELL, PERSON_PX
+    CELL = tuple(a.cell) if a.cell else CELL
+    PERSON_PX = a.person_px or PERSON_PX
     ids = json.loads((Path(a.id) / "ids.json").read_text(encoding="utf-8"))
     poses = {}
     for p in a.poses:
@@ -281,7 +289,7 @@ def main():
         RAMPS.update({k: [tuple(c) for c in v] for k, v in outfit.get("ramps", {}).items()})
         DETAILS.update({k: v for k, v in outfit.items() if k in DETAILS})
     pack = load_props()
-    weapon = None if a.weapon == "none" else weapons.get(a.weapon)
+    weapon = None if a.weapon == "none" else weapons.get(a.weapon, PERSON_PX)
     if a.no_pack:
         pack = None
     out = Path(a.out)
@@ -291,15 +299,16 @@ def main():
     for sheet in a.sheets or list(poses):
         id_img = Image.open(Path(a.id) / f"{sheet}.png").convert("RGBA")
         light_img = Image.open(Path(a.light) / f"{sheet}.png").convert("RGBA")
-        n = id_img.width // 96
-        strip = Image.new("RGBA", (96 * n, 64))
+        cw, ch = CELL
+        n = id_img.width // cw
+        strip = Image.new("RGBA", (cw * n, ch))
         lines = []
         for i in range(n):
-            box = (i * 96, 0, i * 96 + 96, 64)
+            box = (i * cw, 0, i * cw + cw, ch)
             part = part_map(id_img.crop(box), ids)
             light = light_img.crop(box).load()
             pose = poses[sheet][min(i, len(poses[sheet]) - 1)]
-            strip.alpha_composite(paint_frame(part, light, pose, pack, weapon), (i * 96, 0))
+            strip.alpha_composite(paint_frame(part, light, pose, pack, weapon), (i * cw, 0))
             lines.append(blade_line(part, pose, weapon))
         strip.save(out / f"{sheet}.png")
         if any(lines):

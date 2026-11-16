@@ -4,6 +4,7 @@ Numbers came from the side-scroll and top-view prototypes (2026-11-13/14); per-m
 (infected senses, the area's wrecks) lives next to the code that uses it.
 """
 
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,9 +13,17 @@ WIDTH, HEIGHT = 1280, 720       # window (2026-11-15 "화면이 더 크면 좋�
 # World zoom (2026-11-16 "화면 크기를 키우는 건 좋은데 내부 캐릭터들은 줄이자", "확대 축소가 가능하게
 # 하자 휠로"): the mouse wheel steps through these; the default shows the characters smaller than
 # before (was a fixed 2.5) and 2.0 keeps every world pixel a whole 2 x 2 block, like the UI.
-ZOOM_STEPS = (1.5, 2.0, 2.5, 3.0)
-ZOOM_DEFAULT = 2.0
-SCALE = ZOOM_DEFAULT            # starting zoom (play.Game.zoom changes with the wheel)
+# The dot look (2026-11-16 "도트 형식으로"): characters are 32 px pixel art (54 world units tall),
+# so the world is drawn onto a pixel canvas at DOT canvas px per world unit and the canvas is blown
+# up by a whole number - every pixel on screen is the same size (1.5 x / 2.5 x mixed 1- and 2-px
+# dots). DOT_LOOK = False brings back the earlier smooth look (zoom steps 1.5-3, no canvas).
+DOT_LOOK = os.environ.get("BUSAN_DOT", "1") != "0"   # BUSAN_DOT=0 shows the old look (comparisons)
+DOT = 32 / 54 if DOT_LOOK else 1.0          # canvas px per world unit
+ZOOM_STEPS = (2, 3, 4) if DOT_LOOK else (1.5, 2.0, 2.5, 3.0)   # screen px per canvas px
+ZOOM_DEFAULT = 3 if DOT_LOOK else 2.0
+SCALE = ZOOM_DEFAULT * DOT      # starting screen px per world unit (play.Game.zoom changes with the wheel)
+LOOK_SUFFIX = "_dot" if DOT_LOOK else ""    # character folders: hero_dot, infected_dot
+AREA_DIR = "area/dot" if DOT_LOOK else "area"
 UI_SCALE = HEIGHT / 432         # HUD text and bars grow with the window
 
 CHEST = 22                      # chest height above the feet, where blows land

@@ -52,8 +52,36 @@ def concept_bat(length=22):
     return bat
 
 
+def machete_dot():
+    """The machete for the 32 px dot look (2026-11-16 "도트 형식으로"), 13 px, drawn for its size
+    rather than shrunk: 3 px wrapped grip, 1 px guard, a 2-row blade (steel over a light edge) whose
+    point rises to the spine."""
+    w, h = 13, 4
+    img = Image.new("RGBA", (w, h))
+    px = img.load()
+    grip, wrap = (46, 34, 28, 255), (70, 52, 40, 255)
+    guard, steel, edge = (60, 60, 64, 255), (150, 156, 164, 255), (214, 218, 222, 255)
+    for x in range(0, 3):
+        px[x, 2] = wrap if x % 2 else grip
+    px[3, 1] = px[3, 2] = px[3, 3] = guard
+    for x in range(4, w):
+        px[x, 1] = steel
+        if x < w - 1:
+            px[x, 2] = edge
+    return img
+
+
 WEAPONS = {"machete": machete, "bat": concept_bat}
+# Weapons drawn for the small dot look; others are shrunk from the full-size drawing.
+DOT_WEAPONS = {"machete": machete_dot}
 
 
-def get(name):
+def get(name, person_px=54):
+    """The weapon sprite for a person `person_px` tall (54: the original look, 32: the dot look)."""
+    if person_px < 54:
+        if name in DOT_WEAPONS:
+            return DOT_WEAPONS[name]()
+        big = WEAPONS[name]()
+        k = person_px / 54
+        return big.resize((max(3, round(big.width * k)), max(2, round(big.height * k))), Image.NEAREST)
     return WEAPONS[name]()

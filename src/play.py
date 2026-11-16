@@ -16,6 +16,7 @@ from pico2d import pico2d as canvas
 
 import bag_screen
 import hud
+import pixel_ui as px
 import stamina as stamina_rules
 import ui
 from hero import PICKUP_TIME
@@ -27,7 +28,7 @@ from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, 
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
                       ROLL_TIME, ROOT, SLASH_ARC, SLASH_LUNGE, SLASH_REACH, SLOW_WORLD, WIDTH,
-                      ZOOM_DEFAULT, ZOOM_STEPS)
+                      ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
 from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
 import supplies as supply_rules
@@ -54,8 +55,8 @@ HUD_PAD = 40                 # world px the HUD bar covers at the top of the scr
 
 class Game:
     def __init__(self):
-        self.hero_look = SheetLook(ROOT / "assets/characters/hero")
-        self.zombie_look = SheetLook(ROOT / "assets/characters/infected")
+        self.hero_look = SheetLook(ROOT / f"assets/characters/hero{LOOK_SUFFIX}")
+        self.zombie_look = SheetLook(ROOT / f"assets/characters/infected{LOOK_SUFFIX}")
         self.aim = (None, None)
         self.deaths = 0
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
@@ -70,7 +71,7 @@ class Game:
         self.look = 0.0
         self.sounds = Sounds()
         # Rendered in Blender (tools/blender/render_area.py): the ground, and a picture per wreck.
-        area_dir = ROOT / "assets" / "area"
+        area_dir = ROOT / "assets" / AREA_DIR
         self.ground_img = pico2d.load_image(str(area_dir / "ground.png")) if (area_dir / "ground.png").exists() else None
         self.wreck_imgs = [pico2d.load_image(str(area_dir / f"wreck_{i}.png")) if (area_dir / f"wreck_{i}.png").exists()
                            else None for i in range(len(BLOCKS))]
@@ -111,15 +112,22 @@ class Game:
         self.left = False            # reached the exit: the area is done
 
     def mouse_world(self, sx, sy):
-        return sx / self.zoom + self.cam[0], (HEIGHT - 1 - sy) / self.zoom + self.cam[1]
+        k = self.zoom * DOT                          # screen px per world unit
+        return sx / k + self.cam[0], (HEIGHT - 1 - sy) / k + self.cam[1]
+
+    @property
+    def canvas_size(self):
+        """The world canvas in canvas px: the screen divided by the zoom, rounded up."""
+        return -(-WIDTH // self.zoom) if DOT_LOOK else round(WIDTH / self.zoom), \
+            -(-HEIGHT // self.zoom) if DOT_LOOK else round(HEIGHT / self.zoom)
 
     @property
     def view_w(self):
-        return round(WIDTH / self.zoom)          # world px across the screen at this zoom
+        return self.canvas_size[0] / DOT          # world units across the screen at this zoom
 
     @property
     def view_h(self):
-        return round(HEIGHT / self.zoom)
+        return self.canvas_size[1] / DOT
 
     def wheel(self, steps):
         """Mouse wheel: up zooms in, down zooms out, through ZOOM_STEPS; the camera keeps the hero
@@ -519,21 +527,30 @@ class Game:
             if getattr(self, "target", None) is not None:
                 sdl2.SDL_DestroyTexture(self.target)
             self.target = sdl2.SDL_CreateTexture(canvas.renderer, sdl2.SDL_PIXELFORMAT_RGBA8888,
-                                                 sdl2.SDL_TEXTUREACCESS_TARGET, self.view_w, self.view_h)
+                                                 sdl2.SDL_TEXTUREACCESS_TARGET, *self.canvas_size)
             sdl2.SDL_SetTextureBlendMode(self.target, sdl2.SDL_BLENDMODE_BLEND)
             self.target_zoom = self.zoom
         sdl2.SDL_SetRenderTarget(canvas.renderer, self.target)
         sdl2.SDL_SetRenderDrawColor(canvas.renderer, 30, 30, 34, 255)
         sdl2.SDL_RenderClear(canvas.renderer)
+        sdl2.SDL_RenderSetScale(canvas.renderer, DOT, DOT)  # world units -> canvas px
         canvas.canvas_height = self.view_h
+        ui.world_labels = [] if DOT_LOOK else None
         shake = random.uniform(-2, 2) if self.shake > 0 else 0
         cx, cy = self.cam[0] + shake, self.cam[1]
         if self.ground_img is not None:                    # the rendered street
-            self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy)
+            self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy, ROOM_W, ROOM_H)
         else:
             self.draw_plain_ground(cx, cy)
         self.draw_area_edges(cx, cy)
         self.draw_world(cx, cy)
+
+    def draw_world_labels(self):
+        """Words placed in the world, written crisp on the screen in the pixel font."""
+        labels, ui.world_labels = ui.world_labels or [], None
+        k = self.zoom * DOT                               # screen px per world unit
+        for x, y, value, colour in labels:
+            px.text(x * k / px.K, (HEIGHT - y * k) / px.K - 6, value, colour, anchor="m")
 
     def draw_plain_ground(self, cx, cy):
         """The old drawn asphalt, used when the rendered ground is missing."""
@@ -575,7 +592,8 @@ class Game:
             if kind == "block" and self.wreck_imgs[BLOCKS.index(obj)] is not None:
                 img = self.wreck_imgs[BLOCKS.index(obj)]           # rendered wreck, standing on its block
                 l, b, r, t = obj
-                img.draw((l + r) / 2 - cx, b - 3 + img.h / 2 - cy)
+                w, h = img.w / DOT, img.h / DOT                    # its pixels are canvas px
+                img.draw((l + r) / 2 - cx, b - 3 + h / 2 - cy, w, h)
             elif kind == "block":
                 l, b, r, t = obj
                 pico2d.draw_rectangle(l - cx, b - cy, r - cx, t + 18 - cy, 44, 38, 36, filled=True)
@@ -592,14 +610,20 @@ class Game:
         el, eb, er, _ = EXIT                               # the green exit sign (in front) stays lit in the dark
         ex, ey = (el + er) / 2 - cx, eb - 12 - cy
         pico2d.draw_rectangle(ex - 34, ey - 7, ex + 34, ey + 9, 30, 120, 70, filled=True)
-        ui.text_center(ex, ey + 1, EXIT_NAME, (220, 255, 225), 11)
+        ui.world_text_center(ex, ey + 1, EXIT_NAME, (220, 255, 225), 11)
         if self.near_exit() and not self.left:
-            ui.text_center(self.hero.x - cx, self.hero.y - cy + 74, "E 나가기", (220, 255, 225), 12)
+            ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "E 나가기", (220, 255, 225), 12)
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
+        sdl2.SDL_RenderSetScale(canvas.renderer, 1.0, 1.0)
         sdl2.SDL_SetRenderTarget(canvas.renderer, None)
         canvas.canvas_height = HEIGHT
-        sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
+        cw, ch = self.canvas_size
+        if DOT_LOOK:                                        # whole-number blow-up of the pixel canvas
+            sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, cw * self.zoom, ch * self.zoom))
+        else:
+            sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
+        self.draw_world_labels()
         if self.bag_open:                                  # the bag screen replaces the HUD
             hud.draw_inventory(self)
         else:

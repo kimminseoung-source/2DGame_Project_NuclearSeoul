@@ -53,6 +53,18 @@ class SheetLook:
             self.sheets[path.stem] = pico2d.load_image(str(path))
         meta = Path(folder) / "look.json"
         self.meta = json.loads(meta.read_text(encoding="utf-8")) if meta.exists() else {}
+        # Sheets drawn at another size (the 32 px dot look: "_size" in look.json, written by
+        # render_character.py --size dot): its cells are shown at the world size of the 54 px
+        # person, so on the dot canvas (settings.DOT) one sprite pixel is one canvas pixel.
+        size = self.meta.get("_size")
+        if size:
+            k = size["person_px"] / 54                  # sprite px per world unit
+            self.CELL_W, self.CELL_H = size["cell"]
+            self.FEET_FROM_BOTTOM = size["feet"]
+        else:
+            k = 1.0
+        self.k = k
+        self.draw_w, self.draw_h = self.CELL_W / k, self.CELL_H / k
         blades = Path(folder) / "blade.json"
         self.blades = json.loads(blades.read_text(encoding="utf-8")) if blades.exists() else {}
 
@@ -96,10 +108,11 @@ class SheetLook:
         lines = self.blades.get(pose)
         if not lines:
             return None
-        centre_y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
+        k = self.k
+        centre_y = feet_y - self.FEET_FROM_BOTTOM / k + self.draw_h / 2
 
         def screen(px, py):
-            return x + (px - self.CELL_W / 2) * facing, centre_y + self.CELL_H / 2 - py
+            return x + (px - self.CELL_W / 2) / k * facing, centre_y + self.draw_h / 2 - py / k
 
         return [(screen(*line[:2]), screen(*line[2:])) if line else None for line in lines]
 
@@ -117,13 +130,13 @@ class SheetLook:
                 pose, fixed = "idle", None
         image = self.sheets[pose]
         frame = self.frame_of(pose, time, contact, distance) if fixed is None else fixed
-        y = feet_y - self.FEET_FROM_BOTTOM + self.CELL_H / 2
+        y = feet_y - self.FEET_FROM_BOTTOM / self.k + self.draw_h / 2
         flip = "" if facing > 0 else "h"
         if alpha < 1:
             image.opacify(alpha)
         image.clip_composite_draw(
             frame * self.CELL_W, 0, self.CELL_W, self.CELL_H, 0, flip,
-            x, y, self.CELL_W, self.CELL_H,
+            x, y, self.draw_w, self.draw_h,
         )
         if alpha < 1:
             image.opacify(1.0)

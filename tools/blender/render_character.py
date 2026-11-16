@@ -73,14 +73,39 @@ def passes_of(costume):
     return ACTION_SETS[data.get("actions", "hero")]
 
 
+# Sprite sizes (2026-11-16 "도트 형식으로"): "full" is the original 54 px person in 96 x 64 cells,
+# "dot" a 32 px person in 64 x 48 cells drawn as pixel art (the game shows it on a pixel canvas).
+SIZES = {"full": {"cell": (96, 64), "person_px": 54, "feet": 4},
+         "dot": {"cell": (64, 48), "person_px": 32, "feet": 3}}
+SIZE = SIZES["full"]
+
+
+def size_args(extra):
+    """The size flags for render_sprites, and `extra` with its --shift-for px scaled to the size."""
+    k = SIZE["person_px"] / 54
+    scaled, shifting = [], False
+    for arg in extra:
+        if arg.startswith("--"):
+            shifting = arg == "--shift-for"
+            scaled.append(arg)
+        elif shifting and "=" in arg:
+            sheet, px = arg.split("=")
+            scaled.append(f"{sheet}={round(float(px) * k)}")
+        else:
+            scaled.append(arg)
+    w, h = SIZE["cell"]
+    return ["--cell", str(w), str(h), "--person-px", str(SIZE["person_px"]), "--feet", str(SIZE["feet"])], scaled
+
+
 def blender_pass(costume, out, render_pass, name):
     """All sheets of one character for one render pass (color, or id/light/tex for repaint)."""
     out.mkdir(parents=True, exist_ok=True)
     for anim, mapping, counts, extra in passes_of(costume):
         settings = SETTINGS if render_pass == "color" else ["--tilt", "20", "--pass", render_pass]
+        sizing, extra = size_args(extra)
         cmd = [BLENDER, "-b", "-P", str(SCRIPT), "--", "--costume", str(costume),
                "--anim-file", str(anim), "--out", str(out),
-               "--map", *mapping, "--frames-for", *counts, *settings, *extra]
+               "--map", *mapping, "--frames-for", *counts, *settings, *sizing, *extra]
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
         saved = [line for line in result.stdout.splitlines() if line.startswith("saved")]
         print(f"[{name}:{render_pass}] {len(saved)} sheets")
@@ -124,7 +149,8 @@ def render(spec):
                         "--id", str(passes / "id"), "--light", str(passes / "light"),
                         "--poses", *poses, "--out", str(out), "--outfit", str(costume),
                         *([] if data.get("backpack", True) else ["--no-pack"]),
-                        "--weapon", data.get("weapon", "machete")], check=True)
+                        "--weapon", data.get("weapon", "machete"),
+                        "--cell", *map(str, SIZE["cell"]), "--person-px", str(SIZE["person_px"])], check=True)
     elif "repaint" in data:
         # Rotoscoping: part IDs, light and the clothes' own texture, then repaint with the
         # concept colours (tools/sprites/repaint.py). The passes stay out of git (_passes/).
@@ -138,8 +164,20 @@ def render(spec):
         blender_pass(costume, out, "color", name)
     if data.get("actions", "hero") == "hero":
         shutil.copyfile(ROOT / "assets" / "characters" / "base" / "look.json", out / "look.json")
+    # The game reads the cell size from look.json (character_look.SheetLook).
+    look = out / "look.json"
+    meta = json.loads(look.read_text(encoding="utf-8")) if look.exists() else {}
+    if SIZE is SIZES["full"]:
+        meta.pop("_size", None)
+    else:
+        meta["_size"] = {"cell": list(SIZE["cell"]), "person_px": SIZE["person_px"], "feet": SIZE["feet"]}
+    look.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
-    for character in sys.argv[1:] or ["hero"]:
+    args = sys.argv[1:]
+    if args[:1] == ["--size"]:                    # render_character.py --size dot hero_2d:hero
+        SIZE = SIZES[args[1]]
+        args = args[2:]
+    for character in args or ["hero"]:
         render(character)

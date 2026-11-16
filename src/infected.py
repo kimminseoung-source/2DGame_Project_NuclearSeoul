@@ -272,13 +272,13 @@ class Zombie:
             self.look.draw("crawl", self.time * (1.6 if self.state in ("windup", "strike") else 1.0)
                            if moving or self.state in ("windup", "strike") else 0.0, x, y, self.facing)
             if self.state == "windup" and self.show_marks:
-                ui.text_center(x, y + 30, "!", (255, 120, 80), 22)
+                ui.world_text_center(x, y + 30, "!", (255, 120, 80), 22)
             elif self.state == "search" and self.show_marks:
-                ui.text_center(x, y + 30, "?", (220, 200, 120), 18)
+                ui.world_text_center(x, y + 30, "?", (220, 200, 120), 18)
         elif self.state == "windup":
             self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
             if self.show_marks:
-                ui.text_center(x, y + 66, "!", (255, 120, 80), 22)
+                ui.world_text_center(x, y + 66, "!", (255, 120, 80), 22)
         elif self.state == "strike":
             self.look.draw("attack", 0.45, x, y, self.facing)
         elif self.state == "recover":
@@ -292,9 +292,9 @@ class Zombie:
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
             if self.state == "search":
                 if self.show_marks:
-                    ui.text_center(x, y + 66, "?", (220, 200, 120), 18)
+                    ui.world_text_center(x, y + 66, "?", (220, 200, 120), 18)
         else:
             self.look.draw("idle", self.time, x, y, self.facing)
         if self.spotted > 0 and self.state not in ("dead", "windup") and self.show_marks:
             pop = 1 + 0.4 * max(0.0, self.spotted - SPOTTED_TIME + 0.15) / 0.15   # pops in, then settles
-            ui.text_center(x, y + 68, "!", (255, 220, 90), round(22 * pop))
+            ui.world_text_center(x, y + 68, "!", (255, 220, 90), round(22 * pop))

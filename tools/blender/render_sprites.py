@@ -53,6 +53,11 @@ def parse_args():
     parser.add_argument("--map", nargs="*", default=None,
                         help="sheet=action pairs, optionally with a frame range: pickup=Fixing_Kneeling@0-30")
     parser.add_argument("--frames", type=int, default=8)
+    # Cell and body size (2026-11-16 "도트 형식으로"): the dot look renders a 32 px person into
+    # 64 x 48 cells; the defaults are the original 54 px person in 96 x 64 cells.
+    parser.add_argument("--cell", type=int, nargs=2, default=None, metavar=("W", "H"))
+    parser.add_argument("--person-px", type=int, default=None, help="px a 1.8 m person is tall")
+    parser.add_argument("--feet", type=int, default=None, help="px from the cell bottom to the feet")
     parser.add_argument("--frames-for", nargs="*", default=None,
                         help="sheet=count pairs overriding --frames, e.g. walk=8 hurt=3")
     parser.add_argument("--list", action="store_true", help="only print the actions and stop")
@@ -471,8 +476,20 @@ def safe_name(name):
     return "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in name).lower()
 
 
+def set_size(cell=None, person_px=None, feet=None):
+    """Use another cell / body size for this render (module-wide, read by the camera and sheets)."""
+    global CELL_W, CELL_H, PERSON_HEIGHT_PX, FEET_FROM_BOTTOM
+    if cell:
+        CELL_W, CELL_H = cell
+    if person_px:
+        PERSON_HEIGHT_PX = person_px
+    if feet is not None:
+        FEET_FROM_BOTTOM = feet
+
+
 def main():
     args = parse_args()
+    set_size(args.cell, args.person_px, args.feet)
     outfit = costumes.load(args.costume) if args.costume else None
     if outfit:
         # The costume decides the body and its proportions.

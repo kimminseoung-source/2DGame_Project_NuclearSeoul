@@ -47,7 +47,7 @@ class Supply:
         pico2d.draw_rectangle(x - 5, y - 1, x + 5, y + 5, *body, filled=True)
         pico2d.draw_rectangle(x - 5, y + 1, x + 5, y + 3, *band, filled=True)
         if near:
-            ui.text_center(x, y - 12, f"E {self.name}", (240, 230, 190), 12)   # under it, clear of the body
+            ui.world_text_center(x, y - 12, f"E {self.name}", (240, 230, 190), 12)   # under it, clear of the body
 
 
 def has_final_consonant(word):

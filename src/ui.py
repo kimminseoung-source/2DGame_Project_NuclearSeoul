@@ -58,6 +58,20 @@ def text_center(x, y, value, color=TEXT, size=16):
     font(size).draw(x - text_width(value, size) / 2, y, value, color)
 
 
+# Words over the world (marks over the infected, item names, the exit sign). In the dot look the
+# world is drawn shrunk onto a pixel canvas, so words there would come out tiny and blurred: they
+# are collected while the world is drawn (camera-relative world units) and written afterwards on
+# the screen in the pixel font (play.Game.draw).
+world_labels = None
+
+
+def world_text_center(x, y, value, color=TEXT, size=16):
+    if world_labels is not None:
+        world_labels.append((x, y, value, color))
+    else:
+        text_center(x, y, value, color, size)
+
+
 def panel(left, bottom, right, top, border=BORDER, fill=PANEL, alpha=PANEL_ALPHA):
     pico2d.draw_rectangle(left, bottom, right, top, *fill, alpha, filled=True)
     pico2d.draw_rectangle(left, bottom, right, top, *border)
