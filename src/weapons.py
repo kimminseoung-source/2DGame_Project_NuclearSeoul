@@ -27,7 +27,20 @@ REACHES_GROUND = {"chop"}
 # A stomp is a kick down at the feet, not a swing of the weapon: it finds a crawler within this
 # angle of the aim, measured on the ground (narrow weapon arcs missed a crawler at the feet).
 STOMP_ARC = 0.9
-HEAD_QUICK = 1                  # damage taken off a head blow that was not aimed (held ready)
+# Damage (2026-11-16 "빈틈을 베었다 이런 건 빼죠, 무기마다 데미지가 다른 거지, 공격 데미지 범위가
+#다른 걸로"): no blow is a sure kill any more. Each weapon has a damage range; a blow takes a number
+# in it off the infected's health, times the part's share (the head only when charged - a quick
+# blow always goes for the torso). A stomp has its own range.
+PART_SHARE = {"head": 3, "torso": 1, "legs": 1}
+STOMP_DAMAGE = (5, 8)
+
+
+def roll_damage(w, part):
+    """Health a blow of weapon `w` on `part` takes off ("ground" = a stomp)."""
+    import random
+    if part == "ground":
+        return random.randint(*STOMP_DAMAGE)
+    return random.randint(*w["damage"]) * PART_SHARE[part]
 
 # Each weapon: its style's motion ("pose": a hero sheet), timing, reach, damage per part, stamina,
 # push, and its sprite (assets/weapons/<sprite>.png, drawn in the hand on every frame by the game -
@@ -40,21 +53,20 @@ WEAPONS = {
         "cooldown": 0.12,           # s before the next blow can start
         "lunge": 12.0,              # px stepped in along the aim
         "cells": 2,               # how wide its end is, in cells (CELL_WORLD) - the reach comes from the sprite
-        "damage": {"head": 3, "torso": 1, "legs": 1},   # an aware infected takes 2-3
+        "damage": (3, 4),        # health taken off a torso blow, picked in this range
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
         "noise": 230,               # px the blow is heard
         "stagger": False,           # a torso blow makes it reel (open), not just flinch
-        "head_always": False,       # a quick (not held) blow to the head still counts in full
         "good": "균형·기는 놈까지", "bad": "큰 강점 없음",
     },
     "knife": {                      # quick, short, precise: a stab to the head ends it
         "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
         "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 10.0,
         "cells": 1,
-        "damage": {"head": 3, "torso": 1, "legs": 1},
+        "damage": (2, 3),
         "stamina": 6.0, "push": 25,
-        "noise": 70, "stagger": False, "head_always": False,
+        "noise": 70, "stagger": False,
         "good": "빠름·조용·기력 적게", "bad": "짧고 좁음",
     },
     # bat and pipe use the overhead chop like the machete and axe (2026-11-16 "야구 방망이 모션이
@@ -63,28 +75,28 @@ WEAPONS = {
         "name": "야구방망이", "style": "chop", "pose": "chop", "sprite": "bat",
         "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 10.0,
         "cells": 2,
-        "damage": {"head": 2, "torso": 1, "legs": 1},
+        "damage": (2, 4),
         "stamina": 16.0, "push": 150,
-        "noise": 260, "stagger": True, "head_always": False,
+        "noise": 260, "stagger": True,
         "good": "넓게·몸통 치면 휘청", "bad": "피해 약함·시끄러움",
     },
     "pipe": {                       # like the bat, longer and heavier
         "name": "쇠파이프", "style": "chop", "pose": "chop", "sprite": "pipe",
         "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 10.0,
         "cells": 3,
-        "damage": {"head": 2, "torso": 1, "legs": 2},
+        "damage": (3, 5),
         "stamina": 18.0, "push": 170,
-        "noise": 300, "stagger": True, "head_always": False,
-        "good": "가장 멀리·휘청·다리 2", "bad": "느림·가장 시끄러움",
+        "noise": 300, "stagger": True,
+        "good": "가장 멀리·몸통 치면 휘청", "bad": "느림·가장 시끄러움",
     },
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
         "time": 0.78 * TEMPO, "hit": 0.4 * TEMPO, "cooldown": 0.35, "lunge": 10.0,
         "cells": 2,
-        "damage": {"head": 3, "torso": 2, "legs": 2},
+        "damage": (5, 7),
         "stamina": 22.0, "push": 80,
-        "noise": 260, "stagger": False, "head_always": True,
-        "good": "머리 바로 한 방·몸통 2", "bad": "가장 느림·기력 많이",
+        "noise": 260, "stagger": False,
+        "good": "피해 가장 셈", "bad": "가장 느림·기력 많이",
     },
 }
 # Reach follows the drawn weapon (2026-11-16 "보이는 칼의 길이에 비해 공격 범위가 너무 길다"): the

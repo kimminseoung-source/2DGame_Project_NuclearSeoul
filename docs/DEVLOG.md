@@ -281,3 +281,7 @@
   - **코드:** 무기마다 `cells`. `CELL_WORLD = 8 × 54/32`, 각도 = 칸 줄 폭 ÷ 범위에서 계산. `draw_aim`이 끝 호 대신 칸 네모를 그린다.
   - **사고:** 팔레트 도구를 다시 돌렸더니 이미 바뀐 캐릭터 그림이 또 바뀌었다 → 되돌리고 무기 그림만 다시 뽑았다.
   - **점검:** 밟기 16/16, 17개 모두 통과했다(`docs/planning/attack_range_ingame.png`).
+- **한 방 없애기:**
+  - **코드:** `weapons.roll_damage(w, part)`(무기 `damage` 범위 × `PART_SHARE`, 밟기는 `STOMP_DAMAGE`). `Zombie.helpless`, `SURE_KILL`, `HEAD_QUICK`, `head_always`를 지웠다. 체력 `HEALTH` 8~12, `CRAWLER_HEALTH` 5~8.
+  - **점검 갱신:** 체력 3으로 두던 점검을 30으로 올려 무기별로 깎인 양을 보게 했다. 밟기 점검은 이제 한 번에 안 죽는 경우가 있다(설계대로).
+  - **소리 원 시안:** 실제 화면을 찍고 그 위에 무기 소리 반지름(식칼 70, 도끼 260)의 점선 원과 '?'를 그렸다. 게임에는 아직 넣지 않았다.

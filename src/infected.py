@@ -38,18 +38,19 @@ STAGGER_TIME = 0.8 * TEMPO      # s it reels after a shove
 SHOVE_PUSH = 130                # px/s it is pushed back (fades 0.88 a frame: about 18 px)
 # Toughness (2026-11-16 "좀보이드처럼"): an infected that is facing the hero takes several slashes;
 # each one makes it flinch (its attack is broken off). One that is unaware or reeling from a shove
-# dies to a single slash (helpless).
-HITS = (2, 3)                   # slashes an aware infected takes
-FLINCH_TIME = 0.35 * TEMPO      # s it reels from a slash that does not kill it (not helpless)
+# takes no more than any other (2026-11-16: no sure kills; weapons.py damage ranges).
+HEALTH = (8, 12)                # its health; weapons take a range of it off a blow (weapons.py)
+CRAWLER_HEALTH = (5, 8)         # one that already crawls is half gone: one or two stomps
+FLINCH_TIME = 0.35 * TEMPO      # s it reels from a slash that does not kill it
 HIT_PUSH = 55                   # px/s a slash knocks it back
-# Reading the infected (2026-11-16 "전투적인 측면을 많이 다듬어야"; DESIGN_LOCK pillar 1 "빈틈을 노리면
-# 한 방"): after its claw swings it is open while it recovers - one slash ends it - and a shove
+# Reading the infected (2026-11-16 "전투적인 측면을 많이 다듬어야"; sure kills removed later the same day -
+# weapons.py damage ranges): after its claw swings it recovers for a moment, and a shove
 # timed to the end of its warning is a counter: it reels far back for longer.
 COUNTER_WINDOW = 0.22 * TEMPO   # s at the end of the wind-up when a shove is a counter
 COUNTER_STAGGER = 1.2 * TEMPO   # s a countered infected reels
 COUNTER_PUSH = 290              # px/s it is thrown back (about 40 px)
 # Crawlers (2026-11-16 "(나) 처음부터 기어 다니는 피폭체"; Zomboid's zombie-crawler): some infected
-# have lost the use of their legs and drag themselves along on the ground - slow, always helpless
+# have lost the use of their legs and drag themselves along on the ground - slow
 # (the hero stamps on them), biting at the ankles if they are left to reach him.
 CRAWLER_SHARE = 0.25            # share of infected that crawl
 # Pace (2026-11-16 "좀비별로 이동 속도를 좀 다르게"): each infected walks slow, normal or fast; the
@@ -78,7 +79,7 @@ class Zombie:
         self.walk = 0.0
         self.death = (0.0, 0.0)
         self.push = (0.0, 0.0)
-        self.health = random.randint(*HITS)
+        self.health = random.randint(*(CRAWLER_HEALTH if crawler else HEALTH))
         self.prone = crawler         # a crawler: on the ground, moves and bites from there
         roll, self.pace = random.random(), 1.0
         for name, share, pace in PACES:
@@ -142,18 +143,12 @@ class Zombie:
             self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE
             self.target, self.memory = (from_x, from_y), MEMORY
             return False
-        if part == "torso" and stagger:              # a heavy swing: it reels, open to the next blow
+        if part == "torso" and stagger:              # a heavy swing: it reels and its attack breaks off
             self.reel(from_x, from_y, push, "stagger", STAGGER_TIME)
             self.stagger_time = self.timer
         elif part == "torso":
             self.reel(from_x, from_y, push, "flinch", FLINCH_TIME)
         return False
-
-    @property
-    def helpless(self):
-        """Crawling, reeling, or open after its swing: one blow ends it. (Unaware of the hero no
-        longer counts - 2026-11-16 "들키기 전에 때리면 한 방 이런 요소는 없애자".)"""
-        return self.prone or self.state in ("stagger", "recover")
 
     def sees(self, hero):
         dx, dy = hero.x - self.x, hero.y - self.y

@@ -45,7 +45,6 @@ NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 SHOVE_REACH = 46             # px a shove reaches
 BODY_CONTACT = 20            # px: an infected this close is against the hero's body (2026-11-16 판정)
-SURE_KILL = {"recover": "빈틈을 베었다!", "head": "머리를 쳤다! 한 방", "stagger": "휘청일 때 끝냈다"}
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
@@ -526,27 +525,20 @@ class Game:
                 # the one marked when the button was let go is hit (2026-11-16 "어디가 맞을지 뜨면
                 #그때는 공격 판정이 들어가게"); others: inside the shown range and its arc
                 if touching or marked or (from_start <= span and abs(diff) <= arc):
-                    opening = z.state if z.helpless else None  # helpless: one blow is enough
+                    # no sure kills: the weapon's damage range, by the part (weapons.roll_damage)
                     part = aim[1] if aim is not None and aim[0] is z else "torso"
+                    part = "ground" if stomp else "torso" if part == "ground" else part
+                    damage = weapons.roll_damage(weapon, part)
                     part = "torso" if part == "ground" else part
-                    damage = weapon["damage"][part]
-                    if part == "head" and not hero.slash.get("held") and not weapon.get("head_always"):
-                        damage = max(1, damage - weapons.HEAD_QUICK)   # the head: aim it to make it count
                     was_crawling = z.prone
-                    if opening is None and not z.hurt(hero.x, hero.y, damage, part, weapon["push"],
-                                                      weapon.get("stagger", False)):
+                    if not z.hurt(hero.x, hero.y, damage, part, weapon["push"], weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         if z.prone and not was_crawling:
                             self.message = "다리를 베었다! 이제 기어 온다 · 밟아서 끝내라"
-                        elif part == "head":
-                            self.message = "머리를 쳤다! (노리고 치면 한 방)"
                         continue
-                    if opening is None and part == "head":
-                        opening = "head"
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
-                    if opening is not None:                      # a sure kill: it should feel like one
-                        self.message = SURE_KILL.get(opening, "확실하게 끝냈다")
+                    if part == "head":                           # a head blow that ends it: felt
                         self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
                         self.hitstop = max(self.hitstop, 0.1)
                         self.shake = max(self.shake, 0.08)
@@ -587,7 +579,7 @@ class Game:
                     if z.prone:
                         self.hint("crawler", "기어 오는 피폭체 · 다가가 클릭하면 밟는다")
                     else:
-                        self.hint("spotted", "들켰다! 할퀸 뒤 빈틈을 베거나, 예고 끝에 우클릭으로 받아쳐라")
+                        self.hint("spotted", "들켰다! 할퀴기 예고 끝에 우클릭으로 받아쳐라")
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
