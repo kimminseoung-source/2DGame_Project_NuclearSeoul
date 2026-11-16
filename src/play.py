@@ -66,6 +66,8 @@ class Game:
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
         infected.Zombie.blink_corpse = not self.real
         self.zoom = ZOOM_DEFAULT            # mouse wheel zoom (kept across restarts)
+        self.zoom_shown = float(self.zoom)  # eases toward self.zoom (2026-11-16 "부드럽게")
+        self.draw_zoom = None               # while drawing: the whole-number zoom the canvas is made for
         self.bag_open = False               # Tab: the bag (inventory)
         bag_screen.reset(self)
         self.look = 0.0
@@ -118,8 +120,9 @@ class Game:
     @property
     def canvas_size(self):
         """The world canvas in canvas px: the screen divided by the zoom, rounded up."""
-        return -(-WIDTH // self.zoom) if DOT_LOOK else round(WIDTH / self.zoom), \
-            -(-HEIGHT // self.zoom) if DOT_LOOK else round(HEIGHT / self.zoom)
+        z = self.draw_zoom or self.zoom
+        return -(-WIDTH // z) if DOT_LOOK else round(WIDTH / z), \
+            -(-HEIGHT // z) if DOT_LOOK else round(HEIGHT / z)
 
     @property
     def view_w(self):
@@ -131,7 +134,8 @@ class Game:
 
     def wheel(self, steps):
         """Mouse wheel: up zooms in, down zooms out, through ZOOM_STEPS; the camera keeps the hero
-        in the middle."""
+        in the middle. The picture eases there (zoom_shown, about 0.2 s) and then sits exactly on
+        the whole-number zoom, so every pixel is even again (2026-11-16 "휠로 부드럽게")."""
         i = ZOOM_STEPS.index(self.zoom) if self.zoom in ZOOM_STEPS else ZOOM_STEPS.index(ZOOM_DEFAULT)
         i = max(0, min(len(ZOOM_STEPS) - 1, i + (1 if steps > 0 else -1)))
         if ZOOM_STEPS[i] != self.zoom:
@@ -342,6 +346,7 @@ class Game:
 
     def update(self, real_dt, keys):
         hero = self.hero
+        self.ease_zoom(real_dt)
         if self.left or self.bag_open:                     # summary or bag open: the world waits
             return
         self.clock += real_dt
@@ -522,14 +527,46 @@ class Game:
         for i, (view, room) in enumerate(((self.view_w, ROOM_W), (self.view_h, ROOM_H + HUD_PAD))):
             self.cam[i] = max(0, min(room - view, self.cam[i]))
 
+    def ease_zoom(self, dt):
+        self.zoom_shown += (self.zoom - self.zoom_shown) * min(1.0, dt * 14)
+        if abs(self.zoom_shown - self.zoom) < 0.01:
+            self.zoom_shown = float(self.zoom)
+
     def draw(self):
-        if getattr(self, "target_zoom", None) != self.zoom:     # the world texture at this zoom
+        # While the zoom eases, the canvas is made for the whole-number zoom just below the shown
+        # one (it covers more) around the same centre, and the middle of it is stretched to fit.
+        easing = DOT_LOOK and self.zoom_shown != self.zoom
+        centre = (self.cam[0] + self.view_w / 2, self.cam[1] + self.view_h / 2)
+        self.draw_zoom = max(ZOOM_STEPS[0], int(min(self.zoom_shown, self.zoom))) if easing else None
+        cam = (centre[0] - self.view_w / 2, centre[1] - self.view_h / 2) if easing else tuple(self.cam)
+        self.draw_canvas(cam)
+        self.draw_zoom = None
+        sdl2.SDL_RenderSetScale(canvas.renderer, 1.0, 1.0)
+        sdl2.SDL_SetRenderTarget(canvas.renderer, None)
+        canvas.canvas_height = HEIGHT
+        if easing:
+            z = self.draw_zoom_used
+            cw, ch = -(-WIDTH // z), -(-HEIGHT // z)
+            sw, sh = WIDTH / self.zoom_shown, HEIGHT / self.zoom_shown
+            src = sdl2.SDL_Rect(round((cw - sw) / 2), round((ch - sh) / 2), round(sw), round(sh))
+            sdl2.SDL_RenderCopy(canvas.renderer, self.target, src, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
+        elif DOT_LOOK:                                      # whole-number blow-up of the pixel canvas
+            cw, ch = self.canvas_size
+            sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, cw * self.zoom, ch * self.zoom))
+        else:
+            sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
+        self.draw_screen()
+
+    def draw_canvas(self, cam):
+        """The world on the pixel canvas, seen from `cam` (world units, bottom left)."""
+        self.draw_zoom_used = self.draw_zoom or self.zoom
+        if getattr(self, "target_zoom", None) != self.draw_zoom_used:     # the world texture at this zoom
             if getattr(self, "target", None) is not None:
                 sdl2.SDL_DestroyTexture(self.target)
             self.target = sdl2.SDL_CreateTexture(canvas.renderer, sdl2.SDL_PIXELFORMAT_RGBA8888,
                                                  sdl2.SDL_TEXTUREACCESS_TARGET, *self.canvas_size)
             sdl2.SDL_SetTextureBlendMode(self.target, sdl2.SDL_BLENDMODE_BLEND)
-            self.target_zoom = self.zoom
+            self.target_zoom = self.draw_zoom_used
         sdl2.SDL_SetRenderTarget(canvas.renderer, self.target)
         sdl2.SDL_SetRenderDrawColor(canvas.renderer, 30, 30, 34, 255)
         sdl2.SDL_RenderClear(canvas.renderer)
@@ -537,7 +574,7 @@ class Game:
         canvas.canvas_height = self.view_h
         ui.world_labels = [] if DOT_LOOK else None
         shake = random.uniform(-2, 2) if self.shake > 0 else 0
-        cx, cy = self.cam[0] + shake, self.cam[1]
+        cx, cy = cam[0] + shake, cam[1]
         if self.ground_img is not None:                    # the rendered street
             self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy, ROOM_W, ROOM_H)
         else:
@@ -615,14 +652,9 @@ class Game:
             ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "E 나가기", (220, 255, 225), 12)
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
-        sdl2.SDL_RenderSetScale(canvas.renderer, 1.0, 1.0)
-        sdl2.SDL_SetRenderTarget(canvas.renderer, None)
-        canvas.canvas_height = HEIGHT
-        cw, ch = self.canvas_size
-        if DOT_LOOK:                                        # whole-number blow-up of the pixel canvas
-            sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, cw * self.zoom, ch * self.zoom))
-        else:
-            sdl2.SDL_RenderCopy(canvas.renderer, self.target, None, sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT))
+
+    def draw_screen(self):
+        """Everything drawn on the screen itself over the world canvas."""
         self.draw_world_labels()
         if self.bag_open:                                  # the bag screen replaces the HUD
             hud.draw_inventory(self)
