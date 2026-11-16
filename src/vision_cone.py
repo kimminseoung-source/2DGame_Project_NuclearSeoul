@@ -22,14 +22,17 @@ from pico2d import pico2d as canvas
 
 FOG = 228                  # darkness outside the light (255 = pitch black)
 HIDE_FROM = 150            # bodies are hidden where the darkness is at least this strong
-CONE_HALF = 0.9            # radians either side of the look direction (~100 degrees in all)
+# 2026-11-16 "주변을 살짝만 더 보이게 하고 좌우 시야 범위를 좁히는 게 좋을 듯": the cone was
+# 0.9 rad a side (~103 degrees) and the circle around the body 30 px; now a narrower cone and a
+# slightly larger circle.
+CONE_HALF = 0.7            # radians either side of the look direction (~80 degrees in all)
 CONE_SOFT = 0.16           # radians over which the cone's sides fade into the dark
 CONE_RANGE = 250           # px the cone reaches
 RANGE_SOFT = 50
-NEAR_CLEAR = 30            # px around the body that is always lit (melee range)
-NEAR_SOFT = 22
+NEAR_CLEAR = 40            # px around the body that is always lit (melee range and a little more)
+NEAR_SOFT = 24
 STEPS = 96                 # mesh resolution around the eye
-RADII = (0, 15, 30, 41, 52, 80, 120, 160, 200, 250, 275, 300, 900)
+RADII = (0, 15, 30, 40, 52, 64, 80, 120, 160, 200, 250, 275, 300, 900)
 FAR = RADII[-1]
 SHADOW_SOFT = 10           # px behind a blocker's edge over which its shadow darkens
 
