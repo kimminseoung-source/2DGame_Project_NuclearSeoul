@@ -30,5 +30,31 @@
   "run": {
     "stride_m": 5.39,
     "note": "Jog_Fwd_Loop: planted foot 5.87 m/s over a 0.92 s cycle"
+  },
+  "stab": {
+    "impact": 2,
+    "hold": 0.3,
+    "note": "Punch_Cross with the legs still: the arm is out straight on frame 2"
+  },
+  "swingh": {
+    "impact": 4,
+    "hold": 0.3,
+    "windup": [
+      1,
+      1,
+      1.5,
+      0.6
+    ],
+    "note": "made Swing: raised back (frames 1-2, held), level across the front on frame 4"
+  },
+  "chop": {
+    "impact": 3,
+    "hold": 0.3,
+    "windup": [
+      1,
+      1.6,
+      0.6
+    ],
+    "note": "made Chop: raised over the head (frame 2, held), coming down in front on frame 3"
   }
 }

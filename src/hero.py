@@ -7,9 +7,10 @@ from math import atan2, cos, hypot, sin
 import sdl2
 
 import stamina as breath
+import weapons
 from area import HERO_START, move_body
 from settings import (CHEST, HERO_HP, HURT_REACT, ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, RUN_SPEED,
-                      SLASH_COOLDOWN, SLASH_HIT, SLASH_LUNGE, SLASH_TIME, STOMP_HIT, STOMP_LUNGE, STOMP_TIME,
+                      SLASH_COOLDOWN, STOMP_HIT, STOMP_LUNGE, STOMP_TIME,
                       TEMPO)
 
 
@@ -50,6 +51,8 @@ class Hero:
         self.shove_cooldown = 0.0
         self.shove_weak = False      # a tired shove cannot knock anything down
         self.stamina = breath.Stamina()
+        self.weapon = weapons.WEAPONS[weapons.DEFAULT]
+        self.ready = None            # s the blow has been held ready (left button held), or None
 
     @property
     def invulnerable(self):
@@ -69,17 +72,32 @@ class Hero:
         self.slash = None                       # a blow breaks off the hero's own swing
         self.shove = 0.0
 
-    def start_slash(self, ax, ay, stomp=False):
-        """A slash toward (ax, ay); `stomp` makes it a stamp of the foot on a crawler instead."""
+    def start_ready(self):
+        """Left button pressed: raise the weapon and hold it (slow walk, a little stamina)."""
+        if self.free:
+            self.ready = 0.0
+
+    def start_slash(self, ax, ay, stomp=False, aim=None):
+        """A blow of the weapon toward (ax, ay) (weapons.py); `stomp` makes it a stamp of the foot
+        on a crawler instead. `aim` = (infected, part) it is aimed at, if any. A blow let go from
+        the ready stance skips most of its wind-up."""
+        held = self.ready is not None and self.ready >= weapons.QUICK_PRESS
+        self.ready = None
         if not self.free:
             return
         angle = atan2(ay - (self.y + CHEST), ax - self.x)
         self.facing = 1 if cos(angle) >= 0 else -1
-        whole, hit, lunge = (STOMP_TIME, STOMP_HIT, STOMP_LUNGE) if stomp else (SLASH_TIME, SLASH_HIT, SLASH_LUNGE)
-        if not self.stamina.spend("stomp" if stomp else "slash"):     # out of breath: a slow one
+        w = self.weapon
+        if stomp:
+            whole, hit, lunge, cost = STOMP_TIME, STOMP_HIT, STOMP_LUNGE, breath.COST["stomp"]
+        else:
+            whole, hit, lunge, cost = w["time"], w["hit"], w["lunge"], w["stamina"]
+        if not self.stamina.pay(cost):                                 # out of breath: a slow one
             whole, hit = whole * breath.TIRED_SLOW, hit * breath.TIRED_SLOW
-        self.slash = {"time": 0.0, "angle": angle, "hit": False, "stomp": stomp,
-                      "whole": whole, "hit_at": hit, "pose": "stomp" if stomp else "swing"}
+        start = hit * weapons.READY_SKIP if held and not stomp else 0.0
+        self.slash = {"time": start, "angle": angle, "hit": False, "stomp": stomp, "aim": aim,
+                      "whole": whole, "hit_at": hit, "pose": "stomp" if stomp else w["pose"],
+                      "reach": w["reach"], "arc": w["arc"], "weapon": w}
         speed = lunge * LUNGE_SPEED                     # covers about `lunge` px whatever the tempo
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
 
@@ -123,6 +141,13 @@ class Hero:
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
         self.shove_cooldown = max(0.0, self.shove_cooldown - dt)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
+        if self.ready is not None:
+            if not self.free:                          # hit, grabbed, rolling: the stance is lost
+                self.ready = None
+            else:
+                self.ready += dt
+                self.stamina.value = max(0.0, self.stamina.value - weapons.READY_DRAIN * dt)
+                self.stamina.rest_in = breath.DELAY
         self.stamina.update(dt, self.moving)
         if self.dead:
             self.dead += dt
@@ -158,6 +183,8 @@ class Hero:
         elif mx or my:
             length = hypot(mx, my)
             speed = RUN_SPEED * (SNEAK_SPEED if self.sneaking else 1.0) * (1 - self.slowed)
+            if self.ready is not None:                 # weapon raised: a careful step
+                speed *= weapons.READY_SPEED
             move_body(self, mx / length * speed * dt, my / length * speed * dt)
             self.run_distance += speed * dt / 32
             self.moving = True
@@ -183,6 +210,9 @@ class Hero:
         elif self.slash:
             s = self.slash
             self.look.draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"])
+        elif self.ready is not None and self.ready >= weapons.QUICK_PRESS:   # holding the blow raised
+            w = self.weapon
+            self.look.draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"])
         elif self.moving:
             pose = "sneak" if self.sneaking else "run"
             self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance)

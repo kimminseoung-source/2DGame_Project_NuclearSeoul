@@ -119,12 +119,18 @@ class Zombie:
         self.stagger_time = self.timer
         return countered
 
-    def hurt(self, from_x, from_y):
-        """A slash on an aware infected: True when it was the last one it could take."""
-        self.health -= 1
+    def hurt(self, from_x, from_y, damage=1, part="torso", push=HIT_PUSH):
+        """A blow on an aware infected (weapons.py: damage by the part it lands on): True when it
+        was more than it could take. A blow to the legs takes them: it crawls from then on."""
+        self.health -= damage
         if self.health <= 0:
             return True
-        self.reel(from_x, from_y, HIT_PUSH, "flinch", FLINCH_TIME)
+        if part == "legs" and not self.prone:
+            self.prone = True                            # crippled: down, dragging itself on
+            self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE
+            self.target, self.memory = (from_x, from_y), MEMORY
+            return False
+        self.reel(from_x, from_y, push, "flinch", FLINCH_TIME)
         return False
 
     @property

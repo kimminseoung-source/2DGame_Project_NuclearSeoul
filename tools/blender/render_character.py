@@ -34,9 +34,14 @@ PASSES = [
       "push=Punch_Cross~Idle_Loop@0-14+Push_Loop~Idle_Loop*0.45",
       # (a takedown sheet - take hold, short stab - was tried and dropped 2026-11-16 "기습 성공하는 건 빼죠")
       # stomp: on a crawling infected (made from the idle pose, tools/blender/made_actions.py)
-      "stomp=Stomp"],
+      "stomp=Stomp",
+      # The plain attacks, one per weapon style (2026-11-16 "애니메이션 동작이 일반적이어야", "다른 무기들을
+      # 했을 때도 문제가 없게"): feet planted, the arm does the work. Any weapon of a style uses its
+      # sheet; the weapon is painted into the hand. stab = a straight thrust, swingh = across the
+      # front, chop = overhead and down (made_actions.py).
+      "stab=Punch_Cross~Idle_Loop", "swingh=Swing", "chop=Chop"],
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4",
-      "stomp=6"],
+      "stomp=6", "stab=7", "swingh=7", "chop=7"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (2026-11-13, the user's pick from the sheets: "back to this one"):

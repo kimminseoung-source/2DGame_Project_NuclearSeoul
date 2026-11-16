@@ -15,6 +15,7 @@ import sdl2
 from pico2d import pico2d as canvas
 
 import bag_screen
+import weapons
 import hud
 import pixel_ui as px
 import stamina as stamina_rules
@@ -27,7 +28,7 @@ from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
-                      ROLL_TIME, ROOT, SLASH_ARC, SLASH_LUNGE, SLASH_REACH, SLOW_WORLD, WIDTH,
+                      ROLL_TIME, ROOT, SLOW_WORLD, WIDTH,
                       ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
 from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
 from sound import Sounds
@@ -44,7 +45,7 @@ NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 SHOVE_REACH = 46             # px a shove reaches
 BODY_CONTACT = 20            # px: an infected this close is against the hero's body (2026-11-16 판정)
-SURE_KILL = {"recover": "빈틈을 베었다!", "idle": "들키기 전에 조용히 처리했다",
+SURE_KILL = {"recover": "빈틈을 베었다!", "head": "머리를 쳤다! 한 방", "idle": "들키기 전에 조용히 처리했다",
              "alert": "들키기 전에 조용히 처리했다", "search": "들키기 전에 조용히 처리했다"}
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
@@ -178,7 +179,8 @@ class Game:
         for z in self.zombies:
             if z.alive and z.helpless:
                 diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
-                if hypot(z.x - hero.x, z.y - hero.y) <= SLASH_REACH + 30 and abs(diff) <= SLASH_ARC:
+                w = hero.weapon
+                if hypot(z.x - hero.x, z.y - hero.y) <= w["reach"] + 30 and abs(diff) <= w["arc"]:
                     found.append(z)
         return found
 
@@ -191,16 +193,41 @@ class Game:
                 continue
             dist = hypot(z.x - hero.x, z.y - hero.y)
             diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
-            if dist <= SLASH_REACH + SLASH_LUNGE and abs(diff) <= SLASH_ARC and (best is None or dist < best[0]):
+            w = self.hero.weapon
+            if dist <= w["reach"] + w["lunge"] and abs(diff) <= w["arc"] and (best is None or dist < best[0]):
                 best = (dist, z)
         return best is not None and best[1].prone
+
+    def aimed(self, sx, sy):
+        """What the cursor at screen (sx, sy) aims at (2026-11-16 "커서 방향에 따라 공격 위치가 다르게"):
+        (infected, part) when it is over an infected's body - the blow goes for that part - or
+        None (the blow goes that way at torso height). The nearest one in front wins."""
+        wx, wy = self.mouse_world(sx, sy)
+        hits = [(z, weapons.part_at(z, wx, wy)) for z in self.zombies if z.alive]
+        hits = [(z, part) for z, part in hits if part and self.vision.visible((self.hero.x, self.hero.y),
+                                                                              self.look, z.x, z.y)]
+        return min(hits, key=lambda h: h[0].y) if hits else None   # lower on screen = in front
+
+    def press(self, sx, sy):
+        """Left button down: raise the weapon and hold it, aiming with the cursor."""
+        self.aim = (sx, sy)
+        self.hero.start_ready()
+
+    def release(self, sx, sy):
+        """Left button up: the blow, at what the cursor aims at."""
+        self.click(sx, sy)
 
     def click(self, sx, sy):
         self.aim = (sx, sy)
         before = self.hero.slash
-        ax, ay = self.mouse_world(sx, sy)
+        aim = self.aimed(sx, sy)
+        if aim is not None:                              # aimed at a body: go for it
+            ax, ay = aim[0].x, aim[0].y + CHEST
+        else:
+            ax, ay = self.mouse_world(sx, sy)
         angle = atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)
-        self.hero.start_slash(ax, ay, stomp=self.ground_target(angle))
+        stomp = aim[0].prone if aim is not None else self.ground_target(angle)
+        self.hero.start_slash(ax, ay, stomp=stomp, aim=aim)
         if self.hero.slash is not None and self.hero.slash is not before:
             unaware = self.unaware_in_reach(self.hero.slash["angle"])
             self.hero.slash["quiet"] = bool(unaware)
@@ -391,7 +418,9 @@ class Game:
                 self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
             else:
                 self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
-            if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= SLASH_REACH for z in self.zombies):
+            reach, arc, weapon = hero.slash["reach"], hero.slash["arc"], hero.slash["weapon"]
+            aim = hero.slash.get("aim")
+            if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
                 hero.stamina.pay(stamina_rules.MISS)          # swung at nothing: more breath gone
             for z in self.zombies:
                 if not z.alive:
@@ -399,12 +428,20 @@ class Game:
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 dist = hypot(zx - sx, zy - sy)
-                if dist <= BODY_CONTACT or (dist <= SLASH_REACH and abs(diff) <= SLASH_ARC):  # touching: hit
+                if dist <= BODY_CONTACT or (dist <= reach and abs(diff) <= arc):  # touching: hit
                     opening = (z.state if z.helpless else "idle" if z in hero.slash.get("unaware", ())
                                else None)                      # helpless: one slash is enough
-                    if opening is None and not z.hurt(hero.x, hero.y):
+                    part = aim[1] if aim is not None and aim[0] is z else "torso"
+                    was_crawling = z.prone
+                    if opening is None and not z.hurt(hero.x, hero.y, weapon["damage"][part], part, weapon["push"]):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
+                        if z.prone and not was_crawling:
+                            self.message = "다리를 베었다! 이제 기어 온다 · 밟아서 끝내라"
+                        elif part == "head":
+                            self.message = "머리를 쳤다!"
                         continue
+                    if opening is None and part == "head":
+                        opening = "head"
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
                     if opening is not None:                      # a sure kill: it should feel like one
@@ -582,6 +619,44 @@ class Game:
         self.draw_area_edges(cx, cy)
         self.draw_world(cx, cy)
 
+    def draw_aim(self, cx, cy):
+        """While the weapon is held raised: the path of the blow toward the cursor and the part it
+        goes for, marked on the body (2026-11-16 "공격 경로가 보이면서"). Dotted on the canvas."""
+        hero = self.hero
+        if hero.ready is None or hero.ready < weapons.QUICK_PRESS or self.aim[0] is None:
+            return
+        w = hero.weapon
+        aim = self.aimed(*self.aim)
+        if aim is not None:
+            tx, ty = aim[0].x, aim[0].y + CHEST
+        else:
+            tx, ty = self.mouse_world(*self.aim)
+        part = aim[1] if aim is not None else "torso"
+        colour = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210)}[part]
+        if aim is not None and aim[0].prone:
+            colour = (196, 170, 92)                       # a crawler: the stomp
+        sx, sy = hero.x, hero.y + CHEST
+        ang = atan2(ty - sy, tx - sx)
+        length = w["reach"] + w["lunge"]
+        step = 6
+        for i in range(2, int(length // step) + 1):        # the path: a dotted line
+            px_, py_ = sx + cos(ang) * i * step - cx, sy + sin(ang) * i * step - cy
+            pico2d.draw_rectangle(px_ - 1, py_ - 1, px_ + 1, py_ + 1, *colour, filled=True)
+        if w["style"] in ("swingh", "chop"):              # a swing or a chop sweeps: its arc at the end
+            for k in range(-3, 4):
+                a = ang + k * w["arc"] / 6
+                ex, ey = sx + cos(a) * length - cx, sy + sin(a) * length - cy
+                pico2d.draw_rectangle(ex - 1, ey - 1, ex + 1, ey + 1, *colour, filled=True)
+        if aim is not None and not aim[0].prone:          # the part it goes for, on the body
+            z = aim[0]
+            low, high = next((lo, hi) for p, lo, hi in weapons.PARTS if p == part)
+            l, r = z.x - weapons.PART_HALF_WIDTH - cx, z.x + weapons.PART_HALF_WIDTH - cx
+            b, t = z.y + low - cy, z.y + min(high, 56) - cy
+            for (x0, y0, dx, dy) in ((l, t, 1, -1), (r, t, -1, -1), (l, b, 1, 1), (r, b, -1, 1)):
+                pico2d.draw_rectangle(min(x0, x0 + 5 * dx), y0 - 1, max(x0, x0 + 5 * dx), y0, *colour, filled=True)
+                pico2d.draw_rectangle(x0, min(y0, y0 + 5 * dy), x0 + 1, max(y0, y0 + 5 * dy), *colour, filled=True)
+            ui.world_text_center(z.x - cx, z.y + 62 - cy, weapons.PART_NAMES[part], colour, 12)
+
     def draw_world_labels(self):
         """Words placed in the world, written crisp on the screen in the pixel font."""
         labels, ui.world_labels = ui.world_labels or [], None
@@ -640,6 +715,7 @@ class Game:
                 obj.draw(cx, cy)
         for e in self.effects:
             e.draw(cx, cy)
+        self.draw_aim(cx, cy)
         self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y + CHEST - cy),
                          self.view_w, self.view_h)
         if self.real:                                      # a muted, colder tone over everything

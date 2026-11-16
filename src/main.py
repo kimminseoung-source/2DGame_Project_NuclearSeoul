@@ -2,7 +2,7 @@
 
     .venv\\Scripts\\python.exe src\\main.py
 
-WASD move, left click slash toward the mouse, Space roll, E pick up / leave, 1 bandage,
+WASD move, left button: hold to raise the weapon and aim (head / torso / legs under the cursor), let go to strike, Space roll, E pick up / leave, 1 bandage,
 Tab bag (inventory), mouse wheel zoom, R restart, F2 infected senses on/off, F3 realistic look on/off, Esc quit.
 (Right button time crawl with exposure is switched off for now: settings.EXPOSURE_ON.)
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
@@ -63,7 +63,9 @@ def main(window_x=None):
             elif event.type == sdl2.SDL_MOUSEMOTION:
                 game.aim = (event.x, event.y)
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_LEFT:
-                game.click(event.x, event.y)
+                game.press(event.x, event.y)             # raise the weapon, aim with the cursor
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP and event.button == sdl2.SDL_BUTTON_LEFT:
+                game.release(event.x, event.y)           # the blow
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT and EXPOSURE_ON:
                 game.slow = True
             elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and event.button == sdl2.SDL_BUTTON_RIGHT:
