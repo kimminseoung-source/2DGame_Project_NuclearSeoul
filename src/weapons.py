@@ -39,7 +39,7 @@ WEAPONS = {
         "hit": 0.2 * TEMPO,         # when it lands
         "cooldown": 0.12,           # s before the next blow can start
         "lunge": 12.0,              # px stepped in along the aim
-        "arc": 0.35,                # radians either side of the aim (reach: from the sprite, below)
+        "cells": 2,               # how wide its end is, in cells (CELL_WORLD) - the reach comes from the sprite
         "damage": {"head": 3, "torso": 1, "legs": 1},   # an aware infected takes 2-3
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
@@ -51,7 +51,7 @@ WEAPONS = {
     "knife": {                      # quick, short, precise: a stab to the head ends it
         "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
         "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 10.0,
-        "arc": 0.2,
+        "cells": 1,
         "damage": {"head": 3, "torso": 1, "legs": 1},
         "stamina": 6.0, "push": 25,
         "noise": 70, "stagger": False, "head_always": False,
@@ -62,7 +62,7 @@ WEAPONS = {
     "bat": {                        # wide and pushing, weak: keeps them off
         "name": "야구방망이", "style": "chop", "pose": "chop", "sprite": "bat",
         "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 10.0,
-        "arc": 0.45,
+        "cells": 2,
         "damage": {"head": 2, "torso": 1, "legs": 1},
         "stamina": 16.0, "push": 150,
         "noise": 260, "stagger": True, "head_always": False,
@@ -71,7 +71,7 @@ WEAPONS = {
     "pipe": {                       # like the bat, longer and heavier
         "name": "쇠파이프", "style": "chop", "pose": "chop", "sprite": "pipe",
         "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 10.0,
-        "arc": 0.4,
+        "cells": 3,
         "damage": {"head": 2, "torso": 1, "legs": 2},
         "stamina": 18.0, "push": 170,
         "noise": 300, "stagger": True, "head_always": False,
@@ -80,7 +80,7 @@ WEAPONS = {
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
         "time": 0.78 * TEMPO, "hit": 0.4 * TEMPO, "cooldown": 0.35, "lunge": 10.0,
-        "arc": 0.3,
+        "cells": 2,
         "damage": {"head": 3, "torso": 2, "legs": 2},
         "stamina": 22.0, "push": 80,
         "noise": 260, "stagger": False, "head_always": True,
@@ -105,8 +105,15 @@ def _sprite_length(sprite):
         return struct.unpack(">I", f.read(24)[16:20])[0]
 
 
+# The range in cells (2026-11-16 "범위를 칸으로 정해서, 식칼은 칸 1개 마체테는 2개"): one cell = 8
+# dot px (CELL_WORLD world units). The end of the range is shown as `cells` squares side by side,
+# and the blow's width is exactly that row: the arc is the angle the row covers at the reach.
+CELL_WORLD = 8 * SPRITE_TO_WORLD
+
+
 for _w in WEAPONS.values():
     _w["reach"] = HAND_REACH[_w["style"]] + _sprite_length(_w["sprite"]) * SPRITE_TO_WORLD
+    _w["arc"] = _w["cells"] * CELL_WORLD / 2 / (_w["reach"] + _w["lunge"])   # half-angle of the row
 
 
 # Arcs are narrow (2026-11-16 "공격 범위가 너무 넓어, 세로로 말고 가로로"): a blow covers a long,

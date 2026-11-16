@@ -40,7 +40,7 @@ def item_text(kind):
     if not key:
         return KINDS[kind][3]
     w = weapons.WEAPONS[key]
-    return f"속도 {weapons.speed_word(w)} · + {w['good']} · - {w['bad']}"
+    return f"범위 {w['cells']}칸 · 속도 {weapons.speed_word(w)} · + {w['good']} · - {w['bad']}"
 
 
 def bag_weight(bag):

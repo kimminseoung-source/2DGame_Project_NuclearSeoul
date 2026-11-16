@@ -746,12 +746,21 @@ class Game:
         def dot(x, y, tint, size=1):
             pico2d.draw_rectangle(x - size - cx, y - size - cy, x + size - cx, y + size - cy, *tint, filled=True)
 
-        # One arc: where the blow ends. Faint until the button is held; then it fills with colour
-        # from the middle out (the charge), full = charged (2026-11-16 "흰색 경로랑 노란색 경로를 통일").
-        n = max(2, int(length * w["arc"] / step))
-        for k in range(-n, n + 1):
-            a = ang + k * w["arc"] / n
-            dot(sx + cos(a) * length, sy + sin(a) * length, full if abs(k) <= charge * n and charge > 0 else faint)
+        # Where the blow ends: a row of `cells` squares across the aim at the reach (2026-11-16
+        # "칸으로 정해서"). Faint until the button is held; then the squares fill with colour from
+        # the middle out (the charge), all coloured = charged.
+        cell, count = weapons.CELL_WORLD, w["cells"]
+        ux, uy = cos(ang), sin(ang)                        # along the aim
+        vx, vy = -uy, ux                                   # across it
+        half = cell / 2 - 1
+        for i in range(count):
+            off = (i - (count - 1) / 2) * cell
+            mx, my = sx + ux * (length - cell / 2) + vx * off, sy + uy * (length - cell / 2) + vy * off
+            middle = abs(i - (count - 1) / 2) / max(1, count / 2)      # 0 in the middle .. ~1 at the ends
+            tint = full if charge > 0 and middle <= charge else faint
+            for t in range(-int(half), int(half) + 1, 2):  # the square's outline, dotted
+                for a_, b_ in ((t, -half), (t, half), (-half, t), (half, t)):
+                    dot(mx + ux * a_ + vx * b_, my + uy * a_ + vy * b_, tint, 0.5)
         if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
             if z.prone:                                   # a crawler: all of it, on the ground
