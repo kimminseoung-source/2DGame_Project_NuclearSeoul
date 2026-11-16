@@ -747,33 +747,27 @@ class Game:
         aim = self.aimed(*self.aim) if charged else None
         tx, ty = self.mouse_world(*self.aim)              # toward the cursor
         part = aim[1] if aim is not None else "torso"
-        faint = (120, 116, 104)
+        faint = (176, 172, 158)                             # pale, like the slash's trail
         full = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210),
                 "ground": (214, 128, 52)}[part]
         colour = full
         sx, sy = hero.x, hero.y + CHEST
         ang = atan2(ty - sy, tx - sx)
         length = weapons.attack_range(w)                   # exactly the range the hit uses
-        step = 6
-
-        def dot(x, y, tint, size=1):
-            pico2d.draw_rectangle(x - size - cx, y - size - cy, x + size - cx, y + size - cy, *tint, filled=True)
-
-        # Where the blow ends: a row of `cells` squares across the aim at the reach (2026-11-16
-        # "칸으로 정해서"). Faint until the button is held; then the squares fill with colour from
-        # the middle out (the charge), all coloured = charged.
+        # Where the blow ends: the dotted arc at the reach, as before, but in cells (2026-11-16
+        # "칸으로 정해서"; the squares were "너무 큽니다 - 점들처럼"): one dot per cell on the arc,
+        # a cell apart, so 1, 2 or 3 dots are counted at a glance (a pair per cell ran together). Faint
+        # until the button is held; then the cells fill with colour from the middle out (the charge).
         cell, count = weapons.CELL_WORLD, w["cells"]
-        ux, uy = cos(ang), sin(ang)                        # along the aim
-        vx, vy = -uy, ux                                   # across it
-        half = cell / 2 - 1
         for i in range(count):
-            off = (i - (count - 1) / 2) * cell
-            mx, my = sx + ux * (length - cell / 2) + vx * off, sy + uy * (length - cell / 2) + vy * off
+            off = (i - (count - 1) / 2) * cell             # the cell's middle, across the aim
             middle = abs(i - (count - 1) / 2) / max(1, count / 2)      # 0 in the middle .. ~1 at the ends
             tint = full if charge > 0 and middle <= charge else faint
-            for t in range(-int(half), int(half) + 1, 2):  # the square's outline, dotted
-                for a_, b_ in ((t, -half), (t, half), (-half, t), (half, t)):
-                    dot(mx + ux * a_ + vx * b_, my + uy * a_ + vy * b_, tint, 0.5)
+            a = ang + off / length
+            # a 2 x 2 canvas-pixel square on the canvas grid: even, crisp dots at any camera
+            qx = round((sx + cos(a) * length - cx) * DOT) / DOT
+            qy = round((sy + sin(a) * length - cy) * DOT) / DOT
+            pico2d.draw_rectangle(qx, qy, qx + 1.99 / DOT, qy + 1.99 / DOT, *tint, filled=True)
         if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
             if z.prone:                                   # a crawler: all of it, on the ground
