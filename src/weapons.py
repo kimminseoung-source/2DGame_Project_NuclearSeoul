@@ -56,7 +56,6 @@ WEAPONS = {
         "damage": (3, 4),        # health taken off a torso blow, picked in this range
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
-        "noise": 230,               # px the blow is heard
         "stagger": False,           # a torso blow makes it reel (open), not just flinch
         "good": "균형·기는 놈까지", "bad": "큰 강점 없음",
     },
@@ -66,8 +65,8 @@ WEAPONS = {
         "cells": 1,
         "damage": (2, 3),
         "stamina": 6.0, "push": 25,
-        "noise": 70, "stagger": False,
-        "good": "빠름·조용·기력 적게", "bad": "짧고 좁음",
+        "stagger": False,
+        "good": "빠름·기력 적게", "bad": "짧고 좁음",
     },
     # bat and pipe use the overhead chop like the machete and axe (2026-11-16 "야구 방망이 모션이
     # 이상함, 이런 종류의 무기를 도끼나 마체테처럼 똑같이 통일"): their own traits are in the numbers
@@ -77,8 +76,8 @@ WEAPONS = {
         "cells": 2,
         "damage": (2, 4),
         "stamina": 16.0, "push": 150,
-        "noise": 260, "stagger": True,
-        "good": "넓게·몸통 치면 휘청", "bad": "피해 약함·시끄러움",
+        "stagger": True,
+        "good": "넓게·몸통 치면 휘청", "bad": "피해 약함",
     },
     "pipe": {                       # like the bat, longer and heavier
         "name": "쇠파이프", "style": "chop", "pose": "chop", "sprite": "pipe",
@@ -86,8 +85,8 @@ WEAPONS = {
         "cells": 3,
         "damage": (3, 5),
         "stamina": 18.0, "push": 170,
-        "noise": 300, "stagger": True,
-        "good": "가장 멀리·몸통 치면 휘청", "bad": "느림·가장 시끄러움",
+        "stagger": True,
+        "good": "가장 멀리·몸통 치면 휘청", "bad": "느림·기력 많이",
     },
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
@@ -95,7 +94,7 @@ WEAPONS = {
         "cells": 2,
         "damage": (5, 7),
         "stamina": 22.0, "push": 80,
-        "noise": 260, "stagger": False,
+        "stagger": False,
         "good": "피해 가장 셈", "bad": "가장 느림·기력 많이",
     },
 }

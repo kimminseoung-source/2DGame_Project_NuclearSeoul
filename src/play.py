@@ -559,7 +559,7 @@ class Game:
 
         if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
             if hero.slash and hero.slash["time"] <= real_dt:
-                self.make_noise(NOISE_STEP if hero.slash.get("quiet") else hero.slash["weapon"].get("noise", NOISE_SLASH))
+                self.make_noise(NOISE_STEP if hero.slash.get("quiet") else NOISE_SLASH)   # every melee blow sounds alike (2026-11-16 "근접 무기는 큰 차이 없어도")
             elif hero.roll > 0 and hero.roll >= ROLL_TIME - real_dt:
                 self.make_noise(NOISE_ROLL)
             elif hero.moving:

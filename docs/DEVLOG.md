@@ -285,3 +285,4 @@
   - **코드:** `weapons.roll_damage(w, part)`(무기 `damage` 범위 × `PART_SHARE`, 밟기는 `STOMP_DAMAGE`). `Zombie.helpless`, `SURE_KILL`, `HEAD_QUICK`, `head_always`를 지웠다. 체력 `HEALTH` 8~12, `CRAWLER_HEALTH` 5~8.
   - **점검 갱신:** 체력 3으로 두던 점검을 30으로 올려 무기별로 깎인 양을 보게 했다. 밟기 점검은 이제 한 번에 안 죽는 경우가 있다(설계대로).
   - **소리 원 시안:** 실제 화면을 찍고 그 위에 무기 소리 반지름(식칼 70, 도끼 260)의 점선 원과 '?'를 그렸다. 게임에는 아직 넣지 않았다.
+- **무기 소리 같게:** 무기 `noise`를 지우고 모든 공격이 `NOISE_SLASH`(230)를 낸다. 소리 원 시안은 안 넣기로 했다. 관련 점검 5개(identity, senses, spawn, stamina, range)를 통과했다.
