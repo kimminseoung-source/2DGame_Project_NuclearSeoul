@@ -129,7 +129,37 @@ def main():
         f"1차 계획의 네 단계 중 탐색과 전투는 끝났습니다. 생존과 여정은 상처와 출혈, 들어가는 집까지 했고 구역 이동과 결말이 남았습니다. "
         f"그래픽은 도트 캐릭터와 UI, 손으로 찍은 집과 가구까지 진행했습니다. 계획 비중으로 보면 약 {total}%입니다.")
 
-    # 3. the plan change: how maps are made
+    # 3. what we tried on the way (2026-11-16 "개발하면서 여러 시도들이 있었잖아요, 그런 것들도")
+    s = new_slide(prs, "개발하며 해 본 시도들")
+    tries = [("시점", "횡스크롤 · 턴제 · 탑뷰 시험판을 직접 해 보고 → 탑뷰", None),
+             ("전투", "한 방 전투 → 무기별 피해 + 머리·몸통·다리 조준", "try_aim.png"),
+             ("캐릭터 그림", "매끈한 3D 렌더 → 키 32px 도트", "try_art.png"),
+             ("UI", "상자와 글이 많은 화면 → 도트 쪽지, 글 대신 화면 반응", "try_ui.png"),
+             ("가구·건물", "3D 모델 렌더 → 칸마다 찍은 손도트", "try_furniture.png"),
+             ("맵", "실제 지도 기반 → 직접 설계한 골목 (다음 쪽)", "alley_north.png")]
+    cw, chh = 3.85, 2.55
+    for i, (head, body, pic) in enumerate(tries):
+        x, y = 0.6 + (i % 3) * (cw + 0.3), 1.45 + (i // 3) * (chh + 0.25)
+        rect(s, x, y, cw, chh, CARD)
+        ix, iy, iw, ih = x + 0.15, y + 0.15, cw - 0.3, 1.35
+        if pic:
+            pw, ph = Image.open(IMG / pic).size
+            w = min(iw, ih * pw / ph)
+            h = w * ph / pw
+            picture(s, IMG / pic, ix + (iw - w) / 2, iy + (ih - h) / 2, w=w, alt=f"{head}: 바꾸기 전과 후")
+        else:                                       # three small boxes for the three views tried
+            for k, (label, col) in enumerate((("횡스크롤", DIM), ("턴제", DIM), ("탑뷰", GOLD))):
+                bx = ix + k * (iw / 3) + 0.05
+                box = rect(s, bx, iy + 0.25, iw / 3 - 0.1, 0.85, TRACK)
+                text(s, bx, iy + 0.5, iw / 3 - 0.1, 0.4, [(label, col, k == 2)], size=14, align=PP_ALIGN.CENTER)
+        text(s, x + 0.2, y + 1.6, cw - 0.4, 0.35, head, size=16, bold=True)
+        text(s, x + 0.2, y + 1.98, cw - 0.4, 0.55, body, size=12, color=DIM)
+    s.notes_slide.notes_text_frame.text = (
+        "개발하면서 여러 가지를 직접 해 보고 정했습니다. 시점은 횡스크롤과 턴제, 탑뷰 시험판을 만들어 비교한 뒤 탑뷰로 정했고, "
+        "전투는 한 방에 끝나는 방식에서 무기별 피해와 부위 조준으로 바꿨습니다. 그림은 3D 렌더에서 도트로, 가구와 건물은 칸마다 찍은 손도트로 바꿨고, "
+        "UI는 글을 줄이고 화면 반응으로 알려 주게 했습니다.")
+
+    # 4. the plan change: how maps are made
     s = new_slide(prs, "기획 변경: 맵 만드는 방식")
     picture(s, IMG / "tuk.png", 0.6, 1.5, w=5.95, alt="실제 지도(한국공학대)를 글자 지도로 바꿔 그린 시험")
     picture(s, IMG / "alley_north.png", 6.8, 1.5, w=5.95, alt="직접 설계한 골목")
