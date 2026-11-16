@@ -31,7 +31,10 @@ CHEST = 22                      # chest height above the feet, where blows land
 # the infected - slash, roll, shove, pick-up, being hit, the infected's attack and reactions - lasts
 # this many times its base length. Distances stay the same (the roll is slower, not shorter).
 TEMPO = 1.3
-RUN_SPEED = 150.0
+# The hero's move speed (2026-11-16 "캐릭터 이동속도가 좀비에 비해 빠른 것 같음": was 150, about
+# twice a normal infected). Now a normal one (70) is ~2/3 of it and a fast one (98) nearly keeps up,
+# so running away works but does not leave them behind at once.
+RUN_SPEED = 110.0
 ROLL_TIME = 0.28 * TEMPO
 ROLL_SPEED = 260.0 * 0.28 / ROLL_TIME     # same 73 px roll
 ROLL_COOLDOWN = 0.35
