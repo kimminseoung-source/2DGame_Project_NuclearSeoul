@@ -62,13 +62,25 @@ def bag_items(game):
 
 
 NOTE_PAPER = (200, 192, 168)       # note.png's paper
+FOLD_SHADE = (150, 142, 120)       # the paper turned over
 
 
 def note_rect(game):
     """The goal note on the pixel canvas (l, t, r, b): whole, or folded to a tab."""
     if game.note_folded:
-        return 6, 7, 6 + px.width("목표", True) + 8, 7 + 15
+        return 6, 7, 6 + px.width("목표", True) + 18, 7 + 15
     return 6, 7, 6 + 172, 7 + 46
+
+
+def fold_mark(x, y, right):
+    """The fold mark (2026-11-16, the user's sketch): a small filled triangle ("빗금 ㄴㄴ": no hatching), its point to the
+    right on the folded tab (opens) and to the left on the open note (folds). 7 x 9 px at (x, y)."""
+    for j in range(9):
+        reach = round(6 * (1 - abs(j - 4) / 4))              # the row's length, longest in the middle
+        for i in range(reach + 1):
+            edge = i == 0 or i == reach or j in (0, 8)
+            col = x + (i if right else 6 - i)                 # outlined, filled plain (no hatching)
+            px.rect(col, y + j, col, y + j, INK_C if edge else FOLD_SHADE)
 
 
 def draw_hud(game):
@@ -83,14 +95,16 @@ def draw_hud(game):
     if game.note_folded:
         l, t, r, b = note_rect(game)
         px.rect(l, t, r, b, NOTE_PAPER)
-        px.rect(l, b, r, b, (150, 142, 120))                               # the fold's shadow
+        px.rect(l, b, r, b, FOLD_SHADE)                               # the fold's shadow
         px.text(l + 4, t + 1, "목표", INK_C, bold=True, outline=False)
+        fold_mark(r - 10, t + 3, right=True)
     else:
         px.blit("note.png", 6, 7)
         goal = f"{EXIT_NAME}로"
         px.text(20, 15, goal, INK_C, bold=True, outline=False)
         px.rect(20, 29, 20 + px.width(goal, True), 29, BLOOD)             # a pen underline
         px.text(20, 32, "붕대·통조림 있으면 챙기기", PENCIL, outline=False)
+        fold_mark(164, 13, right=False)
     if EXPOSURE_ON:
         px.text(180, 15, f"피폭 {game.exposure:.0f}%", LIGHT)
     draw_status(game)
