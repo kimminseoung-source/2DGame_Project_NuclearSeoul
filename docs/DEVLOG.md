@@ -297,3 +297,5 @@
 - **범위 점을 실제 폭으로:** "점 1, 2, 3개는 예시" → `draw_aim`이 판정 호(±arc)의 끝에서 끝까지 `DOT_GAP` 4 캔버스 px 간격으로 점을 찍는다(식칼 3, 마체테 5, 쇠파이프 7개). 판정 코드는 그대로. aim·range 점검 통과(`docs/planning/attack_range_ingame.png`).
 - **이동 속도:** "캐릭터가 좀비에 비해 빠름" → `settings.RUN_SPEED` 150 → 110 (피폭체 49/70/98). 점검 17개 모두 오류 없이 이전과 같은 결과.
 - **시야 조정:** `vision_cone` CONE_HALF 0.9 → 0.7, NEAR_CLEAR 30 → 40(NEAR_SOFT 24), 원 가장자리가 고르게 RADII에 64를 더했다. 원뿔 각은 `play.py`의 '보이는가' 판정에도 그대로 쓰인다. senses·pick·stage1·spawn·mixed 점검 통과.
+- **한 문장 고침:** DESIGN_LOCK 기둥 1·한 문장·맷집 줄, README의 한 방 설명 6곳을 v7.9 규칙에 맞춤. 총은 보류함에 날짜와 함께 적음.
+- **C 결과를 화면으로:** `play.py`에서 전투 결과 글 9개와 `hint()`·`hints_shown`을 지웠다. `hurt_flash`(맞으면 0.25초 붉은 테두리, `hud.draw_hud`), 받아치기 큰 Spark, 힘없는 밀치기 `tired_flash`, 다리 베임 멈춤·흔들림. `marks_now()`가 [Space]·[우클릭]·[1] 표시를 TEACH 앞에 끼운다(`used`에 shove·bandage 추가). 점검 17개 통과(check_pick은 hints_shown 대신 marks_now 출력), 화면 `docs/planning/react_marks_ingame.png`.

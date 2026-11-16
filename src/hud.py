@@ -90,7 +90,9 @@ def draw_hud(game):
     the goal on a taped note, health and the statuses that ask for something, quick slots, the
     latest message. No boxes, no rounded chips; Galmuri with a 1 px outline."""
     hero = game.hero
-    if game.condition.bleeding and not hero.dead:          # the screen edge goes red, dithered
+    # the screen edge goes red, dithered: while bleeding, and for a moment when hit (2026-11-16 C:
+    # the "긁힘! 체력 -12%" line is gone, the hit is felt instead)
+    if (game.condition.bleeding or game.hurt_flash > 0) and not hero.dead:
         px.blit("bleed_edge.png", 0, 0)
     # goal: a taped, torn note; a click folds it to a small tab and opens it again
     # (2026-11-16 "쪽지를 접고 펼 수 있게": open, it hid what was drawn over the hero in a corner)

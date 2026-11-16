@@ -59,7 +59,7 @@ class Game:
         self.aim = (None, None)
         self.deaths = 0
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
-        self.hints_shown = set()            # first-time hints, once per play session
+        self.hurt_flash = 0.0               # s left of the red screen edge after the hero is hit
         self.used = set()                   # actions done at least once (their key marks go away)
         self.note_folded = False            # the goal note, folded to a tab by a click on it
         self.note_click = False             # this left press was on the note: no blow on release
@@ -159,6 +159,7 @@ class Game:
         hero = self.hero
         if not hero.start_shove(*self.mouse_world(sx, sy)):
             return
+        self.used.add("shove")
         self.sounds.play("roll", 0.5)
         for z in self.zombies:
             if not z.alive or z.prone:                                # nothing to shove on the ground
@@ -169,8 +170,9 @@ class Game:
                 self.sounds.play("slash_hit", 0.6 if countered else 0.35, at=(z.x, z.y))
                 if countered:                                  # timed to its swing: a heavier jolt
                     self.hitstop, self.shake = max(self.hitstop, 0.08), 0.1
-                self.message = ("받아쳤다! 크게 휘청인다 · 지금 베어라" if countered
-                                else "숨이 차서 힘없이 밀었다" if hero.shove_weak else "밀쳐냈다")
+                    self.effects.append(Spark(z.x, z.y + 40, big=True))      # a flash where it was hit
+        if hero.shove_weak:
+            hero.stamina.tired_flash = 0.6                     # out of breath: the stamina bar flashes red
         if self.senses:
             self.make_noise(NOISE_STEP)
 
@@ -311,6 +313,7 @@ class Game:
             return
         if kind == "bandage" and (self.hero.hp < HERO_HP or self.condition.injuries):
             self.bag[kind] -= 1
+            self.used.add("bandage")
             treated = self.condition.treat()
             before = self.hero.hp
             self.hero.hp = min(HERO_HP, self.hero.hp + BANDAGE_HEAL)
@@ -345,8 +348,6 @@ class Game:
             if rolled:
                 self.used.add("roll")
                 self.sounds.play("roll", 0.6)
-            elif self.hero.stamina.tired_flash > 0:
-                self.message = "숨이 차서 구를 수 없다"
         elif key == sdl2.SDLK_r:
             self.reset()
         elif key == sdl2.SDLK_e and not self.left and not self.hero.dead:
@@ -365,12 +366,6 @@ class Game:
             self.reset()
             self.message = ("피폭체 감각 켬: 보고 듣고 찾음, 시야 밖 공격은 예고가 짧음" if self.senses
                             else "피폭체 감각 끔: 예전 규칙(300px 안이면 무조건 쫓아옴)")
-
-    def hint(self, key, text):
-        """A one-time tip (2026-11-16: lower the entry barrier - Zomboid's biggest complaint)."""
-        if key not in self.hints_shown:
-            self.hints_shown.add(key)
-            self.message = text
 
     def near_exit(self):
         l, b, r, t = EXIT
@@ -498,6 +493,7 @@ class Game:
         else:
             self.exposure = max(0.0, self.exposure - EXPOSURE_FALL * real_dt)
         self.shake = max(0.0, self.shake - real_dt)
+        self.hurt_flash = max(0.0, self.hurt_flash - real_dt)
         if self.hitstop > 0:
             self.hitstop -= real_dt
             return
@@ -554,8 +550,8 @@ class Game:
                     was_crawling = z.prone
                     if not z.hurt(hero.x, hero.y, damage, part, weapon["push"], weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
-                        if z.prone and not was_crawling:
-                            self.message = "다리를 베었다! 이제 기어 온다 · 밟아서 끝내라"
+                        if z.prone and not was_crawling:              # legs cut: it drops - a heavier jolt
+                            self.hitstop, self.shake = max(self.hitstop, 0.06), max(self.shake, 0.06)
                         continue
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
@@ -597,10 +593,6 @@ class Game:
             if z.state != state:
                 if z.state == "chase" and state in ("idle", "alert", "search"):
                     z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
-                    if z.prone:
-                        self.hint("crawler", "기어 오는 피폭체 · 다가가 클릭하면 밟는다")
-                    else:
-                        self.hint("spotted", "들켰다! 할퀴기 예고 끝에 우클릭으로 받아쳐라")
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
@@ -613,16 +605,13 @@ class Game:
                 hero.take_blow()                              # slowed, more with every blow
                 wound, damage = self.condition.wound()        # the blow's kind sets how much it takes
                 hero.hp = max(0.0, hero.hp - damage)
-                self.message = f"{wound}! 체력 -{damage}%"
-                if wound != "긁힘":
-                    self.hint("bleed", f"{wound}: 피를 흘린다 · 1 또는 Tab에서 붕대로 멈춰라")
+                self.hurt_flash = 0.25                        # the screen edge flashes red
                 hero.hurt = HURT_INVULNERABLE
                 others = sum(1 for o in self.zombies if o is not z and o.alive and not o.prone
                              and hypot(o.x - hero.x, o.y - hero.y) <= GRAB_NEAR)       # crawlers cannot hold
                 if self.senses and others and hero.hp > 0 and not z.prone:
                     hero.grabbed = GRAB_TIME             # Zomboid's drag-down: two on him hold him
                     hero.slash = None
-                    self.message = "붙잡혔다! Space로 구르면 빠져나감"
                     self.sounds.play("grab", 1.0)
                 if self.real:
                     self.effects.append(Blood(hero.x, hero.y + 16, atan2(hero.y - z.y, hero.x - z.x), 10))
@@ -795,11 +784,26 @@ class Game:
         """Over a thing E picks up: "[E]" until something has been picked up once, then its name."""
         ui.world_text_center(x, y, name if "pick" in self.used else "[E]", (240, 230, 190), 12)
 
+    def marks_now(self):
+        """Key marks for what is happening right now (2026-11-16 C "결과를 글 대신 화면으로"): they
+        replace the tip lines. Held by two: [Space] for as long as it lasts; one about to claw within
+        reach: [우클릭] until a shove has been tried; bleeding with a bandage: [1] until one is used."""
+        hero, marks = self.hero, []
+        if hero.grabbed > 0:
+            marks.append("[Space] 빠져나가기")
+        if "shove" not in self.used and any(
+                z.alive and z.state == "windup" and hypot(z.x - hero.x, z.y - hero.y) <= SHOVE_REACH * 2
+                for z in self.zombies):
+            marks.append("[우클릭] 밀치기")
+        if "bandage" not in self.used and self.condition.bleeding and self.bag.get("bandage", 0) > 0:
+            marks.append("[1] 붕대")
+        return marks
+
     def draw_teach(self, cx, cy):
         if self.left or self.hero.dead or self.near_exit():      # the exit's [E] goes there
             return
-        left = [text for action, text in self.TEACH if action not in self.used][:2]
-        for i, text in enumerate(left):
+        left = self.marks_now() + [text for action, text in self.TEACH if action not in self.used]
+        for i, text in enumerate(left[:2]):
             ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 76 + i * 13, text, (214, 208, 190), 12)   # over the head
 
     def draw_world_labels(self):
