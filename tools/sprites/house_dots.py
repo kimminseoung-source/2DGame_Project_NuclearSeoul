@@ -90,6 +90,64 @@ def door(w, h):
     return img
 
 
+CONC_WALL = ((168, 164, 154), (146, 142, 134), (122, 118, 112), (96, 92, 88))
+ROOF_GREY = ((132, 130, 124), (116, 114, 108), (96, 94, 90))
+
+
+def office_wall(w, h, seed=0):
+    """A big building's front (campus halls, offices): concrete panels with bands of windows,
+    each floor 3.2 m (~60 px), the ground floor darker."""
+    rng = random.Random(seed)
+    img = Image.new("RGBA", (w, h), CONC_WALL[1] + (255,))
+    for y in range(0, h, 12):                               # panel joints
+        rect(img, 0, y, w - 1, y, CONC_WALL[2])
+    for x in range(0, w, 19):
+        rect(img, x, 0, x, h - 1, CONC_WALL[2])
+    floor_px, band = 61, 26                                 # a floor is 3.2 m; its windows 1.4 m tall
+    band_top = h - 4 - floor_px + 14                        # from the ground floor up
+    while band_top >= 3:
+        rect(img, 0, band_top, w - 1, band_top + band - 1, PANE[1])
+        rect(img, 0, band_top, w - 1, band_top, CONC_WALL[3])          # the shadow under the slab
+        for x in range(0, w, 10):                           # mullions, a pane about half a metre
+            rect(img, x, band_top, x, band_top + band - 1, FRAME_AL[1])
+        rect(img, 0, band_top + band // 2, w - 1, band_top + band // 2, FRAME_AL[1])   # transom
+        for x in range(2, w - 2, 10):                       # sky in some panes, a few broken
+            if rng.random() < 0.5:
+                rect(img, x, band_top + 2, x + 3, band_top + 2, PANE[2])
+            if rng.random() < 0.06:
+                rect(img, x + 1, band_top + band // 2 + 2, x + 6, band_top + band - 3, (24, 26, 30))
+        rect(img, 0, band_top + band, w - 1, band_top + band, CONC_WALL[0])  # the sill
+        band_top -= floor_px
+    for y in range(min(3, h)):                              # under the roof edge: in shadow
+        for x in range(w):
+            r, g, b, a = img.getpixel((x, y))
+            img.putpixel((x, y), (r * 7 // 10, g * 7 // 10, b * 7 // 10, a))
+    rect(img, 0, h - 3, w - 1, h - 1, CONC_WALL[3])         # plinth
+    return img
+
+
+def office_roof(mask, seed=0):
+    """A big flat roof: grey membrane, a parapet, an air vent box or two."""
+    rng = random.Random(seed)
+    w, h = mask.size
+    img = flat_roof(mask, seed)
+    grey = Image.new("RGBA", (w, h), ROOF_GREY[1] + (255,))
+    for _ in range(w * h // 300):
+        x, y = rng.randrange(w), rng.randrange(h)
+        rect(grey, x, y, x + rng.randint(2, 6), y, rng.choice((ROOF_GREY[0], ROOF_GREY[2])))
+    padded = Image.new("L", (w + 6, h + 6), 0)
+    padded.paste(mask, (3, 3))
+    inner = padded.filter(ImageFilter.MinFilter(5)).crop((3, 3, w + 3, h + 3))
+    img.paste(grey, (0, 0), inner)                          # grey inside the parapet
+    for _ in range(max(1, w * h // 6000)):                  # vent boxes on the roof
+        x, y = rng.randrange(6, max(7, w - 14)), rng.randrange(6, max(7, h - 12))
+        if inner.getpixel((min(w - 1, x + 8), min(h - 1, y + 7))):
+            rect(img, x, y, x + 7, y + 3, CONCRETE[0])
+            rect(img, x, y + 4, x + 7, y + 6, CONCRETE[2])
+            rect(img, x + 8, y + 1, x + 9, y + 6, (60, 58, 56))   # its shadow
+    return img
+
+
 def flat_roof(mask, seed=0):
     """A flat roof: green waterproof paint inside a concrete parapet, a few stains."""
     rng = random.Random(seed)
