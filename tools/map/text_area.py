@@ -163,7 +163,7 @@ def draw(rows, seed=4):
             pic.paste(hd.brick_wall(bw, bh, seed=i), (0, 0), wall)
         img.alpha_composite(pic, (ox, oy))
         for a, b_, e, f in rects(cells):                   # blocks: exactly the cells
-            blocks.append((a * M, (n - 1 - f) * M, (e + 1) * M, (n - b_) * M, "building" if kind == "B" else "house"))
+            blocks.append((a * M, (n - 1 - f) * M, (e + 1) * M, (n - b_) * M, "building"))   # painted in the ground
     for r in range(n):                                     # the way out
         for c in range(cols):
             if rows[r][c] == "X":
@@ -183,10 +183,143 @@ def debug(img, blocks, rows):
     return out
 
 
+# ------------------------------------------------------------------ a whole game area
+# More characters for a hand-made map (2026-11-16 "골목 만들어"):
+#   E  a house one can go into (a rectangle)   D  its doorway (2 m, on its south row)
+#   S  the hero's start   z  an infected   c  a wrecked car   +  a supply   w  a weapon
+SUPPLY_KINDS = ("can", "bandage", "can", "bandage", "pill")
+WEAPON_KINDS = ("knife", "bat", "pipe", "axe")
+WRECKS = {"wreck_0": (100, 40), "wreck_1": (80, 40), "wreck_2": (100, 40)}
+GRID = 16                  # the wall grid of a house one can go into (house.py)
+
+
+def build(rows, name, seed=16):
+    """Write assets/areas/<name>/ (area.json, ground.png, roof and furniture pictures) for src/area.py."""
+    import json
+    import shutil
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import house  # noqa: E402
+
+    rng = random.Random(seed)
+    root = Path(__file__).resolve().parents[2]
+    out = root / "assets" / "areas" / name
+    out.mkdir(parents=True, exist_ok=True)
+    for old in list(out.glob("roof_*.png")) + list(out.glob("f_*.png")):
+        old.unlink()
+    n, cols = len(rows), len(rows[0])
+    W, H = cols * M, n * M
+    flat = [r.replace("E", ".").replace("D", ".") for r in rows]     # houses are drawn below
+    img, blocks = draw([r.translate(str.maketrans("Szc+wX", "......")) for r in flat])
+    blocks = [list(b) for b in blocks]
+    d = ImageDraw.Draw(img)
+
+    def world(c, r):                                       # the middle of a character, y up
+        return c * M + M / 2, (n - 1 - r) * M + M / 2
+
+    def to_px(p):
+        return p[0] * DOT, (H - p[1]) * DOT
+
+    found = {ch: [(c, r) for r in range(n) for c in range(cols) if rows[r][c] == ch] for ch in "EDSzc+wX"}
+    buildings = []
+    if found["E"]:                                         # the house one can go into
+        es = found["E"] + found["D"]
+        c0, c1 = min(c for c, _ in es), max(c for c, _ in es)
+        r0, r1 = min(r for _, r in es), max(r for _, r in es)
+        cells = {(cc, rr) for c in range(c0, c1 + 1) for r in range(r0, r1 + 1)
+                 for cc in (2 * c, 2 * c + 1) for rr in (2 * (n - 1 - r), 2 * (n - 1 - r) + 1)}
+        wall, face, part, pc = house.plan(cells)
+        doors = []
+        dcols = sorted(c for c, _ in found["D"])
+        if dcols:                                          # the doorway: the middle of the D run
+            x, y = (dcols[0] + dcols[-1] + 1) / 2 * M, (n - 1 - r1) * M + GRID / 2
+            doors.append((round(x / 32) * 32, round(y / 32) * 32))
+            wall = {(c, r) for c, r in wall
+                    if not (abs((c + 0.5) * GRID - doors[0][0]) < 32 and abs((r + 0.5) * GRID - doors[0][1]) < 32)}
+        glass = house.windows(cells, wall, face, doors, GRID)
+        furniture = house.furnish(cells, wall, face, doors, GRID, rng)
+        blocks += [list(rc) + ["wall"] for rc in _merge(wall - glass)]
+        blocks += [list(rc) + ["window"] for rc in _merge(glass)]
+        for piece, l_, b_, r_, t_, h_m in furniture:
+            blocks.append([l_, b_, r_, t_, f"f_{piece}"])
+            drawn = root / "assets" / "furniture" / f"{piece}.png"
+            if drawn.exists():
+                shutil.copy(drawn, out / f"f_{piece}.png")
+            else:
+                house.sprite(piece, (r_ - l_) * DOT, (t_ - b_) * DOT, h_m * M * DOT).save(out / f"f_{piece}.png")
+        house.paint(d, cells, wall, face, part, pc, glass, to_px, GRID)
+        l, b, r, t = c0 * M, (n - 1 - r1) * M, (c1 + 1) * M, (n - r0) * M
+        box = (px(l), px(H - t), px(r), px(H - b))
+        mask = Image.new("L", (box[2] - box[0], box[3] - box[1]), 255)
+        roof = Image.new("RGBA", mask.size, (0, 0, 0, 0))
+        house.front(roof, mask, round(FACE_M["#"] * M * DOT), box, cells, glass, doors, to_px, GRID)
+        roof.putalpha(mask)
+        roof.save(out / "roof_0.png")
+        buildings.append({"poly": [[l, b], [r, b], [r, t], [l, t]], "roof": "roof_0",
+                          "box": [box[0] / DOT, H - box[3] / DOT, box[2] / DOT, H - box[1] / DOT],
+                          "doors": [list(dd) for dd in doors]})
+    for c, r in found["c"]:                                # wrecked cars, lying along the road
+        look = rng.choice(list(WRECKS))
+        w, h = WRECKS[look]
+        x, y = world(c, r)
+        blocks.append([round(x - w / 2), round(y - h / 2), round(x + w / 2), round(y + h / 2), look])
+    # infected come in where a road or alley meets the map's edge (the middle of each open run)
+    entrances = []
+    for side, line in (("top", [(c, 0) for c in range(cols)]), ("bottom", [(c, n - 1) for c in range(cols)]),
+                       ("left", [(0, r) for r in range(n)]), ("right", [(cols - 1, r) for r in range(n)])):
+        run = []
+        for cell in line + [None]:
+            if cell is not None and rows[cell[1]][cell[0]] not in "#BED":
+                run.append(cell)
+                continue
+            if len(run) >= 2:
+                x, y = world(*run[len(run) // 2])
+                x = 12 if side == "left" else W - 12 if side == "right" else x
+                y = 12 if side == "bottom" else H - 12 if side == "top" else y
+                entrances.append([[round(x), round(y)], side])
+            run = []
+    exit_rect = [0, 0, 80, 68]
+    if found["X"]:
+        x, y = world(*found["X"][0])
+        exit_rect = [round(x - 40), round(y - 34), round(x + 40), round(y + 34)]
+    hero = world(*found["S"][0]) if found["S"] else (64, H / 2)
+    supplies = [[*map(round, world(c, r)), SUPPLY_KINDS[i % len(SUPPLY_KINDS)]] for i, (c, r) in enumerate(found["+"])]
+    if buildings:                                          # two more inside the house, on open floor
+        l, b, r, t = buildings[0]["poly"][0] + buildings[0]["poly"][2]
+
+        def free(x, y, pad=20):
+            return not any(bl - pad <= x <= br + pad and bb - pad <= y <= bt + pad for bl, bb, br, bt, _ in blocks)
+        spots = [(x, y) for y in range(int(b) + 48, int(t) - 48, 16) for x in range(int(l) + 32, int(r) - 32, 16)
+                 if free(x, y)]
+        for i, k in enumerate(("bandage", "can")):
+            if spots:
+                x, y = spots[(len(spots) * (1 + 2 * i)) // 4]          # a quarter and three quarters in
+                supplies.append([x, y, k])
+    data = {"source": "hand-made text map", "credit": "", "size": [W, H], "blocks": blocks,
+            "buildings": buildings, "entrances": entrances, "exit": exit_rect,
+            "hero_start": [round(hero[0]), round(hero[1])],
+            "zombie_starts": [list(map(round, world(c, r))) for c, r in found["z"]],
+            "supplies": supplies,
+            "weapons": [[*map(round, world(c, r)), WEAPON_KINDS[i % len(WEAPON_KINDS)]] for i, (c, r) in enumerate(found["w"])]}
+    img.save(out / "ground.png")
+    (out / "area.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"{name}: {cols}x{n} m, {len(blocks)} blocks, {len(buildings)} house(s), {len(entrances)} entrances")
+    return img, blocks
+
+
+def _merge(cells):
+    """House wall cells (GRID) -> world rectangles (l, b, r, t)."""
+    if not cells:
+        return []
+    return [(c0 * GRID, r0 * GRID, (c1 + 1) * GRID, (r1 + 1) * GRID) for c0, r0, c1, r1 in rects(cells)]
+
+
 if __name__ == "__main__":
     rows = read(sys.argv[1])
-    img, blocks = draw(rows)
-    img.save(sys.argv[2])
-    if len(sys.argv) > 3:
-        debug(img, blocks, rows).save(sys.argv[3])
-    print(f"{len(rows[0])}x{len(rows)} m, {len(blocks)} blocks")
+    if len(sys.argv) > 2 and sys.argv[2].startswith("area:"):         # a whole game area
+        build(rows, sys.argv[2][5:])
+    else:
+        img, blocks = draw(rows)
+        img.save(sys.argv[2])
+        if len(sys.argv) > 3:
+            debug(img, blocks, rows).save(sys.argv[3])
+        print(f"{len(rows[0])}x{len(rows)} m, {len(blocks)} blocks")
