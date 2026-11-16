@@ -302,7 +302,31 @@ def made_action(name):
 def get_action(name):
     """An action by name. 'A~B' is A with the hips and legs held still in B's first pose, so an
     upper-body move (a light shove) plays while the feet stay planted (2026-11-16). Names in
-    made_actions.MADE are built from a pack pose (the stomp)."""
+    made_actions.MADE are built from a pack pose (the stomp).
+    'A^B:f' is A's hips and legs (a walk) under the upper body of B held at frame f - walking with
+    a weapon raised ready (2026-11-16 "자세 잡을 때 하반신이 가만히 있다")."""
+    if "^" in name:
+        made = bpy.data.actions.get(name)
+        if made is not None:
+            return made
+        base_name, upper = name.split("^", 1)
+        upper_name, frame = upper.rsplit(":", 1)
+        base, source = get_action(base_name), get_action(upper_name)
+        if base is None or source is None:
+            return None
+        made = base.copy()
+        made.name = name
+        held = {(fc.data_path, fc.array_index): fc.evaluate(float(frame)) for fc in channel_fcurves(source)}
+        for fc in channel_fcurves(made):
+            bone = fc.data_path.split('"')[1] if '"' in fc.data_path else ""
+            if not bone or bone.startswith(LOWER_BODY):
+                continue                                  # the legs and hips keep walking
+            value = held.get((fc.data_path, fc.array_index))
+            if value is None:
+                continue
+            fc.keyframe_points.clear()
+            fc.keyframe_points.insert(base.frame_range[0], value)
+        return made
     if "~" not in name:
         found = bpy.data.actions.get(name)
         if found is None:

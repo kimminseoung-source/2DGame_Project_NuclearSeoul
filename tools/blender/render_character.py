@@ -39,9 +39,13 @@ PASSES = [
       # 했을 때도 문제가 없게"): feet planted, the arm does the work. Any weapon of a style uses its
       # sheet; the weapon is painted into the hand. stab = a straight thrust, swingh = across the
       # front, chop = overhead and down (made_actions.py).
-      "stab=Punch_Cross~Idle_Loop", "swingh=Swing", "chop=Chop"],
+      "stab=Punch_Cross~Idle_Loop", "swingh=Swing", "chop=Chop",
+      # walking with the weapon held ready (left button held): the walk's legs under the upper
+      # body of each style's raised frame (2026-11-16 "하반신이 가만히 있다")
+      "ready_stab=Walk_Loop^Punch_Cross~Idle_Loop:3", "ready_swingh=Walk_Loop^Swing:6",
+      "ready_chop=Walk_Loop^Chop:6"],
      ["idle=4", "sneak_idle=4", "walk=12", "sneak=12", "run=12", "hurt=3", "down=5", "pickup=4", "push=4",
-      "stomp=6", "stab=7", "swingh=7", "chop=7"],
+      "stomp=6", "stab=7", "swingh=7", "chop=7", "ready_stab=12", "ready_swingh=12", "ready_chop=12"],
      ["--shift-for", "down=16"]),
     (LIB2,
      # Machete combo (2026-11-13, the user's pick from the sheets: "back to this one"):

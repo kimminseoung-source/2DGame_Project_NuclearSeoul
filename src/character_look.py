@@ -69,6 +69,9 @@ class SheetLook:
         blades = Path(folder) / "blade.json"
         self.blades = json.loads(blades.read_text(encoding="utf-8")) if blades.exists() else {}
 
+    def has(self, pose):
+        return pose in self.sheets
+
     def frame_count(self, pose):
         return self.sheets[pose].w // self.CELL_W
 

@@ -218,7 +218,12 @@ class Hero:
             self.look.draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"], held=self.held())
         elif self.ready is not None and self.ready >= weapons.QUICK_PRESS:   # holding the blow raised
             w = self.weapon
-            self.look.draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"], held=self.held())
+            walking = f"ready_{w['style']}"
+            if self.moving and self.look.has(walking):     # stepping with it raised: the legs walk
+                self.look.draw(walking, self.time, x, y, self.facing, distance=self.run_distance, held=self.held())
+            else:
+                self.look.draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"],
+                               held=self.held())
         elif self.moving:
             pose = "sneak" if self.sneaking else "run"
             self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance, held=self.held())

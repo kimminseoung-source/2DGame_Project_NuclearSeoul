@@ -57,6 +57,18 @@
     ],
     "note": "made Chop: raised over the head (frame 2, held), coming down in front on frame 3"
   },
+  "ready_stab": {
+    "stride_m": 1.3,
+    "note": "Walk_Loop legs under the style's raised upper body: the legs follow the ground like the walk"
+  },
+  "ready_swingh": {
+    "stride_m": 1.3,
+    "note": "Walk_Loop legs under the style's raised upper body: the legs follow the ground like the walk"
+  },
+  "ready_chop": {
+    "stride_m": 1.3,
+    "note": "Walk_Loop legs under the style's raised upper body: the legs follow the ground like the walk"
+  },
   "_size": {
     "cell": [
       64,
