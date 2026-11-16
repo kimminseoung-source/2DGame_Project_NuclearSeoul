@@ -18,7 +18,7 @@ import pico2d
 import bag_grid
 import pixel_ui as px
 import ui
-from area import EXIT_NAME
+from area import CREDIT, EXIT_NAME
 from settings import DOT, EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
 import weapons
 from supplies import BAG_CAPACITY, KINDS, bag_weight, item_name, item_text, weight_of
@@ -408,3 +408,5 @@ def draw_summary(game):
              ("다음 구역(지하철)은 3단계에서 · R 다시", DIM, 13)]
     for i, (line, colour, px) in enumerate(lines):
         ui.text_center(WIDTH / 2, b + h - size(34) - i * size(36), line, colour, size(px))
+    if CREDIT:                                      # a real-map area: the map data's licence asks for it
+        ui.text_center(WIDTH / 2, b - size(16), CREDIT, DIM, size(11))

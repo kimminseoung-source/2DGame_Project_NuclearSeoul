@@ -24,6 +24,9 @@ ZOOM_DEFAULT = 3 if DOT_LOOK else 2.0
 SCALE = ZOOM_DEFAULT * DOT      # starting screen px per world unit (play.Game.zoom changes with the wheel)
 LOOK_SUFFIX = "_dot" if DOT_LOOK else ""    # character folders: hero_dot, infected_dot
 AREA_DIR = "area/dot" if DOT_LOOK else "area"
+# Which area is played (2026-11-16 map plan C): "test" = the hand-made street of wrecks (area.py),
+# any other name = an area built from a real map by tools/map/osm_area.py (assets/areas/<name>).
+AREA = os.environ.get("BUSAN_AREA", "seoul_station")
 UI_SCALE = HEIGHT / 432         # HUD text and bars grow with the window
 
 CHEST = 22                      # chest height above the feet, where blows land

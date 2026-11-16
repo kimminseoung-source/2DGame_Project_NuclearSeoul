@@ -108,9 +108,14 @@ class VisionCone:
         sdl2.SDL_SetRenderDrawBlendMode(renderer, sdl2.SDL_BLENDMODE_BLEND)
         ox, oy = origin
         m = self.spoke
+        # only what stands within the light's reach can cast a shadow that shows (a real-map area
+        # has ~150 building rectangles: every ray against all of them was needless work)
+        reach = CONE_RANGE + RANGE_SOFT
+        near = [(l, b, r, t) for l, b, r, t in self.blockers
+                if max(l - eye[0], 0, eye[0] - r) ** 2 + max(b - eye[1], 0, eye[1] - t) ** 2 <= reach * reach]
         for a, angle in enumerate(self.angles):
             ca, sa = cos(angle), sin(angle)
-            hit = ray_hit(eye[0], eye[1], ca, sa, self.blockers) if self.blockers else FAR
+            hit = ray_hit(eye[0], eye[1], ca, sa, near) if near else FAR
             radii = sorted(RADII + (min(hit, FAR - 1), min(hit + SHADOW_SOFT, FAR)))
             for k, radius in enumerate(radii):
                 v = self.vertices[a * m + k]

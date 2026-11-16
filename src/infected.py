@@ -8,7 +8,7 @@ import random
 from math import atan2, cos, hypot, pi
 
 import ui
-from area import BLOCKS, move_body
+from area import BLOCKS, move_body, waypoint
 from settings import TEMPO, ZOMBIE_ARC, ZOMBIE_REACH, ZOMBIE_RECOVER, ZOMBIE_SPEED, ZOMBIE_STRIKE, ZOMBIE_WINDUP
 from vision_cone import ray_hit
 
@@ -190,11 +190,18 @@ class Zombie:
         dist = hypot(dx, dy)
         if dist < 1:
             return dist
+        way = dist
+        if BLOCKS and ray_hit(self.x, self.y, dx / dist, dy / dist, BLOCKS) < dist:
+            wx, wy = waypoint(self.x, self.y, x, y)         # something in the way: go around it
+            dx, dy = wx - self.x, wy - self.y
+            way = hypot(dx, dy)
+            if way < 1:
+                return dist
         self.heading = atan2(dy, dx)
         if abs(dx) > 1:
             self.facing = 1 if dx > 0 else -1
-        step = min(dist, self.speed * dt)
-        move_body(self, dx / dist * step, dy / dist * step)
+        step = min(way, self.speed * dt)
+        move_body(self, dx / way * step, dy / way * step)
         self.walk += step / 32
         return dist
 

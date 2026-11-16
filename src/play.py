@@ -21,7 +21,8 @@ import pixel_ui as px
 import stamina as stamina_rules
 import ui
 from hero import PICKUP_TIME
-from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, WEAPONS_LYING, ZOMBIE_STARTS
+from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_H, ROOM_W, SUPPLIES,
+                  WEAPONS_LYING, ZOMBIE_STARTS)
 from character_look import SheetLook
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
@@ -75,10 +76,16 @@ class Game:
         self.look = 0.0
         self.sounds = Sounds()
         # Rendered in Blender (tools/blender/render_area.py): the ground, and a picture per wreck.
+        # A real-map area brings its own ground (tools/map/osm_area.py); its buildings are in it.
         area_dir = ROOT / "assets" / AREA_DIR
-        self.ground_img = pico2d.load_image(str(area_dir / "ground.png")) if (area_dir / "ground.png").exists() else None
-        self.wreck_imgs = [pico2d.load_image(str(area_dir / f"wreck_{i}.png")) if (area_dir / f"wreck_{i}.png").exists()
-                           else None for i in range(len(BLOCKS))]
+        ground = GROUND if GROUND is not None and DOT_LOOK else area_dir / "ground.png"
+        self.ground_img = pico2d.load_image(str(ground)) if ground.exists() else None
+        pictures = {look: pico2d.load_image(str(area_dir / f"{look}.png")) for look in set(BLOCK_LOOKS)
+                    if (area_dir / f"{look}.png").exists()}
+        self.wreck_imgs = [pictures.get(look) for look in BLOCK_LOOKS]
+        # what is drawn standing up: the wrecks (a building's walls are painted in the ground)
+        self.standing = [(b[1], "block", (b, img)) for b, look, img in zip(BLOCKS, BLOCK_LOOKS, self.wreck_imgs)
+                         if look != "building"]
         self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
         fixed = random.Random(4)            # the same cracks every time, without fixing the game's own luck
         self.cracks = [(fixed.uniform(0, ROOM_W), fixed.uniform(0, ROOM_H), fixed.uniform(-1, 1))
@@ -853,20 +860,19 @@ class Game:
                 if s is near_item and not self.near_exit():
                     self.key_mark(s.x - cx, s.y - cy - 12, s.name)
         # sort everything on the ground by depth: lower on screen = nearer = drawn later
-        things = [(b[1], "block", b) for b in BLOCKS]
+        things = list(self.standing)
         things += [(z.y, "z", z) for z in self.zombies]
         things.append((self.hero.y, "hero", self.hero))
         eye = (self.hero.x, self.hero.y)                  # on the ground
         for _, kind, obj in sorted(things, key=lambda t: -t[0]):
             if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y):
                 continue                                   # out of sight: not drawn at all
-            if kind == "block" and self.wreck_imgs[BLOCKS.index(obj)] is not None:
-                img = self.wreck_imgs[BLOCKS.index(obj)]           # rendered wreck, standing on its block
-                l, b, r, t = obj
+            if kind == "block" and obj[1] is not None:
+                (l, b, r, t), img = obj                            # rendered wreck, standing on its block
                 w, h = img.w / DOT, img.h / DOT                    # its pixels are canvas px
                 img.draw((l + r) / 2 - cx, b - 3 + h / 2 - cy, w, h)
             elif kind == "block":
-                l, b, r, t = obj
+                l, b, r, t = obj[0]
                 pico2d.draw_rectangle(l - cx, b - cy, r - cx, t + 18 - cy, 44, 38, 36, filled=True)
                 pico2d.draw_rectangle(l - cx, t - cy, r - cx, t + 18 - cy, 70, 60, 54, filled=True)
                 pico2d.draw_line(l - cx, t + 18 - cy, r - cx, t + 18 - cy, 140, 120, 96)
