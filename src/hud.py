@@ -61,6 +61,16 @@ def bag_items(game):
     return [(kind, n) for kind, n in game.bag.items() if n and kind in KINDS and (EXPOSURE_ON or kind != "pill")]
 
 
+NOTE_PAPER = (200, 192, 168)       # note.png's paper
+
+
+def note_rect(game):
+    """The goal note on the pixel canvas (l, t, r, b): whole, or folded to a tab."""
+    if game.note_folded:
+        return 6, 7, 6 + px.width("목표", True) + 8, 7 + 15
+    return 6, 7, 6 + 172, 7 + 46
+
+
 def draw_hud(game):
     """The HUD of UI v2 on the pixel canvas (2026-11-16, "AI 티가 안 나게" -> v2, now in the game):
     the goal on a taped note, health and the statuses that ask for something, quick slots, the
@@ -68,12 +78,19 @@ def draw_hud(game):
     hero = game.hero
     if game.condition.bleeding and not hero.dead:          # the screen edge goes red, dithered
         px.blit("bleed_edge.png", 0, 0)
-    # goal: a taped, torn note
-    px.blit("note.png", 6, 7)
-    goal = f"{EXIT_NAME}로"
-    px.text(20, 15, goal, INK_C, bold=True, outline=False)
-    px.rect(20, 29, 20 + px.width(goal, True), 29, BLOOD)                 # a pen underline
-    px.text(20, 32, "붕대·통조림 있으면 챙기기", PENCIL, outline=False)
+    # goal: a taped, torn note; a click folds it to a small tab and opens it again
+    # (2026-11-16 "쪽지를 접고 펼 수 있게": open, it hid what was drawn over the hero in a corner)
+    if game.note_folded:
+        l, t, r, b = note_rect(game)
+        px.rect(l, t, r, b, NOTE_PAPER)
+        px.rect(l, b, r, b, (150, 142, 120))                               # the fold's shadow
+        px.text(l + 4, t + 1, "목표", INK_C, bold=True, outline=False)
+    else:
+        px.blit("note.png", 6, 7)
+        goal = f"{EXIT_NAME}로"
+        px.text(20, 15, goal, INK_C, bold=True, outline=False)
+        px.rect(20, 29, 20 + px.width(goal, True), 29, BLOOD)             # a pen underline
+        px.text(20, 32, "붕대·통조림 있으면 챙기기", PENCIL, outline=False)
     if EXPOSURE_ON:
         px.text(180, 15, f"피폭 {game.exposure:.0f}%", LIGHT)
     draw_status(game)

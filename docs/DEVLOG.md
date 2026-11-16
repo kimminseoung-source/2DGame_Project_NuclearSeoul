@@ -290,3 +290,4 @@
   - **A:** `Zombie.heard`(HEARD_TIME 1초)를 `hear()`에서 켜고, 떠 있던 찾기 "?"를 지웠다. 기는 놈은 머리 높이 32에 띄운다.
   - **B:** `Game.used`(해 본 동작), `TEACH`, `draw_teach`, `key_mark`. 처음엔 키 표시를 발밑에 뒀더니 발밑 물건의 [E]를 가려 머리 위로 옮겼고, 출구 옆에선 숨긴다. `Supply.draw`의 near 인자를 지웠다.
   - **점검:** 17개 모두 통과했다(`docs/planning/teach_marks_ingame.png`).
+- **쪽지 접기:** `Game.note_folded`, `hud.note_rect`(펼침 172×46 / 접힘 "목표" 탭). `press`가 쪽지 위면 접기만 하고 `note_click`으로 놓을 때 공격을 막는다. 접기·펼치기 3번 모두 공격이 나가지 않음, 관련 점검 9개 통과(`docs/planning/note_fold_ingame.png`).

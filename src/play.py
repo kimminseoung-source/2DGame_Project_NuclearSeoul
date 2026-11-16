@@ -61,6 +61,8 @@ class Game:
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
         self.hints_shown = set()            # first-time hints, once per play session
         self.used = set()                   # actions done at least once (their key marks go away)
+        self.note_folded = False            # the goal note, folded to a tab by a click on it
+        self.note_click = False             # this left press was on the note: no blow on release
         self.senses = True                  # F2: infected senses on/off (compare)
         self.real = True                    # F3: realistic look on/off (compare)
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
@@ -237,12 +239,21 @@ class Game:
         return (min(crawlers, key=lambda c: c[0])[1], "ground") if crawlers else None
 
     def press(self, sx, sy):
-        """Left button down: raise the weapon and hold it, aiming with the cursor."""
+        """Left button down: raise the weapon and hold it, aiming with the cursor - or, on the goal
+        note, fold or open it."""
+        l, t, r, b = hud.note_rect(self)
+        if l <= sx / px.K <= r and t <= sy / px.K <= b:
+            self.note_folded = not self.note_folded
+            self.note_click = True
+            return
         self.aim = (sx, sy)
         self.hero.start_ready()
 
     def release(self, sx, sy):
         """Left button up: the blow, at what the cursor aims at."""
+        if self.note_click:
+            self.note_click = False
+            return
         self.click(sx, sy)
 
     def click(self, sx, sy):
