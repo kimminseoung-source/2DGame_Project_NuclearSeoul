@@ -20,10 +20,13 @@ import json
 import random
 import sys
 import xml.etree.ElementTree as ET
-from math import cos, hypot, radians
+from math import atan2, cos, degrees, hypot, radians, sin
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import house  # noqa: E402  (the inside of a building: walls, windows, furniture)
 
 ROOT = Path(__file__).resolve().parents[2]
 SCALE = 32                 # world units per metre: the hero's own scale (54 units ~ 1.7 m)
@@ -38,8 +41,6 @@ ROAD_M = {"motorway": 22, "trunk": 22, "primary": 18, "secondary": 14, "tertiary
           "unclassified": 7, "residential": 7, "living_street": 6, "service": 5}
 ASPHALT, PAVING, GROUT = (58, 60, 66), (98, 96, 90), (78, 76, 72)
 WALL, ROOF, ROOF_EDGE, WINDOW = (46, 42, 42), (74, 68, 64), (104, 96, 88), (24, 26, 30)
-INNER_WALL = (34, 30, 30)
-FLOORS = ((92, 74, 56), (84, 86, 80), (104, 92, 72), (78, 70, 66))   # wood, linoleum, ...
 
 
 def load(path):
@@ -101,16 +102,36 @@ def main(src, name, lat0, lon0, width_m, height_m):
     cols, rows = W // GRID, H // GRID
     out = ROOT / "assets" / "areas" / name
     out.mkdir(parents=True, exist_ok=True)
-    for old in out.glob("roof_*.png"):
+    for old in list(out.glob("roof_*.png")) + list(out.glob("f_*.png")):
         old.unlink()
+    ways, points = load(src)
+    # The map is turned so the place's buildings run along the screen's axes (2026-11-16: Dongja-dong
+    # lies ~30 degrees off north, so its houses came out as jagged steps). North is not shown in the
+    # game; the turn is the building edges' most common direction near the middle.
+    lat_c, lon_c = lat0 + height_m / 2 / my, lon0 + width_m / 2 / mx
+
+    def to_m(ll):
+        return (ll[1] - lon_c) * mx, (ll[0] - lat_c) * my
+
+    votes = [0.0] * 90
+    for tags, lls in ways:
+        if "building" in tags and len(lls) >= 3:
+            pts = [to_m(ll) for ll in lls]
+            for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+                if hypot(x1, y1) < max(width_m, height_m):
+                    votes[int(degrees(atan2(y2 - y1, x2 - x1)) % 90)] += hypot(x2 - x1, y2 - y1)
+    best = max(range(90), key=lambda a: sum(votes[(a + k) % 90] for k in (-1, 0, 1)))
+    turn = radians(best if best < 45 else best - 90)
+    print(f"turned by {degrees(turn):.0f} degrees")
 
     def world(ll):                                         # (lat, lon) -> world units, y up
-        return (ll[1] - lon0) * mx * SCALE, (ll[0] - lat0) * my * SCALE
+        x, y = to_m(ll)
+        x, y = x * cos(-turn) - y * sin(-turn), x * sin(-turn) + y * cos(-turn)
+        return (x + width_m / 2) * SCALE, (y + height_m / 2) * SCALE
 
     def canvas_xy(p):                                      # world -> image px, y down
         return p[0] * DOT, (H - p[1]) * DOT
 
-    ways, points = load(src)
     rng = random.Random(16)
 
     # --- streets and paving --------------------------------------------------------------------
@@ -184,9 +205,17 @@ def main(src, name, lat0, lon0, width_m, height_m):
     occupied = set()                                       # grid cells inside any footprint
     # For now one building to go into (2026-11-16 "건물은 우선 1개만 임시로"): the house that fits
     # nearest the middle of the area; the rest stay solid.
-    fits = [i for i, (poly, area_m2) in enumerate(polys) if 60 <= area_m2 <= ENTER_MAX_M2]
+    # 2026-11-16 (3/4 interiors): a square-on house - its walls run along the grid, so the wall face,
+    # windows and furniture come out clean - then the one nearest the middle.
+    def squareness(poly):
+        xs, ys = [x for x, _ in poly], [y for _, y in poly]
+        a = abs(sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(poly, poly[1:] + poly[:1]))) / 2
+        return a / ((max(xs) - min(xs)) * (max(ys) - min(ys)) or 1)
+    fits = [i for i, (poly, area_m2) in enumerate(polys) if 60 <= area_m2 <= ENTER_MAX_M2
+            and all(128 <= x <= W - 128 and 128 <= y <= H - 128 for x, y in poly)]   # wholly inside
     mid = lambda poly: (sum(x for x, _ in poly) / len(poly), sum(y for _, y in poly) / len(poly))
-    enter = set(sorted(fits, key=lambda i: hypot(mid(polys[i][0])[0] - W / 2, mid(polys[i][0])[1] - H / 2))[:ENTER_COUNT])
+    enter = set(sorted(fits, key=lambda i: (squareness(polys[i][0]) < 0.85,
+                                            hypot(mid(polys[i][0])[0] - W / 2, mid(polys[i][0])[1] - H / 2)))[:ENTER_COUNT])
     for i, (poly, area_m2) in enumerate(polys):
         gmask = Image.new("L", (cols, rows), 0)            # this footprint on the wall grid (y down)
         ImageDraw.Draw(gmask).polygon([(x / GRID, rows - y / GRID) for x, y in poly], fill=255)
@@ -208,11 +237,10 @@ def main(src, name, lat0, lon0, width_m, height_m):
         if len(entry) != 3:
             continue
         poly, area_m2, cells = entry
-        wall = {(c, r) for c, r in cells
-                if any((c + dc, r + dr) not in cells for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)))}
+        wall, face, part, pc = house.plan(cells)
         doors = []
-        for c, r in sorted(wall, key=lambda cell: (cell[1], cell[0])):          # south first
-            for dc, dr in ((0, -1), (1, 0), (-1, 0), (0, 1)):
+        for c, r in sorted(wall - face - part, key=lambda cell: (cell[1], cell[0])):   # south first
+            for dc, dr in ((0, -1), (1, 0), (-1, 0)):      # never through the north wall's face
                 if (c + dc, r + dr) in cells:
                     continue
                 ox, oy = c + dc * 4, r + dr * 4                                # 2 m out: open ground?
@@ -220,8 +248,9 @@ def main(src, name, lat0, lon0, width_m, height_m):
                     doors.append((round((c + 0.5) * GRID / 32) * 32, round((r + 0.5) * GRID / 32) * 32, (dc, dr)))
                 break
         rng.shuffle(doors)
-        doors.sort(key=lambda dd: {(0, -1): 0, (1, 0): 1, (-1, 0): 1, (0, 1): 2}[dd[2]])
-        rooms.append({"i": i, "poly": poly, "area": area_m2, "wall": wall, "doors": doors, "chosen": []})
+        doors.sort(key=lambda dd: {(0, -1): 0, (1, 0): 1, (-1, 0): 1}[dd[2]])
+        rooms.append({"i": i, "poly": poly, "area": area_m2, "wall": wall, "doors": doors, "chosen": [],
+                      "cells": cells, "face": face, "part": part, "pc": pc, "glass": set(), "furniture": []})
 
     def cut(room, door):
         x, y, _ = door
@@ -258,11 +287,23 @@ def main(src, name, lat0, lon0, width_m, height_m):
                 best = seen
         return best
 
-    def unreachable():
-        """Rooms none of whose floor can be walked to from the open street."""
-        seen = open_region([tuple(b[:4]) for b in blocks] + [r for room in rooms for r in merge(room["wall"], GRID)])
-        return [room for room in rooms
-                if not any(inside(room["poly"], (c + 0.5) * 32, (r + 0.5) * 32) for c, r in seen)]
+    def room_rects(room):
+        return merge(room["wall"], GRID) + [tuple(f[1:5]) for f in room["furniture"]]
+
+    def unreachable(whole=False):
+        """Rooms none of whose floor can be walked to from the open street (whole: rooms with
+        any open floor cell that cannot - furniture shutting off a corner or the inner doorway)."""
+        seen = open_region([tuple(b[:4]) for b in blocks] + [r for room in rooms for r in room_rects(room)])
+        shut = []
+        for room in rooms:
+            floor = {(int((c + 0.5) * GRID // 32), int((r + 0.5) * GRID // 32)) for c, r in room["cells"]}
+            rects = room_rects(room)
+            floor = {(c, r) for c, r in floor if not any(
+                l - 10 <= (c + 0.5) * 32 <= rr + 10 and b - 5 <= (r + 0.5) * 32 <= t + 5 for l, b, rr, t in rects)
+                and inside(room["poly"], (c + 0.5) * 32, (r + 0.5) * 32)}
+            if (floor - seen) if whole else not (floor & seen):
+                shut.append(room)
+        return shut
 
     for _ in range(6):                                      # a room no one can get into: one more door
         shut = unreachable()
@@ -275,27 +316,51 @@ def main(src, name, lat0, lon0, width_m, height_m):
                 cut(room, spare[0])
     print("rooms no one can get into:", [room["i"] for room in unreachable()])
 
+    # windows and furniture (tools/map/house.py); furniture that shuts off part of a room goes
+    for room in rooms:
+        doors_at = [(x, y) for x, y, _ in room["chosen"]]
+        room["glass"] = house.windows(room["cells"], room["wall"], room["face"], doors_at, GRID)
+        room["furniture"] = house.furnish(room["cells"], room["wall"], room["face"], doors_at, GRID, rng)
+    for _ in range(len(house.FURNITURE)):
+        shut = unreachable(whole=True)
+        if not shut:
+            break
+        for room in shut:
+            room["furniture"].pop()
+    print("furniture:", [[f[0] for f in room["furniture"]] for room in rooms])
+
     for room in rooms:
         i, poly, area_m2, wall, chosen = room["i"], room["poly"], room["area"], room["wall"], room["chosen"]
-        blocks += [list(r) + ["wall"] for r in merge(wall, GRID)]
-        # floor and walls into the ground; the roof into its own picture
-        floor = FLOORS[i % len(FLOORS)]
+        solid = wall - room["glass"]
+        blocks += [list(r) + ["wall"] for r in merge(solid, GRID)]
+        blocks += [list(r) + ["window"] for r in merge(room["glass"], GRID)]   # bodies stop, light passes
+        for piece, l_, b_, r_, t_, h_m in room["furniture"]:
+            look = f"f_{piece}"
+            blocks.append([l_, b_, r_, t_, look])
+            house.sprite(piece, (r_ - l_) * DOT, (t_ - b_) * DOT, h_m * SCALE * DOT).save(out / f"{look}.png")
+        # floor, the north wall's face, walls and windows into the ground; the roof into its own picture
         flat = [canvas_xy(p) for p in poly]
-        d.polygon(flat, fill=floor)
-        for c, r in wall:
+        d.polygon(flat, fill=PAVING)
+        house.paint(d, room["cells"], wall, room["face"], room["part"], room["pc"], room["glass"], canvas_xy, GRID)
+        # the roof covers exactly the wall grid's cells (the outline drawn in the ground)
+        cs_, rs_ = [c for c, _ in room["cells"]], [r for _, r in room["cells"]]
+        l, b = min(cs_) * GRID, min(rs_) * GRID
+        r_, t = (max(cs_) + 1) * GRID, (max(rs_) + 1) * GRID
+        box = (round(l * DOT), round((H - t) * DOT), round(r_ * DOT), round((H - b) * DOT))
+        mask = Image.new("L", (box[2] - box[0], box[3] - box[1]), 0)
+        md = ImageDraw.Draw(mask)
+        for c, r in room["cells"]:
             x0, y0 = canvas_xy((c * GRID, (r + 1) * GRID))
             x1, y1 = canvas_xy(((c + 1) * GRID, r * GRID))
-            d.rectangle((x0, y0, x1 - 1, y1 - 1), fill=INNER_WALL)
-        l, b = min(x for x, _ in poly), min(y for _, y in poly)
-        r_, t = max(x for x, _ in poly), max(y for _, y in poly)
-        box = (int(l * DOT), int((H - t) * DOT), int(r_ * DOT) + 1, int((H - b) * DOT) + 1)
-        mask = Image.new("L", (box[2] - box[0], box[3] - box[1]), 0)
-        ImageDraw.Draw(mask).polygon([(x - box[0], y - box[1]) for x, y in flat], fill=255)
+            md.rectangle((round(x0) - box[0], round(y0) - box[1], round(x1) - 1 - box[0], round(y1) - 1 - box[1]), fill=255)
         roof_img = Image.new("RGBA", mask.size, (0, 0, 0, 0))
-        paint_roof(roof_img, mask, offset=box[:2])
+        house.front(roof_img, mask, round(shift), box, room["cells"], room["glass"],
+                    [(x, y) for x, y, _ in chosen], canvas_xy, GRID)
         roof_img.putalpha(mask)
         roof_img.save(out / f"roof_{len(buildings)}.png")
-        buildings.append({"poly": [[round(x), round(y)] for x, y in poly], "roof": f"roof_{len(buildings)}",
+        # a square house's outline is its cells' box, so "inside" matches the walls drawn
+        buildings.append({"poly": [[l, b], [r_, b], [r_, t], [l, t]] if squareness(poly) >= 0.85
+                          else [[round(x), round(y)] for x, y in poly], "roof": f"roof_{len(buildings)}",
                           "box": [box[0] / DOT, H - box[3] / DOT, box[2] / DOT, H - box[1] / DOT],
                           "doors": [[x, y] for x, y, _ in chosen]})
 

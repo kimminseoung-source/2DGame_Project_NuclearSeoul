@@ -172,7 +172,7 @@ class Zombie:
             if off > SIGHT_HALF:
                 return False
         return dist < 1 or ray_hit(self.x, self.y, dx / dist, dy / dist,
-                                   blocks_between(self.x, self.y, hero.x, hero.y)) >= dist
+                                   blocks_between(self.x, self.y, hero.x, hero.y, sight=True)) >= dist
 
     def hear(self, x, y, radius, origin=None):
         """A noise of `radius` px; (x, y) is where it seems to come from (a muffled sound is

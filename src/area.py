@@ -77,26 +77,38 @@ def building_at(x, y):
 
 # The blocks by place (a real-map area has hundreds of wall pieces): each BUCKET square lists the
 # blocks touching it, so a question about one spot only looks at the few nearby.
+# Windows and furniture stop bodies but not light or sight (2026-11-16 house interiors): the sight
+# index leaves them out.
+def see_through(look):
+    return look == "window" or look.startswith("f_")
+
+
 BUCKET = 128
-_buckets = {}
-for _b in BLOCKS:
+_buckets, _sight_buckets = {}, {}
+for _b, _look in zip(BLOCKS, BLOCK_LOOKS):
     for _i in range(int((_b[0] - 32) // BUCKET), int((_b[2] + 32) // BUCKET) + 1):
         for _j in range(int((_b[1] - 32) // BUCKET), int((_b[3] + 32) // BUCKET) + 1):
             _buckets.setdefault((_i, _j), []).append(_b)
+            if not see_through(_look):
+                _sight_buckets.setdefault((_i, _j), []).append(_b)
 
 
-def near_blocks(l, b, r, t):
-    """The blocks that may touch the box (l, b, r, t)."""
-    found = set()
+def near_blocks(l, b, r, t, sight=False):
+    """The blocks that may touch the box (l, b, r, t); sight: only those that block the view."""
+    index, found = _sight_buckets if sight else _buckets, set()
     for i in range(int(l // BUCKET), int(r // BUCKET) + 1):
         for j in range(int(b // BUCKET), int(t // BUCKET) + 1):
-            found.update(_buckets.get((i, j), ()))
+            found.update(index.get((i, j), ()))
     return list(found)
 
 
-def blocks_between(x1, y1, x2, y2):
-    """The blocks that may stand between two points (for sight and light rays)."""
-    return near_blocks(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
+def sight_blocks(l, b, r, t):
+    return near_blocks(l, b, r, t, sight=True)
+
+
+def blocks_between(x1, y1, x2, y2, sight=False):
+    """The blocks that may stand between two points (sight: for the view and light)."""
+    return near_blocks(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2), sight)
 
 
 def blocked(x, y, pad=8):

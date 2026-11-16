@@ -60,7 +60,7 @@ class Game:
         self.zombie_look = SheetLook(ROOT / f"assets/characters/infected{LOOK_SUFFIX}")
         self.aim = (None, None)
         self.deaths = 0
-        self.vision = VisionCone(BLOCKS, area.near_blocks)    # wrecks and walls block the light
+        self.vision = VisionCone(BLOCKS, area.sight_blocks)   # wrecks and walls block the light, windows don't
         self.hurt_flash = 0.0               # s left of the red screen edge after the hero is hit
         self.used = set()                   # actions done at least once (their key marks go away)
         self.note_folded = False            # the goal note, folded to a tab by a click on it
@@ -81,14 +81,21 @@ class Game:
         area_dir = ROOT / "assets" / AREA_DIR
         ground = GROUND if GROUND is not None and DOT_LOOK else area_dir / "ground.png"
         self.ground_img = pico2d.load_image(str(ground)) if ground.exists() else None
-        pictures = {look: pico2d.load_image(str(area_dir / f"{look}.png")) for look in set(BLOCK_LOOKS)
-                    if (area_dir / f"{look}.png").exists()}
+        pictures = {}
+        for look in set(BLOCK_LOOKS):                      # the area's own (furniture), then the shared (wrecks)
+            for folder in (area.AREA_PATH, area_dir):
+                if folder is not None and (folder / f"{look}.png").exists():
+                    pictures[look] = pico2d.load_image(str(folder / f"{look}.png"))
+                    break
         self.wreck_imgs = [pictures.get(look) for look in BLOCK_LOOKS]
         self.roofs = [pico2d.load_image(str(area.AREA_PATH / f"{bd['roof']}.png")) for bd in area.BUILDINGS] \
             if DOT_LOOK else []
-        # what is drawn standing up: the wrecks (a building's walls are painted in the ground)
-        self.standing = [(b[1], "block", (b, img)) for b, look, img in zip(BLOCKS, BLOCK_LOOKS, self.wreck_imgs)
-                         if look != "building"]
+        # what is drawn standing up: wrecks and furniture (buildings, walls and windows are painted
+        # in the ground)
+        # in, and the building each stands in (its roof hides it from outside)
+        self.standing = [(b[1], "block", (b, img, area.building_at((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)))
+                         for b, look, img in zip(BLOCKS, BLOCK_LOOKS, self.wreck_imgs)
+                         if look not in ("building", "wall", "window")]
         self.sounds.loop("ai_wind_ruins", 0.35)            # the area's ambience (AI-made, if present)
         fixed = random.Random(4)            # the same cracks every time, without fixing the game's own luck
         self.cracks = [(fixed.uniform(0, ROOM_W), fixed.uniform(0, ROOM_H), fixed.uniform(-1, 1))
@@ -879,11 +886,16 @@ class Game:
         things += [(z.y, "z", z) for z in self.zombies]
         things.append((self.hero.y, "hero", self.hero))
         eye = (self.hero.x, self.hero.y)                  # on the ground
+        inside = area.building_at(*eye)
         for _, kind, obj in sorted(things, key=lambda t: -t[0]):
             if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y):
                 continue                                   # out of sight: not drawn at all
+            if kind == "z" and area.BUILDINGS and area.building_at(obj.x, obj.y) not in (None, inside):
+                continue                                   # inside a house, under its roof
+            if kind == "block" and obj[2] is not None and obj[2] != inside:
+                continue                                   # furniture under a roof seen from outside
             if kind == "block" and obj[1] is not None:
-                (l, b, r, t), img = obj                            # rendered wreck, standing on its block
+                (l, b, r, t), img, _ = obj                         # rendered wreck or furniture
                 w, h = img.w / DOT, img.h / DOT                    # its pixels are canvas px
                 img.draw((l + r) / 2 - cx, b - 3 + h / 2 - cy, w, h)
             elif kind == "block":
