@@ -7,7 +7,6 @@ journey (stage 03). Each kind is just data here, so new supplies need only a new
 
 import pico2d
 
-import ui
 
 PICK_RANGE = 28            # px from the hero's feet
 PICK_NOISE = 100           # px the rummaging carries
@@ -58,14 +57,12 @@ class Supply:
     def name(self):
         return KINDS[self.kind][0]
 
-    def draw(self, cx, cy, near=False):
+    def draw(self, cx, cy):
         _, body, band = KINDS[self.kind][:3]
         x, y = self.x - cx, self.y - cy
         pico2d.draw_rectangle(x - 6, y - 2, x + 6, y + 6, 14, 14, 18, filled=True)        # shadow / outline
         pico2d.draw_rectangle(x - 5, y - 1, x + 5, y + 5, *body, filled=True)
         pico2d.draw_rectangle(x - 5, y + 1, x + 5, y + 3, *band, filled=True)
-        if near:
-            ui.world_text_center(x, y - 12, f"E {self.name}", (240, 230, 190), 12)   # under it, clear of the body
 
 
 def has_final_consonant(word):

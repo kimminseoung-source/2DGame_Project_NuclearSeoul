@@ -27,6 +27,9 @@ SPOT_ALERT = 1.5                # ...one already searching spots more
 FRONT_SOUND = 0.6               # radians: a sound this close to where it faces needs no turn
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
+# Heard (2026-11-16 "설명 글 없이도 알 수 있게"): an infected that hears a noise turns its head toward
+# it and a "?" pops over it for a moment - the player learns that sound draws them without a line.
+HEARD_TIME = 1.0                # s the "?" stays
 BLIND_WINDUP = 0.25 * TEMPO     # s of warning when it strikes from outside the hero's sight
 SEEN_BEFORE_STRIKE = 0.5        # s it must have seen the hero before it strikes (Zomboid: 0.5)
 ALERT_TURN = (0.3, 0.6)         # s it spends turning toward a noise before going
@@ -73,6 +76,7 @@ class Zombie:
         self.timer = 0.0
         self.windup = ZOMBIE_WINDUP
         self.spotted = 0.0           # s left of the "!" shown the moment it spots the hero
+        self.heard = 0.0             # s left of the "?" shown the moment it hears a noise
         self.seen_time = 0.0         # how long it has kept the hero in sight
         self.turn_from = self.turn_to = 0.0
         self.time = random.random()
@@ -169,6 +173,8 @@ class Zombie:
             return
         toward = atan2(y - self.y, x - self.x)
         ahead = abs((toward - self.heading + pi) % (2 * pi) - pi) <= FRONT_SOUND
+        if self.state == "idle":
+            self.heard = HEARD_TIME                          # "?": it heard that
         if self.state == "idle" and ahead:                   # in front: no need to turn, just go
             self.state, self.target, self.memory = "search", (x, y), MEMORY
         elif self.state == "idle":
@@ -195,6 +201,7 @@ class Zombie:
     def update(self, dt, hero, game):
         self.time += dt
         self.spotted = max(0.0, self.spotted - dt)
+        self.heard = max(0.0, self.heard - dt)
         if self.state == "dead":
             self.timer += dt
             move_body(self, self.death[0] * dt, self.death[1] * dt)
@@ -291,8 +298,6 @@ class Zombie:
                            if moving or self.state in ("windup", "strike") else 0.0, x, y, self.facing)
             if self.state == "windup" and self.show_marks:
                 ui.world_text_center(x, y + 30, "!", (255, 120, 80), 22)
-            elif self.state == "search" and self.show_marks:
-                ui.world_text_center(x, y + 30, "?", (220, 200, 120), 18)
         elif self.state == "windup":
             self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
             if self.show_marks:
@@ -308,11 +313,12 @@ class Zombie:
             self.look.draw("hurt", 1 - self.timer / whole, x, y, self.facing)
         elif self.state in ("chase", "search"):
             self.look.draw("walk", self.time, x, y, self.facing, distance=self.walk)
-            if self.state == "search":
-                if self.show_marks:
-                    ui.world_text_center(x, y + 66, "?", (220, 200, 120), 18)
         else:
             self.look.draw("idle", self.time, x, y, self.facing)
+        top = 32 if self.prone else 68
+        if self.heard > 0 and self.spotted <= 0 and self.state in ("alert", "search") and self.show_marks:
+            pop = 1 + 0.4 * max(0.0, self.heard - HEARD_TIME + 0.15) / 0.15        # pops in, then settles
+            ui.world_text_center(x, y + top, "?", (220, 200, 120), round(18 * pop))
         if self.spotted > 0 and self.state not in ("dead", "windup") and self.show_marks:
             pop = 1 + 0.4 * max(0.0, self.spotted - SPOTTED_TIME + 0.15) / 0.15   # pops in, then settles
-            ui.world_text_center(x, y + 68, "!", (255, 220, 90), round(22 * pop))
+            ui.world_text_center(x, y + top, "!", (255, 220, 90), round(22 * pop))

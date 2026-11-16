@@ -60,6 +60,7 @@ class Game:
         self.deaths = 0
         self.vision = VisionCone(BLOCKS)    # wrecks block the light
         self.hints_shown = set()            # first-time hints, once per play session
+        self.used = set()                   # actions done at least once (their key marks go away)
         self.senses = True                  # F2: infected senses on/off (compare)
         self.real = True                    # F3: realistic look on/off (compare)
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
@@ -92,7 +93,7 @@ class Game:
         self.slow = False
         self.slow_blend = 0.0
         self.exposure = 0.0
-        self.message = "물자를 챙겨 지하철 입구로 · E 줍기/나가기 · 1 붕대 · 좌클릭 베기 · Space 구르기 · F3 연출 비교"
+        self.message = ""                  # the keys are taught by marks under the hero (TEACH)
         self.cleared = False
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
         self.spawn_in = random.uniform(*SPAWN_EVERY)
@@ -260,6 +261,8 @@ class Game:
             aim = (aim[0], "torso")                      # not charged: the torso, whatever the aim
         self.hero.start_slash(ax, ay, stomp=stomp, aim=aim)
         if self.hero.slash is not None and self.hero.slash is not before:
+            self.used.add("attack")
+        if self.hero.slash is not None and self.hero.slash is not before:
             self.hero.slash["quiet"] = False
             self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
 
@@ -329,6 +332,7 @@ class Game:
             rolled = self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
                                           keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
             if rolled:
+                self.used.add("roll")
                 self.sounds.play("roll", 0.6)
             elif self.hero.stamina.tired_flash > 0:
                 self.message = "숨이 차서 구를 수 없다"
@@ -372,6 +376,7 @@ class Game:
         near_weapon = self.nearest_weapon()
         if near_weapon is not None and self.hero.free:
             self.take_weapon(near_weapon)
+            self.used.add("pick")
             return
         item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
         if item is None or self.hero.pickup > 0 or self.hero.slash or self.hero.roll > 0:
@@ -382,6 +387,7 @@ class Game:
         self.hero.pickup = PICKUP_TIME                     # a short crouch to pick it up
         item.taken = True
         self.bag[item.kind] += 1
+        self.used.add("pick")
         self.message = f"{supply_rules.with_object_particle(item.name)} 챙겼다" + (f" ({supply_rules.USE_KEYS[item.kind]}로 사용)"
                                                    if item.kind in supply_rules.USE_KEYS else "")
         self.sounds.play("pickup", 0.8)
@@ -460,8 +466,12 @@ class Game:
         if self.left or self.bag_open:                     # summary or bag open: the world waits
             return
         self.clock += real_dt
-        if self.clock > 1.0:
-            self.hint("sneak", "Ctrl 살금살금 · 소리가 피폭체를 부른다 · 좌클릭을 누르고 있으면 차징")
+        if hero.moving:
+            self.used.add("move")
+        if hero.sneaking:
+            self.used.add("sneak")
+        if hero.ready is not None and hero.charge >= 1.0:
+            self.used.add("charge")
         self.sounds.listener = (hero.x, hero.y)
         if self.slow != self.was_slow and not hero.dead:
             self.sounds.play("slow_in" if self.slow else "slow_out", 0.6)
@@ -767,6 +777,22 @@ class Game:
                 pico2d.draw_rectangle(x0, min(y0, y0 + 5 * dy), x0 + 1, max(y0, y0 + 5 * dy), *colour, filled=True)
             ui.world_text_center(z.x - cx, z.y + (24 if z.prone else 62) - cy, weapons.PART_NAMES[part], colour, 12)
 
+    # Keys taught by doing (2026-11-16 "설명 글이 안 떠도 유저가 알 수 있게" → B): small key marks over
+    # the hero's head (under it they hid the [E] of a thing at the feet), two at a time, each gone once that action has been done. No sentences.
+    TEACH = (("move", "[WASD] 이동"), ("attack", "[클릭] 공격"), ("roll", "[Space] 구르기"),
+             ("charge", "[누르고 있기] 조준"), ("sneak", "[Ctrl] 살금"))
+
+    def key_mark(self, x, y, name):
+        """Over a thing E picks up: "[E]" until something has been picked up once, then its name."""
+        ui.world_text_center(x, y, name if "pick" in self.used else "[E]", (240, 230, 190), 12)
+
+    def draw_teach(self, cx, cy):
+        if self.left or self.hero.dead or self.near_exit():      # the exit's [E] goes there
+            return
+        left = [text for action, text in self.TEACH if action not in self.used][:2]
+        for i, text in enumerate(left):
+            ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 76 + i * 13, text, (214, 208, 190), 12)   # over the head
+
     def draw_world_labels(self):
         """Words placed in the world, written crisp on the screen in the pixel font."""
         labels, ui.world_labels = ui.world_labels or [], None
@@ -806,11 +832,13 @@ class Game:
                 img = weapons.image(weapons.WEAPONS[name]["sprite"])
                 img.draw(x - cx, y - cy, img.w / DOT, img.h / DOT)
             if w is near_weapon and not self.near_exit():
-                ui.world_text_center(x - cx, y - cy - 12, f"E {weapons.WEAPONS[name]['name']}", (240, 230, 190), 12)
+                self.key_mark(x - cx, y - cy - 12, weapons.WEAPONS[name]["name"])
         near_item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y) if near_weapon is None else None
         for s in self.supplies:
             if not s.taken:
-                s.draw(cx, cy, near=s is near_item and not self.near_exit())
+                s.draw(cx, cy)
+                if s is near_item and not self.near_exit():
+                    self.key_mark(s.x - cx, s.y - cy - 12, s.name)
         # sort everything on the ground by depth: lower on screen = nearer = drawn later
         things = [(b[1], "block", b) for b in BLOCKS]
         things += [(z.y, "z", z) for z in self.zombies]
@@ -843,7 +871,8 @@ class Game:
         pico2d.draw_rectangle(ex - 34, ey - 7, ex + 34, ey + 9, 30, 120, 70, filled=True)
         ui.world_text_center(ex, ey + 1, EXIT_NAME, (220, 255, 225), 11)
         if self.near_exit() and not self.left:
-            ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "E 나가기", (220, 255, 225), 12)
+            ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "[E]", (220, 255, 225), 12)
+        self.draw_teach(cx, cy)
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
 
