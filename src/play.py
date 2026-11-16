@@ -21,7 +21,7 @@ import pixel_ui as px
 import stamina as stamina_rules
 import ui
 from hero import PICKUP_TIME
-from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, ZOMBIE_STARTS
+from area import BLOCKS, ENTRANCES, EXIT, EXIT_NAME, ROOM_H, ROOM_W, SUPPLIES, WEAPONS_LYING, ZOMBIE_STARTS
 from character_look import SheetLook
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
@@ -104,6 +104,7 @@ class Game:
         self.hero_steps = 0
         self.siren_in = random.uniform(15, 30)
         self.supplies = [Supply(x, y, kind) for x, y, kind in SUPPLIES if EXPOSURE_ON or kind != "pill"]
+        self.ground_weapons = [[x, y, name] for x, y, name in WEAPONS_LYING]    # [x, y, weapon key]
         self.condition = Condition()         # tension, wounds (status icons)
         self.death_cause, self.death_time = "", 0.0
         self.stains = []             # blood on the ground (realistic look)
@@ -311,6 +312,10 @@ class Game:
             self.message = "구역을 빠져나왔다 · R 다시"
             self.sounds.play("exit", 0.8)
             return
+        near_weapon = self.nearest_weapon()
+        if near_weapon is not None and self.hero.free:
+            self.swap_weapon(near_weapon)
+            return
         item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
         if item is None or self.hero.pickup > 0 or self.hero.slash or self.hero.roll > 0:
             return
@@ -325,6 +330,21 @@ class Game:
         self.sounds.play("pickup", 0.8)
         if self.senses:
             self.make_noise(supply_rules.PICK_NOISE)
+
+    def nearest_weapon(self):
+        hero = self.hero
+        near = [w for w in self.ground_weapons if hypot(w[0] - hero.x, w[1] - hero.y) <= supply_rules.PICK_RANGE]
+        return min(near, key=lambda w: hypot(w[0] - hero.x, w[1] - hero.y)) if near else None
+
+    def swap_weapon(self, lying):
+        """E on a weapon on the ground: take it, leave the one in hand in its place."""
+        hero = self.hero
+        held = next(k for k, v in weapons.WEAPONS.items() if v is hero.weapon)
+        hero.weapon = weapons.WEAPONS[lying[2]]
+        lying[2] = held
+        hero.pickup = PICKUP_TIME
+        self.message = f"{supply_rules.with_object_particle(hero.weapon['name'])} 들었다"
+        self.sounds.play("pickup", 0.8)
 
     def hero_sees(self, zombie):
         """Is the infected inside the hero's view cone? (The small lit circle around the body
@@ -689,7 +709,15 @@ class Game:
             pico2d.draw_line(l + 4 - cx, b + 6 + i * 12 - cy, r - 4 - cx, b + 6 + i * 12 - cy, 60, 64, 66)
         pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 90, 96, 92)
         draw_stains(self.stains, cx, cy)
-        near_item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
+        near_weapon = self.nearest_weapon()
+        for w in self.ground_weapons:                       # weapons lying flat on the ground
+            x, y, name = w
+            if DOT_LOOK:
+                img = weapons.image(weapons.WEAPONS[name]["sprite"])
+                img.draw(x - cx, y - cy, img.w / DOT, img.h / DOT)
+            if w is near_weapon and not self.near_exit():
+                ui.world_text_center(x - cx, y - cy - 12, f"E {weapons.WEAPONS[name]['name']}", (240, 230, 190), 12)
+        near_item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y) if near_weapon is None else None
         for s in self.supplies:
             if not s.taken:
                 s.draw(cx, cy, near=s is near_item and not self.near_exit())

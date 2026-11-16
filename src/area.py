@@ -11,6 +11,8 @@ ENTRANCES = [((12, 420), "left"), ((988, 300), "right"), ((988, 90), "right"),
              ((520, 628), "top"), ((120, 628), "top"), ((760, 12), "bottom")]
 HERO_START = (100.0, 300.0)
 # Supplies lying around: (x, y, kind) - see supplies.py
+# Weapons lying around (weapons.py): E swaps one for the weapon in hand, which is left there.
+WEAPONS_LYING = [(300, 200, "knife"), (820, 380, "bat"), (620, 250, "pipe"), (420, 560, "axe")]
 SUPPLIES = [(330, 380, "can"), (560, 200, "pill"), (700, 500, "bandage"), (180, 470, "can"),
             (880, 140, "pill"), (450, 90, "bandage"), (760, 320, "can")]   # pills only with exposure on
 # The way out of this area: a subway entrance in the far corner (left, bottom, right, top).

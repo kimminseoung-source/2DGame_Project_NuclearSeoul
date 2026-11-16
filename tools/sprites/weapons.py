@@ -71,9 +71,57 @@ def machete_dot():
     return img
 
 
+def _sprite(rows, colours):
+    """A small sprite from text rows: each character a pixel ('.' empty, others keys of colours)."""
+    img = Image.new("RGBA", (max(len(r) for r in rows), len(rows)))
+    px = img.load()
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                px[x, y] = colours[ch]
+    return img
+
+
+WOOD = {"w": (112, 78, 46, 255), "W": (150, 108, 64, 255), "d": (70, 48, 30, 255)}
+STEEL = {"s": (150, 156, 164, 255), "e": (214, 218, 222, 255), "g": (60, 60, 64, 255), "k": (46, 34, 28, 255)}
+
+
+def knife_dot():
+    """A kitchen knife, 9 px: dark handle, short bright blade (the stab)."""
+    return _sprite(["....sss..",
+                    "kkkgeeee.",
+                    "........."], STEEL)
+
+
+def bat_dot():
+    """A wooden baseball bat, 17 px: thin wrapped handle widening to the barrel."""
+    return _sprite([".........WWWWWWW.",
+                    "dwwwwwwwwwwwwwwww",
+                    "........dwwwwwwd."], WOOD)
+
+
+def pipe_dot():
+    """A length of steel pipe, 17 px, with a rusty band and a dark open end."""
+    c = {"p": (110, 116, 122, 255), "P": (150, 156, 162, 255), "r": (128, 72, 48, 255), "o": (40, 42, 46, 255)}
+    return _sprite(["PPPPPPPPPrrPPPPPo",
+                    "ppppppppprrpppppo"], c)
+
+
+def axe_dot():
+    """A fire axe, 14 px: a wooden handle with a red head and a bright edge at the end."""
+    c = dict(WOOD, h=(168, 34, 30, 255), H=(196, 60, 46, 255), e=(214, 218, 222, 255))
+    return _sprite(["..........HHe.",
+                    "dwwwwwwwwwhhe.",
+                    "..........hhe.",
+                    "...........he."], c)
+
+
 WEAPONS = {"machete": machete, "bat": concept_bat}
+# The dot look's weapons, drawn for the 32 px person and held in the game (not painted into the
+# sheets): any weapon here can be held by any character without new animation.
+DOT_SPRITES = {"machete": machete_dot, "knife": knife_dot, "bat": bat_dot, "pipe": pipe_dot, "axe": axe_dot}
 # Weapons drawn for the small dot look; others are shrunk from the full-size drawing.
-DOT_WEAPONS = {"machete": machete_dot}
+DOT_WEAPONS = DOT_SPRITES
 
 
 def get(name, person_px=54):
@@ -85,3 +133,16 @@ def get(name, person_px=54):
         k = person_px / 54
         return big.resize((max(3, round(big.width * k)), max(2, round(big.height * k))), Image.NEAREST)
     return WEAPONS[name]()
+
+
+def export_dot(out):
+    """Write every dot weapon sprite to `out`/<name>.png (assets/weapons, read by the game)."""
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    for name, make in DOT_SPRITES.items():
+        make().save(out / f"{name}.png")
+    return sorted(DOT_SPRITES)
+
+
+if __name__ == "__main__":
+    print(export_dot(ROOT / "assets" / "weapons"))

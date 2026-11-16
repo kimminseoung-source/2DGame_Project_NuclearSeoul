@@ -25,6 +25,7 @@ LegacyLook wraps the first hand-drawn hero sheets so the old art keeps working.
 """
 
 import json
+from math import atan2, cos, sin
 from pathlib import Path
 
 import pico2d
@@ -122,7 +123,9 @@ class SheetLook:
     def trail_from(self, pose):
         return self.meta.get(pose, {}).get("trail_from", 1)
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0):
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None):
+        """`held`: a weapon image (lying along +x, grip 2 px from its left end, middle row) drawn
+        in the hand on the hand's line of this frame (blade.json), so any weapon fits any sheet."""
         fixed = None
         if pose not in self.sheets:
             pose, fixed = FALLBACK.get(pose, ("idle", None))
@@ -140,6 +143,18 @@ class SheetLook:
         )
         if alpha < 1:
             image.opacify(1.0)
+        if held is not None:
+            self.draw_held(held, pose, frame, x, feet_y, facing)
+
+    def draw_held(self, held, pose, frame, x, feet_y, facing):
+        lines = self.blade_lines(pose, x, feet_y, facing)
+        if not lines or frame >= len(lines) or lines[frame] is None:
+            return
+        (gx, gy), (tx, ty) = lines[frame]
+        ang = atan2(ty - gy, tx - gx)
+        w, h = held.w / self.k, held.h / self.k                 # its pixels are canvas pixels
+        off = (held.w / 2 - 2) / self.k                         # image centre from the grip
+        held.composite_draw(ang, "v" if cos(ang) < 0 else "", gx + cos(ang) * off, gy + sin(ang) * off, w, h)
 
     def portrait_clip(self):
         return (self.sheets["idle"], *self.PORTRAIT)

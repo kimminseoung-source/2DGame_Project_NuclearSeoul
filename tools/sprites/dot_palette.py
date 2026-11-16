@@ -87,7 +87,8 @@ def remap(f, palette, cache):
 
 def main(folders):
     area = shrink_area()
-    files = list(sheets(folders)) + area
+    weapons = sorted((ROOT / "assets" / "weapons").glob("*.png"))     # held in the hand by the game
+    files = list(sheets(folders)) + area + weapons
     palette = build_palette(files)
     swatch = Image.new("RGB", (len(palette), 1))
     swatch.putdata(palette)

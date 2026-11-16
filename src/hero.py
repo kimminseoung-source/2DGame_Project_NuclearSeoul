@@ -7,6 +7,7 @@ from math import atan2, cos, hypot, sin
 import sdl2
 
 import stamina as breath
+from settings import DOT_LOOK
 import weapons
 from area import HERO_START, move_body
 from settings import (CHEST, HERO_HP, HURT_REACT, ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, RUN_SPEED,
@@ -71,6 +72,10 @@ class Hero:
         self.reeling = HURT_REACT
         self.slash = None                       # a blow breaks off the hero's own swing
         self.shove = 0.0
+
+    def held(self):
+        """The weapon drawn in the hand (the dot look's sheets are empty-handed), or None."""
+        return weapons.image(self.weapon["sprite"]) if DOT_LOOK else None
 
     def start_ready(self):
         """Left button pressed: raise the weapon and hold it (slow walk, a little stamina)."""
@@ -198,23 +203,23 @@ class Hero:
         if self.dead:
             self.look.draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
         elif self.reeling > 0:                 # reels from the blow (was: blinking)
-            self.look.draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing)
+            self.look.draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing, held=self.held())
         elif self.pickup > 0:
-            self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing)
+            self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held())
         elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
-            self.look.draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing)
+            self.look.draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held())
         elif self.roll > 0:
             face = 1 if self.roll_dir[0] >= 0 else -1
             self.look.draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,
-                           distance=self.run_distance + (1 - self.roll / ROLL_TIME) * 3)
+                           distance=self.run_distance + (1 - self.roll / ROLL_TIME) * 3, held=self.held())
         elif self.slash:
             s = self.slash
-            self.look.draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"])
+            self.look.draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"], held=self.held())
         elif self.ready is not None and self.ready >= weapons.QUICK_PRESS:   # holding the blow raised
             w = self.weapon
-            self.look.draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"])
+            self.look.draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"], held=self.held())
         elif self.moving:
             pose = "sneak" if self.sneaking else "run"
-            self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance)
+            self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance, held=self.held())
         else:
-            self.look.draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing)
+            self.look.draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing, held=self.held())

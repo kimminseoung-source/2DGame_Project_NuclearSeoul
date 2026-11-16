@@ -81,7 +81,9 @@ def passes_of(costume):
 # Sprite sizes (2026-11-16 "도트 형식으로"): "full" is the original 54 px person in 96 x 64 cells,
 # "dot" a 32 px person in 64 x 48 cells drawn as pixel art (the game shows it on a pixel canvas).
 SIZES = {"full": {"cell": (96, 64), "person_px": 54, "feet": 4},
-         "dot": {"cell": (64, 48), "person_px": 32, "feet": 3}}
+         "dot": {"cell": (64, 48), "person_px": 32, "feet": 3, "empty_handed": True}}
+# empty_handed: the sheets show no weapon, only the hand's line per frame (blade.json); the game
+# draws whatever weapon is held on that line, so a new weapon needs no new sheets.
 SIZE = SIZES["full"]
 
 
@@ -154,7 +156,7 @@ def render(spec):
                         "--id", str(passes / "id"), "--light", str(passes / "light"),
                         "--poses", *poses, "--out", str(out), "--outfit", str(costume),
                         *([] if data.get("backpack", True) else ["--no-pack"]),
-                        "--weapon", data.get("weapon", "machete"),
+                        "--weapon", "none" if SIZE.get("empty_handed") else data.get("weapon", "machete"),
                         "--cell", *map(str, SIZE["cell"]), "--person-px", str(SIZE["person_px"])], check=True)
     elif "repaint" in data:
         # Rotoscoping: part IDs, light and the clothes' own texture, then repaint with the

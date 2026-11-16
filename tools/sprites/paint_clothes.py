@@ -254,12 +254,14 @@ def blade_line(part, pose, weapon):
     """The weapon in one cell as [grip x, grip y, tip x, tip y] (cell pixels, y down), or None.
     The game draws the swing trail along this line, so the trail follows the blade."""
     near = cells(part, {"hands_r"})
-    if not near or weapon is None:
+    if not near:
         return None
     gx, gy = grip_point(near)
     dx, dy = pose["bat_dir"]
     norm = math.hypot(dx, dy) or 1
-    length = weapon.width - 2
+    # Empty-handed sheets (the dot look draws the held weapon in the game, 2026-11-16 "무기를 바꿔도
+    # 동작을 안 만들어도 되게끔") still record the hand's line, at a nominal 10 px.
+    length = weapon.width - 2 if weapon is not None else 10
     return [round(gx, 1), round(gy, 1), round(gx + dx / norm * length, 1), round(gy + dy / norm * length, 1)]
 
 

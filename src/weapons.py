@@ -22,9 +22,12 @@ PARTS = (("legs", 0, 18), ("torso", 18, 40), ("head", 40, 60))
 PART_HALF_WIDTH = 13            # world units either side of the infected's middle
 PART_NAMES = {"head": "머리", "torso": "몸통", "legs": "다리"}
 
+# Each weapon: its style's motion ("pose": a hero sheet), timing, reach, damage per part, stamina,
+# push, and its sprite (assets/weapons/<sprite>.png, drawn in the hand on every frame by the game -
+# 2026-11-16 "무기를 바꿔도 동작을 안 만들어도 되게끔"). Numbers are ours, to be tuned in play.
 WEAPONS = {
     "machete": {
-        "name": "마체테", "style": "chop", "pose": "chop",
+        "name": "마체테", "style": "chop", "pose": "chop", "sprite": "machete",
         "time": 0.42 * TEMPO,       # the whole blow
         "hit": 0.2 * TEMPO,         # when it lands
         "lunge": 24.0,              # px stepped in along the aim
@@ -33,6 +36,34 @@ WEAPONS = {
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
     },
+    "knife": {                      # quick, short, precise: a stab to the head ends it
+        "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
+        "time": 0.3 * TEMPO, "hit": 0.12 * TEMPO, "lunge": 18.0,
+        "reach": 44.0, "arc": 0.45,
+        "damage": {"head": 3, "torso": 1, "legs": 1},
+        "stamina": 8.0, "push": 25,
+    },
+    "bat": {                        # wide and pushing, weak: keeps them off
+        "name": "야구방망이", "style": "swingh", "pose": "swingh", "sprite": "bat",
+        "time": 0.5 * TEMPO, "hit": 0.26 * TEMPO, "lunge": 16.0,
+        "reach": 62.0, "arc": 1.35,
+        "damage": {"head": 2, "torso": 1, "legs": 1},
+        "stamina": 16.0, "push": 150,
+    },
+    "pipe": {                       # like the bat, longer and heavier
+        "name": "쇠파이프", "style": "swingh", "pose": "swingh", "sprite": "pipe",
+        "time": 0.56 * TEMPO, "hit": 0.3 * TEMPO, "lunge": 16.0,
+        "reach": 66.0, "arc": 1.3,
+        "damage": {"head": 2, "torso": 1, "legs": 2},
+        "stamina": 18.0, "push": 170,
+    },
+    "axe": {                        # slow and costly, but even the torso takes two
+        "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
+        "time": 0.62 * TEMPO, "hit": 0.32 * TEMPO, "lunge": 20.0,
+        "reach": 60.0, "arc": 0.9,
+        "damage": {"head": 3, "torso": 2, "legs": 2},
+        "stamina": 22.0, "push": 80,
+    },
 }
 DEFAULT = "machete"
 
@@ -40,6 +71,18 @@ READY_SPEED = 0.5               # share of the walking speed while holding the b
 READY_DRAIN = 4.0               # stamina per second while holding it
 READY_SKIP = 0.7                # share of the wind-up skipped when a held blow is let go
 QUICK_PRESS = 0.15              # s: a press shorter than this is a plain click (a full blow)
+
+
+_images = {}
+
+
+def image(sprite):
+    """The weapon's sprite (assets/weapons/<sprite>.png, tools/sprites/weapons.py), loaded once."""
+    if sprite not in _images:
+        import pico2d
+        from settings import ROOT
+        _images[sprite] = pico2d.load_image(str(ROOT / "assets" / "weapons" / f"{sprite}.png"))
+    return _images[sprite]
 
 
 def part_at(z, wx, wy):
