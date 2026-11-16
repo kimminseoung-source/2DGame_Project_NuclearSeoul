@@ -24,6 +24,9 @@ PART_NAMES = {"head": "머리", "torso": "몸통", "legs": "다리", "ground": "
 # Which styles reach a crawler on the ground (2026-11-16, crawlers and standing ones together):
 # a chop comes down to the ground; a stab or a swing across passes over it.
 REACHES_GROUND = {"chop"}
+# A stomp is a kick down at the feet, not a swing of the weapon: it finds a crawler within this
+# angle of the aim, measured on the ground (narrow weapon arcs missed a crawler at the feet).
+STOMP_ARC = 0.9
 HEAD_QUICK = 1                  # damage taken off a head blow that was not aimed (held ready)
 
 # Each weapon: its style's motion ("pose": a hero sheet), timing, reach, damage per part, stamina,
@@ -36,7 +39,7 @@ WEAPONS = {
         "hit": 0.2 * TEMPO,         # when it lands
         "cooldown": 0.12,           # s before the next blow can start
         "lunge": 24.0,              # px stepped in along the aim
-        "reach": 58.0, "arc": 1.0,  # px from chest to chest, radians either side of the aim
+        "reach": 58.0, "arc": 0.35, # px from chest to chest, radians either side of the aim
         "damage": {"head": 3, "torso": 1, "legs": 1},   # an aware infected takes 2-3
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
@@ -48,7 +51,7 @@ WEAPONS = {
     "knife": {                      # quick, short, precise: a stab to the head ends it
         "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
         "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 18.0,
-        "reach": 44.0, "arc": 0.45,
+        "reach": 44.0, "arc": 0.2,
         "damage": {"head": 3, "torso": 1, "legs": 1},
         "stamina": 6.0, "push": 25,
         "noise": 70, "stagger": False, "head_always": False,
@@ -59,7 +62,7 @@ WEAPONS = {
     "bat": {                        # wide and pushing, weak: keeps them off
         "name": "야구방망이", "style": "chop", "pose": "chop", "sprite": "bat",
         "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 16.0,
-        "reach": 62.0, "arc": 1.35,
+        "reach": 62.0, "arc": 0.45,
         "damage": {"head": 2, "torso": 1, "legs": 1},
         "stamina": 16.0, "push": 150,
         "noise": 260, "stagger": True, "head_always": False,
@@ -68,7 +71,7 @@ WEAPONS = {
     "pipe": {                       # like the bat, longer and heavier
         "name": "쇠파이프", "style": "chop", "pose": "chop", "sprite": "pipe",
         "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 16.0,
-        "reach": 66.0, "arc": 1.3,
+        "reach": 66.0, "arc": 0.4,
         "damage": {"head": 2, "torso": 1, "legs": 2},
         "stamina": 18.0, "push": 170,
         "noise": 300, "stagger": True, "head_always": False,
@@ -77,13 +80,15 @@ WEAPONS = {
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
         "time": 0.78 * TEMPO, "hit": 0.4 * TEMPO, "cooldown": 0.35, "lunge": 20.0,
-        "reach": 60.0, "arc": 0.9,
+        "reach": 60.0, "arc": 0.3,
         "damage": {"head": 3, "torso": 2, "legs": 2},
         "stamina": 22.0, "push": 80,
         "noise": 260, "stagger": False, "head_always": True,
         "good": "머리 바로 한 방·몸통 2", "bad": "가장 느림·기력 많이",
     },
 }
+# Arcs are narrow (2026-11-16 "공격 범위가 너무 넓어, 세로로 말고 가로로"): a blow covers a long,
+# thin strip toward the aim, its end a short arc; the bat is still the widest, the knife the narrowest.
 DEFAULT = "machete"
 # Carried weapons are bag items "w:<key>" with a weight, so they take cells on the bag's sheet
 # (2026-11-16 "무기를 인벤토리나 어디를 통해서 바꿀 수 있게"); the weapon in hand weighs nothing.
@@ -119,6 +124,10 @@ def key_of(kind):
 def key_of_weapon(weapon):
     return next(k for k, v in WEAPONS.items() if v is weapon)
 
+# The charge (2026-11-16 "차징이 이러면 이득이 있나"): a quick click always goes for the torso
+# (a crawler is stomped); holding until the range arc is full (CHARGE_TIME) lets the cursor pick
+# the head or the legs, and the blow is let go at once. Holding costs a slow step and stamina.
+CHARGE_TIME = 0.35 * TEMPO      # s to fill the charge
 READY_SPEED = 0.5               # share of the walking speed while holding the blow ready
 READY_DRAIN = 4.0               # stamina per second while holding it
 READY_SKIP = 0.7                # share of the wind-up skipped when a held blow is let go

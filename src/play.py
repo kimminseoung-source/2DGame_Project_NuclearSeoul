@@ -45,8 +45,7 @@ NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 SHOVE_REACH = 46             # px a shove reaches
 BODY_CONTACT = 20            # px: an infected this close is against the hero's body (2026-11-16 판정)
-SURE_KILL = {"recover": "빈틈을 베었다!", "head": "머리를 쳤다! 한 방", "idle": "들키기 전에 조용히 처리했다",
-             "alert": "들키기 전에 조용히 처리했다", "search": "들키기 전에 조용히 처리했다"}
+SURE_KILL = {"recover": "빈틈을 베었다!", "head": "머리를 쳤다! 한 방", "stagger": "휘청일 때 끝냈다"}
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
@@ -173,31 +172,19 @@ class Game:
         if self.senses:
             self.make_noise(NOISE_STEP)
 
-    def unaware_in_reach(self, angle):
-        """Infected within the slash that have not spotted the hero (Zomboid: a blow on an
-        unaware zombie is a sure, quiet finisher)."""
-        hero, found = self.hero, []
-        for z in self.zombies:
-            if z.alive and z.helpless:
-                diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
-                w = hero.weapon
-                if hypot(z.x - hero.x, z.y - hero.y) <= w["reach"] + 30 and abs(diff) <= w["arc"]:
-                    found.append(z)
-        return found
-
     def ground_target(self, angle):
-        """True when the nearest infected the slash would reach is a crawler: the click becomes
-        a stomp (2026-11-16 "기어 다니는 거는 발로 밟는 동작으로")."""
+        """The crawler the click stomps, or None: the nearest infected toward the aim (on the
+        ground, within the stomp's angle) when it is a crawler (2026-11-16 "밟기")."""
         hero, best = self.hero, None
+        reach = weapons.attack_range(hero.weapon)
         for z in self.zombies:
             if not z.alive:
                 continue
             dist = hypot(z.x - hero.x, z.y - hero.y)
             diff = (atan2(z.y - hero.y, z.x - hero.x) - angle + pi) % (2 * pi) - pi
-            w = self.hero.weapon
-            if dist <= w["reach"] + w["lunge"] and abs(diff) <= w["arc"] and (best is None or dist < best[0]):
+            if dist <= reach and abs(diff) <= weapons.STOMP_ARC and (best is None or dist < best[0]):
                 best = (dist, z)
-        return best is not None and best[1].prone
+        return best[1] if best is not None and best[1].prone else None
 
     def aimed(self, sx, sy):
         """What the cursor at screen (sx, sy) aims at (2026-11-16 "커서 방향에 따라 공격 위치가 다르게"):
@@ -237,14 +224,14 @@ class Game:
         # Nothing standing on the path: a crawler inside the range and its arc is the one, marked
         # "밟기" (2026-11-16 "밟기 판정이 이상함": aimed at it at chest height it was stomped
         # without a target and the foot hit nothing).
-        ang = atan2(dy, dx)
+        ang = atan2(wy - hero.y, wx - hero.x)            # on the ground, like ground_target
         crawlers = []
         for z in seen:
             if not z.prone:
                 continue
-            d = hypot(z.x - sx0, z.y + 6 - sy0)
-            off = abs((atan2(z.y + 6 - sy0, z.x - sx0) - ang + pi) % (2 * pi) - pi)
-            if d <= reach and off <= w["arc"]:
+            d = hypot(z.x - hero.x, z.y - hero.y)
+            off = abs((atan2(z.y - hero.y, z.x - hero.x) - ang + pi) % (2 * pi) - pi)
+            if d <= reach and off <= weapons.STOMP_ARC:
                 crawlers.append((d, z))
         return (min(crawlers, key=lambda c: c[0])[1], "ground") if crawlers else None
 
@@ -266,14 +253,15 @@ class Game:
         else:
             ax, ay = self.mouse_world(sx, sy)
         angle = atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)
-        stomp = aim[0].prone if aim is not None else self.ground_target(angle)
+        if aim is None:                                  # a crawler toward the aim: the stomp's target
+            crawler = self.ground_target(angle)
+            aim = (crawler, "ground") if crawler is not None else None
+        stomp = aim is not None and aim[0].prone
+        if aim is not None and aim[1] in ("head", "legs") and self.hero.charge < 1.0:
+            aim = (aim[0], "torso")                      # not charged: the torso, whatever the aim
         self.hero.start_slash(ax, ay, stomp=stomp, aim=aim)
         if self.hero.slash is not None and self.hero.slash is not before:
-            unaware = self.unaware_in_reach(self.hero.slash["angle"])
-            self.hero.slash["quiet"] = bool(unaware)
-            # unaware when the swing began is unaware when it lands: the lunge closing in must not
-            # wake it a moment before the blade arrives
-            self.hero.slash["unaware"] = unaware
+            self.hero.slash["quiet"] = False
             self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
 
     def equip(self, key):
@@ -474,7 +462,7 @@ class Game:
             return
         self.clock += real_dt
         if self.clock > 1.0:
-            self.hint("sneak", "Ctrl 살금살금 · 소리가 피폭체를 부른다 · 못 본 피폭체는 조용히 벨 수 있다")
+            self.hint("sneak", "Ctrl 살금살금 · 소리가 피폭체를 부른다 · 좌클릭을 누르고 있으면 차징")
         self.sounds.listener = (hero.x, hero.y)
         if self.slow != self.was_slow and not hero.dead:
             self.sounds.play("slow_in" if self.slow else "slow_out", 0.6)
@@ -513,7 +501,9 @@ class Game:
             if hero.slash["stomp"]:                      # the foot comes down on it
                 self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
             else:
-                self.effects.append((Streak if self.real else Crescent)(sx, sy, hero.slash["angle"]))
+                ox0, oy0 = hero.slash["from"]                  # the trail runs on the shown arc
+                self.effects.append(Streak(ox0, oy0, hero.slash["angle"], weapons.attack_range(hero.slash["weapon"]),
+                                           hero.slash["arc"]) if self.real else Crescent(sx, sy, hero.slash["angle"]))
             reach, arc, weapon = hero.slash["reach"], hero.slash["arc"], hero.slash["weapon"]
             aim = hero.slash.get("aim")
             if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
@@ -536,8 +526,7 @@ class Game:
                 # the one marked when the button was let go is hit (2026-11-16 "어디가 맞을지 뜨면
                 #그때는 공격 판정이 들어가게"); others: inside the shown range and its arc
                 if touching or marked or (from_start <= span and abs(diff) <= arc):
-                    opening = (z.state if z.helpless else "idle" if z in hero.slash.get("unaware", ())
-                               else None)                      # helpless: one slash is enough
+                    opening = z.state if z.helpless else None  # helpless: one blow is enough
                     part = aim[1] if aim is not None and aim[0] is z else "torso"
                     part = "torso" if part == "ground" else part
                     damage = weapon["damage"][part]
@@ -739,25 +728,30 @@ class Game:
         hero = self.hero
         if self.aim[0] is None or hero.dead or self.left or self.bag_open:
             return
-        holding = hero.ready is not None and hero.ready >= weapons.QUICK_PRESS
+        charge = hero.charge if hero.ready is not None and hero.ready >= weapons.QUICK_PRESS else 0.0
+        charged = charge >= 1.0
         w = hero.weapon
-        aim = self.aimed(*self.aim) if holding else None
+        aim = self.aimed(*self.aim) if charged else None
         tx, ty = self.mouse_world(*self.aim)              # toward the cursor
         part = aim[1] if aim is not None else "torso"
-        colour = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210),
-                  "ground": (214, 128, 52)}[part] if holding else (120, 116, 104)
+        faint = (120, 116, 104)
+        full = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210),
+                "ground": (214, 128, 52)}[part]
+        colour = full
         sx, sy = hero.x, hero.y + CHEST
         ang = atan2(ty - sy, tx - sx)
         length = weapons.attack_range(w)                   # exactly the range the hit uses
         step = 6
 
-        def dot(x, y, size=1):
-            pico2d.draw_rectangle(x - size - cx, y - size - cy, x + size - cx, y + size - cy, *colour, filled=True)
+        def dot(x, y, tint, size=1):
+            pico2d.draw_rectangle(x - size - cx, y - size - cy, x + size - cx, y + size - cy, *tint, filled=True)
 
-        n = max(2, int(length * w["arc"] / step))          # only the far arc: where the blow ends
+        # One arc: where the blow ends. Faint until the button is held; then it fills with colour
+        # from the middle out (the charge), full = charged (2026-11-16 "흰색 경로랑 노란색 경로를 통일").
+        n = max(2, int(length * w["arc"] / step))
         for k in range(-n, n + 1):
             a = ang + k * w["arc"] / n
-            dot(sx + cos(a) * length, sy + sin(a) * length)
+            dot(sx + cos(a) * length, sy + sin(a) * length, full if abs(k) <= charge * n and charge > 0 else faint)
         if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
             if z.prone:                                   # a crawler: all of it, on the ground

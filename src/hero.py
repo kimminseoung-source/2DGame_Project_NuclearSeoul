@@ -77,6 +77,11 @@ class Hero:
         """The weapon drawn in the hand (the dot look's sheets are empty-handed), or None."""
         return weapons.image(self.weapon["sprite"]) if DOT_LOOK else None
 
+    @property
+    def charge(self):
+        """0..1: how full the charge is while the button is held."""
+        return 0.0 if self.ready is None else min(1.0, self.ready / weapons.CHARGE_TIME)
+
     def start_ready(self):
         """Left button pressed: raise the weapon and hold it (slow walk, a little stamina)."""
         if self.free:
@@ -86,7 +91,7 @@ class Hero:
         """A blow of the weapon toward (ax, ay) (weapons.py); `stomp` makes it a stamp of the foot
         on a crawler instead. `aim` = (infected, part) it is aimed at, if any. A blow let go from
         the ready stance skips most of its wind-up."""
-        held = self.ready is not None and self.ready >= weapons.QUICK_PRESS
+        held = self.charge >= 1.0                     # a full charge: the aimed part counts
         self.ready = None
         if not self.free:
             return

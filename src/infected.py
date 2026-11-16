@@ -151,8 +151,9 @@ class Zombie:
 
     @property
     def helpless(self):
-        """Crawling, reeling, open after its swing, or unaware of the hero: one blow ends it."""
-        return self.prone or self.state in ("idle", "alert", "search", "stagger", "recover")
+        """Crawling, reeling, or open after its swing: one blow ends it. (Unaware of the hero no
+        longer counts - 2026-11-16 "들키기 전에 때리면 한 방 이런 요소는 없애자".)"""
+        return self.prone or self.state in ("stagger", "recover")
 
     def sees(self, hero):
         dx, dy = hero.x - self.x, hero.y - self.y

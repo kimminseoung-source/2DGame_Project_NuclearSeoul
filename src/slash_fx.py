@@ -38,12 +38,14 @@ class Crescent:
 
 
 class Streak:
-    """Realistic slash: one thin, faint, quick arc where the blade passed."""
+    """Realistic slash: a quick bright arc where the blade passed - on the same arc the game shows
+    as the weapon's reach (2026-11-16: the trail and the shown range were two different arcs)."""
 
-    LIFE = 0.08
+    LIFE = 0.12
 
-    def __init__(self, x, y, angle):
+    def __init__(self, x, y, angle, radius=44, arc=SLASH_ARC):
         self.x, self.y, self.angle = x, y, angle
+        self.radius, self.arc = radius, arc
         self.age = 0.0
 
     def update(self, dt):
@@ -53,10 +55,11 @@ class Streak:
     def draw(self, cam_x, cam_y):
         fade = 1 - self.age / self.LIFE
         cx, cy = self.x - cam_x, self.y - cam_y
-        pts = [(cx + cos(self.angle + t) * 44, cy + sin(self.angle + t) * 44)
-               for t in (-SLASH_ARC + 2 * SLASH_ARC * k / 10 for k in range(11))]
-        for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
-            pico2d.draw_line(x1, y1, x2, y2, 200, 205, 210, round(110 * fade))
+        n = max(2, int(self.radius * self.arc / 3))
+        for k in range(-n, n + 1):
+            t = self.angle + k * self.arc / n
+            x, y = cx + cos(t) * self.radius, cy + sin(t) * self.radius
+            pico2d.draw_rectangle(x - 1, y - 1, x + 1, y + 1, 230, 232, 236, round(220 * fade), filled=True)
 
 
 class Blood:
