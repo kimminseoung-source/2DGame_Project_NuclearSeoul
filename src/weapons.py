@@ -38,8 +38,8 @@ WEAPONS = {
         "time": 0.42 * TEMPO,       # the whole blow
         "hit": 0.2 * TEMPO,         # when it lands
         "cooldown": 0.12,           # s before the next blow can start
-        "lunge": 24.0,              # px stepped in along the aim
-        "reach": 58.0, "arc": 0.35, # px from chest to chest, radians either side of the aim
+        "lunge": 12.0,              # px stepped in along the aim
+        "arc": 0.35,                # radians either side of the aim (reach: from the sprite, below)
         "damage": {"head": 3, "torso": 1, "legs": 1},   # an aware infected takes 2-3
         "stamina": 14.0,
         "push": 55,                 # px/s a blow that does not kill knocks it back
@@ -50,8 +50,8 @@ WEAPONS = {
     },
     "knife": {                      # quick, short, precise: a stab to the head ends it
         "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
-        "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 18.0,
-        "reach": 44.0, "arc": 0.2,
+        "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 10.0,
+        "arc": 0.2,
         "damage": {"head": 3, "torso": 1, "legs": 1},
         "stamina": 6.0, "push": 25,
         "noise": 70, "stagger": False, "head_always": False,
@@ -61,8 +61,8 @@ WEAPONS = {
     # 이상함, 이런 종류의 무기를 도끼나 마체테처럼 똑같이 통일"): their own traits are in the numbers
     "bat": {                        # wide and pushing, weak: keeps them off
         "name": "야구방망이", "style": "chop", "pose": "chop", "sprite": "bat",
-        "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 16.0,
-        "reach": 62.0, "arc": 0.45,
+        "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 10.0,
+        "arc": 0.45,
         "damage": {"head": 2, "torso": 1, "legs": 1},
         "stamina": 16.0, "push": 150,
         "noise": 260, "stagger": True, "head_always": False,
@@ -70,8 +70,8 @@ WEAPONS = {
     },
     "pipe": {                       # like the bat, longer and heavier
         "name": "쇠파이프", "style": "chop", "pose": "chop", "sprite": "pipe",
-        "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 16.0,
-        "reach": 66.0, "arc": 0.4,
+        "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 10.0,
+        "arc": 0.4,
         "damage": {"head": 2, "torso": 1, "legs": 2},
         "stamina": 18.0, "push": 170,
         "noise": 300, "stagger": True, "head_always": False,
@@ -79,14 +79,36 @@ WEAPONS = {
     },
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
-        "time": 0.78 * TEMPO, "hit": 0.4 * TEMPO, "cooldown": 0.35, "lunge": 20.0,
-        "reach": 60.0, "arc": 0.3,
+        "time": 0.78 * TEMPO, "hit": 0.4 * TEMPO, "cooldown": 0.35, "lunge": 10.0,
+        "arc": 0.3,
         "damage": {"head": 3, "torso": 2, "legs": 2},
         "stamina": 22.0, "push": 80,
         "noise": 260, "stagger": False, "head_always": True,
         "good": "머리 바로 한 방·몸통 2", "bad": "가장 느림·기력 많이",
     },
 }
+# Reach follows the drawn weapon (2026-11-16 "보이는 칼의 길이에 비해 공격 범위가 너무 길다"): the
+# blade's tip at the hit = how far the hand is out in that style's hit frame (measured on the hero
+# sheets' hand lines, blade.json) + the weapon's own length (its sprite, in world units: dot px x
+# 54/32). The shown arc is the tip; a body whose middle is up to BODY_MARGIN past it is still hit
+# (half its width). A new weapon's reach comes from its sprite alone.
+HAND_REACH = {"stab": 14.0, "chop": 8.0, "swingh": 12.0}
+BODY_MARGIN = 10.0
+SPRITE_TO_WORLD = 54 / 32
+
+
+def _sprite_length(sprite):
+    """Width of assets/weapons/<sprite>.png in px, read from the PNG header (no image library)."""
+    import struct
+    from settings import ROOT
+    with open(ROOT / "assets" / "weapons" / f"{sprite}.png", "rb") as f:
+        return struct.unpack(">I", f.read(24)[16:20])[0]
+
+
+for _w in WEAPONS.values():
+    _w["reach"] = HAND_REACH[_w["style"]] + _sprite_length(_w["sprite"]) * SPRITE_TO_WORLD
+
+
 # Arcs are narrow (2026-11-16 "공격 범위가 너무 넓어, 세로로 말고 가로로"): a blow covers a long,
 # thin strip toward the aim, its end a short arc; the bat is still the widest, the knife the narrowest.
 DEFAULT = "machete"

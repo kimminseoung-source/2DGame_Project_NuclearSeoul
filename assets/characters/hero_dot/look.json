@@ -48,14 +48,15 @@
     "note": "made Swing: raised back (frames 1-2, held), level across the front on frame 4"
   },
   "chop": {
-    "impact": 3,
+    "impact": 4,
     "hold": 0.3,
     "windup": [
+      1,
       1,
       1.6,
       0.6
     ],
-    "note": "made Chop: raised over the head (frame 2, held), coming down in front on frame 3"
+    "note": "made Chop: raised (frames 1-3, held at 2-3), coming down in front on frame 4 (hand line forward)"
   },
   "ready_stab": {
     "stride_m": 1.3,

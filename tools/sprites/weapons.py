@@ -101,10 +101,10 @@ def bat_dot():
 
 
 def pipe_dot():
-    """A length of steel pipe, 17 px, with a rusty band and a dark open end."""
+    """A length of steel pipe, 19 px, with a rusty band and a dark open end."""
     c = {"p": (110, 116, 122, 255), "P": (150, 156, 162, 255), "r": (128, 72, 48, 255), "o": (40, 42, 46, 255)}
-    return _sprite(["PPPPPPPPPrrPPPPPo",
-                    "ppppppppprrpppppo"], c)
+    return _sprite(["PPPPPPPPPPrrPPPPPPo",
+                    "pppppppppprrppppppo"], c)            # 19 px: the longest reach
 
 
 def axe_dot():

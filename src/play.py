@@ -176,7 +176,7 @@ class Game:
         """The crawler the click stomps, or None: the nearest infected toward the aim (on the
         ground, within the stomp's angle) when it is a crawler (2026-11-16 "밟기")."""
         hero, best = self.hero, None
-        reach = weapons.attack_range(hero.weapon)
+        reach = weapons.attack_range(hero.weapon) + weapons.BODY_MARGIN
         for z in self.zombies:
             if not z.alive:
                 continue
@@ -205,16 +205,17 @@ class Game:
         sx0, sy0 = hero.x, hero.y + CHEST
         length = hypot(wx - sx0, wy - sy0) or 1
         dx, dy = (wx - sx0) / length, (wy - sy0) / length
-        reach = weapons.attack_range(w)
+        reach = weapons.attack_range(w) + weapons.BODY_MARGIN    # the tip, plus half a body
         best = None
         for z in seen:
             # where the path passes closest to the middle of the body, and at what height
-            mx, my = z.x - sx0, z.y + 27 - sy0
+            mid = 6 if z.prone else 27                      # a crawler lies low, a standing body is tall
+            mx, my = z.x - sx0, z.y + mid - sy0
             t = mx * dx + my * dy
             if not 0 < t <= reach:
                 continue
             px_, py_ = sx0 + dx * t, sy0 + dy * t
-            if abs(px_ - z.x) > weapons.PART_HALF_WIDTH * 1.5 or abs(py_ - (z.y + 27)) > 40:
+            if abs(px_ - z.x) > weapons.PART_HALF_WIDTH * (2.2 if z.prone else 1.5) or abs(py_ - (z.y + mid)) > 40:
                 continue
             part = weapons.path_part(z, py_ - z.y)
             if part and (best is None or t < best[0]):
@@ -509,7 +510,7 @@ class Game:
                 hero.stamina.pay(stamina_rules.MISS)          # swung at nothing: more breath gone
             stomp = hero.slash["stomp"]
             ox, oy = hero.slash["from"]                        # measured from where the blow started
-            span = reach + hero.slash["weapon"]["lunge"]       # the range shown by the dotted path
+            span = reach + hero.slash["weapon"]["lunge"] + weapons.BODY_MARGIN   # shown tip + half a body
             for z in self.zombies:
                 if not z.alive:
                     continue
