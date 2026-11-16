@@ -1,4 +1,4 @@
-"""Export the bag screen's fixed pixel art for the game (2026-11-16, bag B v4 "이대로 구현").
+"""Export the bag screen's and the HUD's fixed pixel art for the game (2026-11-16, bag B v4 "이대로 구현").
 
 The pictures come from the same drawing code as the approved mockup (ui_mockup_bag.py), drawn on
 the 640x360 pixel canvas; the game draws them x2 with no smoothing (src/pixel_ui.py).
@@ -14,10 +14,11 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).parent))
 from ui_mockup_bag import (ASPHALT_HI, CELL, GREY, GRID, METAL, NEAR_GRID, TARP, TARP_DARK,  # noqa: E402
                            TARP_LIGHT, H, INK, W, big_icon, cells, crisp, pix_icon)
+from ui_mockup_v2 import BLOOD_DARK, dither_edge, paper, tape  # noqa: E402
 
 OUT = Path(__file__).resolve().parents[2] / "assets" / "ui" / "bag"
 MARGIN = 12                    # sheet edge around the grid
-KINDS = ("bandage", "can", "pill", "backpack", "machete")
+KINDS = ("bandage", "can", "pill", "backpack", "machete", "drop", "snail")
 
 
 def sheet():
@@ -88,8 +89,27 @@ def icons():
         big.save(OUT / f"big_{kind}.png")
 
 
+def note():
+    """The goal note of the HUD (UI v2): a torn scrap of paper with a strip of tape; the words are
+    written on it by the game."""
+    img = Image.new("RGBA", (172, 46), (0, 0, 0, 0))
+    d = crisp(ImageDraw.Draw(img))
+    paper(d, (6, 3, 166, 41), 3)
+    tape(d, 0, 0)
+    return img
+
+
+def bleed_edge():
+    """The screen edge going red in an ordered dither while bleeding (UI v2, no blur)."""
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dither_edge(img, BLOOD_DARK, 0.6)
+    return img
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    note().save(OUT.parent / "note.png")
+    bleed_edge().save(OUT.parent / "bleed_edge.png")
     sheet().save(OUT / "sheet.png")
     ground().save(OUT / "ground.png")
     dither().save(OUT / "dither.png")

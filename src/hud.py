@@ -61,51 +61,86 @@ def bag_items(game):
 
 
 def draw_hud(game):
+    """The HUD of UI v2 on the pixel canvas (2026-11-16, "AI 티가 안 나게" -> v2, now in the game):
+    the goal on a taped note, health and the statuses that ask for something, quick slots, the
+    latest message. No boxes, no rounded chips; Galmuri with a 1 px outline."""
     hero = game.hero
+    if game.condition.bleeding and not hero.dead:          # the screen edge goes red, dithered
+        px.blit("bleed_edge.png", 0, 0)
+    # goal: a taped, torn note
+    px.blit("note.png", 6, 7)
+    goal = f"{EXIT_NAME}로"
+    px.text(20, 15, goal, INK_C, bold=True, outline=False)
+    px.rect(20, 29, 20 + px.width(goal, True), 29, BLOOD)                 # a pen underline
+    px.text(20, 32, "붕대·통조림 있으면 챙기기", PENCIL, outline=False)
+    if EXPOSURE_ON:
+        px.text(180, 15, f"피폭 {game.exposure:.0f}%", LIGHT)
     draw_status(game)
-    # quick slots (bottom middle)
+    # quick slots: plain squares with a bevel like the wrecks' metal
     items = bag_items(game)
-    slot = size(52)
-    total = max(3, len(items))
-    x0 = size(16) + size(330) + size(14)                 # right of the status panel
-    for i in range(total):
-        sl, sb = x0 + i * (slot + size(6)), size(16)
-        panel(sl, sb, sl + slot, sb + slot)
+    n = max(3, len(items))
+    left = 320 - (n * 26 + (n - 1) * 4) // 2
+    for i in range(n):
+        l, t = left + i * 30, 326
         if i < len(items):
-            kind, n = items[i]
-            draw_icon(kind, sl + slot / 2, sb + slot / 2 + size(2), slot * 0.32)
-            ui.text(sl + slot - size(16), sb + size(8), str(n), TEXT, size(12))
+            px.rect(l, t, l + 25, t + 25, (20, 22, 26))
+        px.frame(l, t, l + 25, t + 25, (64, 66, 70))
+        px.rect(l + 1, t + 1, l + 24, t + 1, (84, 86, 90))
+        if i < len(items):
+            kind, count = items[i]
+            px.blit(f"bag/icon_{kind}.png", l + 5, t + 4)
+            px.text(l + 24, t + 13, str(count), LIGHT, anchor="r")
             key = {"bandage": "1", "pill": "2"}.get(kind)
             if key:
-                ui.text(sl + size(4), sb + slot - size(10), key, DIM, size(11))
-    ui.text(x0 + total * (slot + size(6)) + size(4), size(44), "Tab 배낭", DIM, size(12))
-    ui.text(x0 + total * (slot + size(6)) + size(4), size(24), f"무게 {bag_weight(game.bag):.1f}/{BAG_CAPACITY:.1f}", DIM, size(11))
-    # goal (top left)
-    left = game.to_spawn + sum(z.alive for z in game.zombies)
-    panel(size(12), HEIGHT - size(62), size(380), HEIGHT - size(12), 170)
-    ui.text(size(22), HEIGHT - size(28), f"목표: 물자를 챙겨 {EXIT_NAME}로", TEXT, size(13))
-    extra = f" · 피폭 {game.exposure:.0f}%" if EXPOSURE_ON else ""
-    ui.text(size(22), HEIGHT - size(50), f"남은 피폭체 {left} · 쓰러진 횟수 {game.deaths}{extra}", DIM, size(12))
-    # message (fades away)
+                px.text(l + 1, t - 13, key, GREY_C)
+    px.text(left + n * 30 + 2, 336, "Tab", GREY_C)
+    # the latest message, a hard outline, gone after a while
     age = game.clock - game.message_at
     if game.message and (age < MESSAGE_TIME or game.left):
-        ui.text_center(WIDTH / 2, size(112), game.message, (236, 214, 150), size(14))
+        px.text(320, 286, game.message, (236, 214, 150), bold=True, anchor="m")
 
 
-def health_bar(game, l, b, w, h):
-    """Health as one bar (2026-11-15 "칸으로 말고 바 형식으로"). The red part follows the real
-    health quickly; a pale part shows what was just lost and drains after it (damage trail)."""
+def health_shares(game):
+    """(shown, trail) health shares: the red part follows the real health quickly; a pale part
+    shows what was just lost and drains after it (damage trail)."""
     share = max(0.0, min(1.0, game.hero.hp / HERO_HP))
     shown = getattr(game, "hud_health", share)
     trail = getattr(game, "hud_trail", share)
-    shown += (share - shown) * 0.35                          # eased toward the real value
+    shown += (share - shown) * 0.35
     trail = share if share > trail else max(share, trail - 0.012)
     game.hud_health, game.hud_trail = shown, trail
-    pico2d.draw_rectangle(l, b, l + w, b + h, 40, 22, 22, filled=True)
-    pico2d.draw_rectangle(l, b, l + w * trail, b + h, 210, 170, 150, filled=True)
-    colour = (176, 54, 48) if share > 0.5 else (206, 60, 44)
-    pico2d.draw_rectangle(l, b, l + w * shown, b + h, *colour, filled=True)
-    pico2d.draw_rectangle(l, b, l + w, b + h, 90, 60, 58)
+    return shown, trail
+
+
+def draw_status(game):
+    """Bottom left: health (number + a square pixel bar with the pale trail) and only the statuses
+    that ask for something - bleeding (bandage), slowed - plus sneaking. Wounds are in the bag."""
+    hero, cond = game.hero, game.condition
+    x, y = 14, 312
+    pct = max(0, round(hero.hp / HERO_HP * 100))
+    px.text(x, y, f"{pct}", LIGHT if pct > 50 else ORANGE if pct > 25 else BLOOD, bold=True, scale=2)
+    shown, trail = health_shares(game)
+    bx, by, bw = x + px.width(f"{pct}", True) * 2 + 6, y + 11, 96          # the bar right after the number
+    px.rect(bx - 1, by - 1, bx + bw, by + 5, (8, 8, 10))
+    if trail > 0:
+        px.rect(bx, by, bx + max(0, int(bw * trail) - 1), by + 4, (150, 120, 112))
+    if shown > 0.005:
+        px.rect(bx, by, bx + max(0, int(bw * shown) - 1), by + 4, BLOOD)
+        px.rect(bx, by, bx + max(0, int(bw * shown) - 1), by, (210, 80, 64))    # 1 px highlight
+    ix, sy = x - 2, y + 30                      # the status line under the number
+    shown_states = []
+    if cond.bleeding:
+        shown_states.append(("drop", "출혈", (226, 120, 100)))
+    if hero.slowed > 0.05:
+        shown_states.append(("snail", "느림", (150, 170, 200)))
+    if hero.sneaking:
+        shown_states.append((None, "은신", (150, 190, 160)))
+    for icon, label, colour in shown_states:
+        if icon:
+            px.blit(f"bag/icon_{icon}.png", ix, sy - 2)
+            ix += 16
+        px.text(ix, sy, label, colour)
+        ix += px.width(label) + 8
 
 
 def draw_stamina(game):
@@ -127,29 +162,6 @@ def draw_stamina(game):
         px.rect(l, t, l + filled - 1, t + 1, colour)
 
 
-def draw_status(game):
-    """Bottom left: the health bar and, under it, the status icons (no heart rate: 2026-11-16
-    "심장 박동 수는 전혀 필요 없어 보이는데")."""
-    hero, cond = game.hero, game.condition
-    l, b, w, h = size(16), size(16), size(330), size(78)
-    panel(l, b, l + w, b + h)
-    ui.text(l + size(10), b + h - size(14), "체력", TEXT, size(12))
-    health_bar(game, l + size(46), b + h - size(20), size(220), size(11))
-    pct = max(0, round(hero.hp / HERO_HP * 100))
-    colour = TEXT if pct > 50 else (230, 170, 90) if pct > 25 else (230, 90, 80)
-    ui.text(l + size(274), b + h - size(14), f"{pct}%", colour, size(13))
-    # status icons: a coloured tile with a short word, the stronger the brighter
-    x = l + size(10)
-    for label, tint, level in cond.moodles(hero)[:7]:
-        tile = size(24)
-        if x + tile * 1.45 > l + w - size(4):
-            break
-        pico2d.draw_rectangle(x, b + size(18), x + tile * 1.45, b + size(18) + tile,
-                              *(round(c * (0.55 + 0.15 * level)) for c in tint), filled=True)
-        ui.text_center(x + tile * 0.72, b + size(18) + tile / 2, label, (245, 240, 230), size(10))
-        x += tile * 1.45 + size(3)
-
-
 # ---- Tab: the bag laid out on a ground sheet (2026-11-16, bag B v4, "이대로 구현") --------------
 # Drawn on the 640x360 pixel canvas (pixel_ui) like docs/planning/ui_redesign/v4_bag_b_grid.png;
 # the fixed art is exported by tools/ui/build_bag_art.py. Where things lie: bag_grid.
@@ -159,6 +171,7 @@ SHEET_MARGIN = 12
 NEAR_ORIGIN = (SHEET_GRID[0] + bag_grid.BAG_GRID[0] * CELL + SHEET_MARGIN + 26, SHEET_GRID[1])
 LIGHT, INK_C, GREY_C = (222, 216, 198), (34, 30, 28), (122, 122, 118)
 ROAD, BLOOD, ORANGE = (196, 170, 92), (168, 34, 30), (214, 128, 52)
+PENCIL = (78, 74, 70)
 FOOT_BAG, FOOT_BAG_CHOSEN, FOOT_BAG_EDGE = (74, 80, 58), (108, 114, 86), (50, 54, 38)
 FOOT_NEAR, FOOT_NEAR_CHOSEN, FOOT_NEAR_EDGE = (40, 42, 46), (62, 64, 68), (70, 72, 76)
 # a wound's mark on the body outline (canvas px from its top-left), by kind

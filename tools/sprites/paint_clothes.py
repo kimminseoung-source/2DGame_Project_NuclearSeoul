@@ -141,6 +141,15 @@ def paint_frame(part, light, pose, pack, weapon):
             col = [y for hx, y in head if hx == x]
             if col:
                 put(x, min(col) - 1, "hair", 1)
+    # Small sizes (the 32 px dot look): the 1 px eye of the render often falls off a head only
+    # 6-7 px tall, leaving a blank face. Keep one eye pixel toward the front of the head, a little
+    # below its middle, the same spot in every frame (2026-11-16 "얼굴 손질").
+    if head and PERSON_PX < 54 and not any(paint.get(c, ("",))[0] == "eyes" for c in head):
+        top, bottom = min(y for _, y in head), max(y for _, y in head)
+        ey = round(top + (bottom - top) * 0.55)
+        row = [x for x, y in head if y == ey]
+        if row:
+            put(max(row) - 1, ey, "eyes", 0)
     # Jacket: one pixel bulkier around the torso, covering the hips, hem and hood collar.
     if torso:
         tbottom = max(y for _, y in torso)

@@ -74,18 +74,20 @@ def width(s, bold=False):
     return _text_image(s, (255, 255, 255), bold).w if s else 0
 
 
-def text(x, y, s, colour, bold=False, anchor="l", outline=True):
-    """Text with its top at canvas y; anchor l / m / r on x."""
+def text(x, y, s, colour, bold=False, anchor="l", outline=True, scale=1):
+    """Text with its top at canvas y; anchor l / m / r on x; `scale` 2 for big numbers (each font
+    pixel 2 x 2 canvas pixels, still on the grid)."""
     if not s:
         return
     img = _text_image(s, colour, bold)
-    x = x - img.w if anchor == "r" else x - img.w // 2 if anchor == "m" else x
-    cx, cy = (x + img.w / 2) * K, HEIGHT - (y + img.h / 2) * K
+    w, h = img.w * scale, img.h * scale
+    x = x - w if anchor == "r" else x - w // 2 if anchor == "m" else x
+    cx, cy = (x + w / 2) * K, HEIGHT - (y + h / 2) * K
     if outline:
         edge = _text_image(s, EDGE, bold)
         for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)):
-            edge.draw(cx + ox * K, cy - oy * K, img.w * K, img.h * K)
-    img.draw(cx, cy, img.w * K, img.h * K)
+            edge.draw(cx + ox * K, cy - oy * K, w * K, h * K)
+    img.draw(cx, cy, w * K, h * K)
 
 
 def key_cap(x, y, key, label, light, ink, label_colour):
