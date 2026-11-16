@@ -20,7 +20,8 @@ import pixel_ui as px
 import ui
 from area import EXIT_NAME
 from settings import DOT, EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
-from supplies import BAG_CAPACITY, KINDS, bag_weight, weight_of
+import weapons
+from supplies import BAG_CAPACITY, KINDS, bag_weight, item_name, item_text, weight_of
 
 U = UI_SCALE
 PANEL = (14, 16, 20)
@@ -57,7 +58,7 @@ def draw_icon(kind, x, y, s):
 
 def bag_items(game):
     """(kind, count) for every kind the hero carries, in the order supplies.KINDS lists them."""
-    return [(kind, n) for kind, n in game.bag.items() if n and (EXPOSURE_ON or kind != "pill")]
+    return [(kind, n) for kind, n in game.bag.items() if n and kind in KINDS and (EXPOSURE_ON or kind != "pill")]
 
 
 def draw_hud(game):
@@ -237,7 +238,13 @@ def draw_things(game, side, placed, pick):
         rr, bb = l + w * CELL, t + h * CELL
         px.rect(l + 2, t + 2, rr - 2, bb - 2, fill_chosen if p == pick else fill)
         px.frame(l + 2, t + 2, rr - 2, bb - 2, edge)
-        px.blit(f"bag/big_{kind}.png", l + (w * CELL - 32) // 2, t + (h * CELL - 32) // 2)
+        wkey = weapons.key_of(kind)
+        if wkey:                                                        # a carried weapon: its sprite x2
+            sprite = weapons.WEAPONS[wkey]["sprite"]
+            img = px.image(f"../weapons/{sprite}.png")
+            px.blit(f"../weapons/{sprite}.png", l + (w * CELL - img.w * 2) // 2, t + (h * CELL - img.h * 2) // 2, 2)
+        else:
+            px.blit(f"bag/big_{kind}.png", l + (w * CELL - 32) // 2, t + (h * CELL - 32) // 2)
         if p == pick:
             heavy = side == "near" and not fits(game, kind)          # it would not fit: red corners
             corners(l, t, rr, bb, BLOOD if heavy else ROAD)
@@ -269,8 +276,11 @@ def draw_body_column(game):
     if not wounds:
         px.text(l + 62, t + 40, "다친 곳 없음", GREY_C)
     px.text(l, t + 146, "손", GREY_C)
-    px.blit("bag/icon_machete.png", l + 18, t + 143)
-    px.text(l + 44, t + 146, "마체테", LIGHT)
+    held = game.hero.weapon                                   # the weapon in hand (Q: the next one)
+    img = px.image(f"../weapons/{held['sprite']}.png")
+    px.blit(f"../weapons/{held['sprite']}.png", l + 18, t + 150 - img.h)
+    px.text(l + 40, t + 146, held["name"], LIGHT)
+    px.text(l + 40, t + 160, "Q 바꾸기", GREY_C)
 
 
 def draw_weight_bar(x, y, used):
@@ -314,13 +324,14 @@ def draw_inventory(game):
         px.text(150, y - 20, game.message, (236, 214, 150))
     if pick is not None:
         kind = pick[0]
-        name = KINDS[kind][0]
+        name = item_name(kind)
         px.text(150, y, name, ROAD, bold=True)
-        px.text(150 + px.width(name, True) + 8, y, KINDS[kind][3], LIGHT)
+        px.text(150 + px.width(name, True) + 8, y, item_text(kind), LIGHT)
         px.text(px.CW - 22, y, f"칸 {pick[4] * pick[5]} · {weight_of(kind):.1f}", GREY_C, anchor="r")
     else:
         px.text(150, y, "빈 칸", GREY_C)
-    rows = ((("Enter", "쓰기" if game.bag_side == "bag" else "줍기"), ("X", "내려놓기"),
+    use_word = "줍기" if game.bag_side == "near" else "들기" if pick and weapons.key_of(pick[0]) else "쓰기"
+    rows = ((("Enter", use_word), ("X", "내려놓기"),
              ("F", "같은 것 줍기"), ("Shift+F", "모두 줍기")),
             (("WASD", "고르기 (D: 근처로)"), ("끌어 놓기", "옮기기"), ("Tab", "닫기")))
     for row, keys in enumerate(rows):

@@ -16,6 +16,7 @@ import bag_grid
 import hud
 import pixel_ui as px
 import supplies as supply_rules
+import weapons
 from supplies import KINDS, Supply
 
 MOVES = {sdl2.SDLK_LEFT: (-1, 0), sdl2.SDLK_RIGHT: (1, 0), sdl2.SDLK_UP: (0, -1), sdl2.SDLK_DOWN: (0, 1),
@@ -62,10 +63,14 @@ def take(game, supply):
 
 
 def drop(game, kind):
-    """Put one thing from the bag down at the hero's feet."""
+    """Put one thing from the bag down at the hero's feet (a weapon lies there to be taken again)."""
     game.bag[kind] -= 1
-    game.supplies.append(Supply(game.hero.x + 10, game.hero.y - 4, kind))
-    game.message = f"{supply_rules.with_object_particle(KINDS[kind][0])} 내려놓았다"
+    wkey = weapons.key_of(kind)
+    if wkey:
+        game.ground_weapons.append([game.hero.x + 10, game.hero.y - 4, wkey])
+    else:
+        game.supplies.append(Supply(game.hero.x + 10, game.hero.y - 4, kind))
+    game.message = f"{supply_rules.with_object_particle(supply_rules.item_name(kind))} 내려놓았다"
 
 
 def took(game, count):

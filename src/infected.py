@@ -52,7 +52,7 @@ COUNTER_PUSH = 290              # px/s it is thrown back (about 40 px)
 # have lost the use of their legs and drag themselves along on the ground - slow, always helpless
 # (the hero stamps on them), biting at the ankles if they are left to reach him.
 CRAWLER_SHARE = 0.25            # share of infected that crawl
-CRAWL_SPEED = 0.35              # share of the walking speed
+CRAWL_SPEED = 0.18              # share of the walking speed (2026-11-16 "속도가 많이 느려지게": was 0.35)
 CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
 
 
@@ -121,7 +121,10 @@ class Zombie:
 
     def hurt(self, from_x, from_y, damage=1, part="torso", push=HIT_PUSH):
         """A blow on an aware infected (weapons.py: damage by the part it lands on): True when it
-        was more than it could take. A blow to the legs takes them: it crawls from then on."""
+        was more than it could take. Each part does its own thing (2026-11-16 "다리를 노릴 이유"):
+        - legs: always takes them, whatever its health - it crawls from then on
+        - torso: the only part that makes it flinch and breaks off its attack
+        - head: the most damage, but if it lives it does not even flinch"""
         self.health -= damage
         if self.health <= 0:
             return True
@@ -130,7 +133,8 @@ class Zombie:
             self.state, self.seen_time = "chase", SEEN_BEFORE_STRIKE
             self.target, self.memory = (from_x, from_y), MEMORY
             return False
-        self.reel(from_x, from_y, push, "flinch", FLINCH_TIME)
+        if part == "torso":
+            self.reel(from_x, from_y, push, "flinch", FLINCH_TIME)
         return False
 
     @property

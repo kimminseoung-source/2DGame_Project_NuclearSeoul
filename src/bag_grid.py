@@ -49,8 +49,10 @@ def pack(things, grid):
 
 
 def bag_things(bag, shown=lambda kind: True):
-    """Every unit in the bag, in the order supplies.KINDS lists the kinds."""
-    return [(kind, None) for kind in KINDS if shown(kind) for _ in range(bag.get(kind, 0))]
+    """Every unit in the bag: supplies in the order supplies.KINDS lists them, then weapons."""
+    things = [(kind, None) for kind in KINDS if shown(kind) for _ in range(bag.get(kind, 0))]
+    things += [(kind, None) for kind in sorted(bag) if kind.startswith("w:") for _ in range(bag[kind])]
+    return things
 
 
 def at(placed, col, row):

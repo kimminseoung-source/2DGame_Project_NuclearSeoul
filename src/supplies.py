@@ -22,7 +22,22 @@ BAG_CAPACITY = 2.0          # the bag holds this much weight (Zomboid: weight, n
 
 
 def weight_of(kind):
-    return KINDS[kind][4]
+    import weapons
+    key = weapons.key_of(kind)
+    return weapons.WEIGHT[key] if key else KINDS[kind][4]
+
+
+def item_name(kind):
+    import weapons
+    key = weapons.key_of(kind)
+    return weapons.WEAPONS[key]["name"] if key else KINDS[kind][0]
+
+
+def item_text(kind):
+    """The line shown for a bag item: what a supply does, or a weapon's way of hitting."""
+    import weapons
+    key = weapons.key_of(kind)
+    return weapons.STYLE_TEXT[weapons.WEAPONS[key]["style"]] + " · Enter로 들기" if key else KINDS[kind][3]
 
 
 def bag_weight(bag):

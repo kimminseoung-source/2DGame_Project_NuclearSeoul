@@ -20,7 +20,11 @@ from settings import TEMPO
 # a blow that lands between two parts counts as the torso.
 PARTS = (("legs", 0, 18), ("torso", 18, 40), ("head", 40, 60))
 PART_HALF_WIDTH = 13            # world units either side of the infected's middle
-PART_NAMES = {"head": "머리", "torso": "몸통", "legs": "다리"}
+PART_NAMES = {"head": "머리", "torso": "몸통", "legs": "다리", "ground": "밟기"}
+# Which styles reach a crawler on the ground (2026-11-16, crawlers and standing ones together):
+# a chop comes down to the ground; a stab or a swing across passes over it.
+REACHES_GROUND = {"chop"}
+HEAD_QUICK = 1                  # damage taken off a head blow that was not aimed (held ready)
 
 # Each weapon: its style's motion ("pose": a hero sheet), timing, reach, damage per part, stamina,
 # push, and its sprite (assets/weapons/<sprite>.png, drawn in the hand on every frame by the game -
@@ -66,11 +70,41 @@ WEAPONS = {
     },
 }
 DEFAULT = "machete"
+# Carried weapons are bag items "w:<key>" with a weight, so they take cells on the bag's sheet
+# (2026-11-16 "무기를 인벤토리나 어디를 통해서 바꿀 수 있게"); the weapon in hand weighs nothing.
+WEIGHT = {"machete": 0.4, "knife": 0.2, "bat": 0.6, "pipe": 0.6, "axe": 0.8}
+STYLE_TEXT = {"chop": "내려치기 · 바닥에 기는 놈에게도 닿는다", "stab": "찌르기 · 빠르고 짧다",
+              "swingh": "가로 휘두르기 · 넓고 밀어낸다"}
+
+
+def item(key):
+    return f"w:{key}"
+
+
+def key_of(kind):
+    """The weapon key of a bag item, or None when it is not a weapon."""
+    return kind[2:] if kind.startswith("w:") else None
+
+
+def key_of_weapon(weapon):
+    return next(k for k, v in WEAPONS.items() if v is weapon)
 
 READY_SPEED = 0.5               # share of the walking speed while holding the blow ready
 READY_DRAIN = 4.0               # stamina per second while holding it
 READY_SKIP = 0.7                # share of the wind-up skipped when a held blow is let go
 QUICK_PRESS = 0.15              # s: a press shorter than this is a plain click (a full blow)
+
+
+# Aiming along the path (not on the body): the height where the path passes the infected's
+# middle picks the part, with wider head and leg bands - a raised cursor reads as "the head".
+PATH_PARTS = (("legs", -99, 16), ("torso", 16, 33), ("head", 33, 99))
+
+
+def path_part(z, up):
+    """The part the path of a blow reaches, passing the infected `up` units above its feet."""
+    if z.prone:
+        return "ground" if up < 16 else None                     # a crawler: aim low to stomp it
+    return next(part for part, low, high in PATH_PARTS if low <= up < high)
 
 
 _images = {}
@@ -92,7 +126,7 @@ def part_at(z, wx, wy):
         return None
     up = wy - z.y
     if z.prone:
-        return "torso" if -4 <= up <= 16 else None
+        return "ground" if -4 <= up <= 16 else None
     for part, low, high in PARTS:
         if low <= up < high:
             return part

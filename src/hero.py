@@ -102,7 +102,7 @@ class Hero:
         start = hit * weapons.READY_SKIP if held and not stomp else 0.0
         self.slash = {"time": start, "angle": angle, "hit": False, "stomp": stomp, "aim": aim,
                       "whole": whole, "hit_at": hit, "pose": "stomp" if stomp else w["pose"],
-                      "reach": w["reach"], "arc": w["arc"], "weapon": w}
+                      "reach": w["reach"], "arc": w["arc"], "weapon": w, "held": held}
         speed = lunge * LUNGE_SPEED                     # covers about `lunge` px whatever the tempo
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
 

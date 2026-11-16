@@ -201,13 +201,38 @@ class Game:
 
     def aimed(self, sx, sy):
         """What the cursor at screen (sx, sy) aims at (2026-11-16 "커서 방향에 따라 공격 위치가 다르게"):
-        (infected, part) when it is over an infected's body - the blow goes for that part - or
-        None (the blow goes that way at torso height). The nearest one in front wins."""
+        (infected, part), or None (the blow goes that way at torso height).
+        The path of the blow runs from the hero's chest toward the cursor; the first infected
+        body it passes, within reach, is the one it goes for, and the height where it passes
+        sets the part - raise the cursor a little to go for the head, lower it for the legs.
+        The cursor does not have to be on the infected (2026-11-16 "커서를 안 갖다 대도 가능하게").
+        A cursor right on a body picks that body and part."""
         wx, wy = self.mouse_world(sx, sy)
-        hits = [(z, weapons.part_at(z, wx, wy)) for z in self.zombies if z.alive]
-        hits = [(z, part) for z, part in hits if part and self.vision.visible((self.hero.x, self.hero.y),
-                                                                              self.look, z.x, z.y)]
-        return min(hits, key=lambda h: h[0].y) if hits else None   # lower on screen = in front
+        hero, w = self.hero, self.hero.weapon
+        seen = [z for z in self.zombies if z.alive
+                and self.vision.visible((hero.x, hero.y), self.look, z.x, z.y)]
+        on = [(z, weapons.part_at(z, wx, wy)) for z in seen]
+        on = [(z, part) for z, part in on if part]
+        if on:
+            return min(on, key=lambda h: h[0].y)                    # lower on screen = in front
+        sx0, sy0 = hero.x, hero.y + CHEST
+        length = hypot(wx - sx0, wy - sy0) or 1
+        dx, dy = (wx - sx0) / length, (wy - sy0) / length
+        reach = w["reach"] + w["lunge"] + 8
+        best = None
+        for z in seen:
+            # where the path passes closest to the middle of the body, and at what height
+            mx, my = z.x - sx0, z.y + 27 - sy0
+            t = mx * dx + my * dy
+            if not 0 < t <= reach:
+                continue
+            px_, py_ = sx0 + dx * t, sy0 + dy * t
+            if abs(px_ - z.x) > weapons.PART_HALF_WIDTH * 1.5 or abs(py_ - (z.y + 27)) > 40:
+                continue
+            part = weapons.path_part(z, py_ - z.y)
+            if part and (best is None or t < best[0]):
+                best = (t, z, part)
+        return (best[1], best[2]) if best else None
 
     def press(self, sx, sy):
         """Left button down: raise the weapon and hold it, aiming with the cursor."""
@@ -237,8 +262,36 @@ class Game:
             self.hero.slash["unaware"] = unaware
             self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
 
+    def equip(self, key):
+        """Take a carried weapon in hand; the one in hand goes into the bag (2026-11-16)."""
+        hero = self.hero
+        held = weapons.key_of_weapon(hero.weapon)
+        if key == held or not self.bag.get(weapons.item(key)):
+            return
+        change = weapons.WEIGHT[held] - weapons.WEIGHT[key]
+        if supply_rules.bag_weight(self.bag) + change > supply_rules.BAG_CAPACITY + 1e-6:
+            self.message = "배낭이 무거워 손에 든 무기를 넣을 수 없다"
+            return
+        self.bag[weapons.item(key)] -= 1
+        self.bag[weapons.item(held)] = self.bag.get(weapons.item(held), 0) + 1
+        hero.weapon = weapons.WEAPONS[key]
+        hero.ready = None
+        self.message = f"{supply_rules.with_object_particle(hero.weapon['name'])} 들었다"
+        self.sounds.play("pickup", 0.6)
+
+    def next_weapon(self):
+        """Q: the next weapon in the bag into the hand."""
+        carried = sorted(k for k, n in self.bag.items() if n and weapons.key_of(k))
+        if not carried:
+            self.message = "배낭에 다른 무기가 없다"
+            return
+        self.equip(weapons.key_of(carried[0]))
+
     def use(self, kind):
-        """Use one supply from the bag (keys 1/2 or Enter in the bag)."""
+        """Use one supply from the bag (keys 1/2 or Enter in the bag); a weapon is taken in hand."""
+        if weapons.key_of(kind):
+            self.equip(weapons.key_of(kind))
+            return
         if self.hero.dead or not self.bag.get(kind):
             return
         if kind == "bandage" and (self.hero.hp < HERO_HP or self.condition.injuries):
@@ -267,6 +320,9 @@ class Game:
             self.bag_drag = None
             self.bag_note_from = self.message              # only what happens in the bag is shown there
             self.slow = False
+            return
+        if key == sdl2.SDLK_q and not self.left and not self.hero.dead:
+            self.next_weapon()
             return
         if key == sdl2.SDLK_SPACE:
             rolled = self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
@@ -314,7 +370,7 @@ class Game:
             return
         near_weapon = self.nearest_weapon()
         if near_weapon is not None and self.hero.free:
-            self.swap_weapon(near_weapon)
+            self.take_weapon(near_weapon)
             return
         item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
         if item is None or self.hero.pickup > 0 or self.hero.slash or self.hero.roll > 0:
@@ -336,15 +392,21 @@ class Game:
         near = [w for w in self.ground_weapons if hypot(w[0] - hero.x, w[1] - hero.y) <= supply_rules.PICK_RANGE]
         return min(near, key=lambda w: hypot(w[0] - hero.x, w[1] - hero.y)) if near else None
 
-    def swap_weapon(self, lying):
-        """E on a weapon on the ground: take it, leave the one in hand in its place."""
+    def take_weapon(self, lying):
+        """E on a weapon on the ground: into the bag if there is room (Enter in the bag or Q takes
+        it in hand), otherwise swap it for the one in hand, which is left in its place."""
         hero = self.hero
-        held = next(k for k, v in weapons.WEAPONS.items() if v is hero.weapon)
-        hero.weapon = weapons.WEAPONS[lying[2]]
-        lying[2] = held
+        key = lying[2]
         hero.pickup = PICKUP_TIME
-        self.message = f"{supply_rules.with_object_particle(hero.weapon['name'])} 들었다"
         self.sounds.play("pickup", 0.8)
+        if supply_rules.bag_weight(self.bag) + weapons.WEIGHT[key] <= supply_rules.BAG_CAPACITY + 1e-6:
+            self.ground_weapons.remove(lying)
+            self.bag[weapons.item(key)] = self.bag.get(weapons.item(key), 0) + 1
+            self.message = f"{supply_rules.with_object_particle(weapons.WEAPONS[key]['name'])} 배낭에 넣었다 · Q로 들기"
+            return
+        lying[2] = weapons.key_of_weapon(hero.weapon)
+        hero.weapon = weapons.WEAPONS[key]
+        self.message = f"배낭이 가득 차 {supply_rules.with_object_particle(hero.weapon['name'])} 바꿔 들었다"
 
     def hero_sees(self, zombie):
         """Is the infected inside the hero's view cone? (The small lit circle around the body
@@ -442,9 +504,14 @@ class Game:
             aim = hero.slash.get("aim")
             if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
                 hero.stamina.pay(stamina_rules.MISS)          # swung at nothing: more breath gone
+            stomp = hero.slash["stomp"]
             for z in self.zombies:
                 if not z.alive:
                     continue
+                if stomp and not (aim is not None and aim[0] is z):
+                    continue                                   # a stomp lands on the one it was for
+                if not stomp and z.prone and weapon["style"] not in weapons.REACHES_GROUND:
+                    continue                                   # a stab or a swing passes over a crawler
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
                 dist = hypot(zx - sx, zy - sy)
@@ -452,13 +519,17 @@ class Game:
                     opening = (z.state if z.helpless else "idle" if z in hero.slash.get("unaware", ())
                                else None)                      # helpless: one slash is enough
                     part = aim[1] if aim is not None and aim[0] is z else "torso"
+                    part = "torso" if part == "ground" else part
+                    damage = weapon["damage"][part]
+                    if part == "head" and not hero.slash.get("held"):
+                        damage = max(1, damage - weapons.HEAD_QUICK)   # the head: aim it to make it count
                     was_crawling = z.prone
-                    if opening is None and not z.hurt(hero.x, hero.y, weapon["damage"][part], part, weapon["push"]):
+                    if opening is None and not z.hurt(hero.x, hero.y, damage, part, weapon["push"]):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         if z.prone and not was_crawling:
                             self.message = "다리를 베었다! 이제 기어 온다 · 밟아서 끝내라"
                         elif part == "head":
-                            self.message = "머리를 쳤다!"
+                            self.message = "머리를 쳤다! (노리고 치면 한 방)"
                         continue
                     if opening is None and part == "head":
                         opening = "head"
@@ -523,9 +594,9 @@ class Game:
                 if wound != "긁힘":
                     self.hint("bleed", f"{wound}: 피를 흘린다 · 1 또는 Tab에서 붕대로 멈춰라")
                 hero.hurt = HURT_INVULNERABLE
-                others = sum(1 for o in self.zombies if o is not z and o.alive
-                             and hypot(o.x - hero.x, o.y - hero.y) <= GRAB_NEAR)
-                if self.senses and others and hero.hp > 0:
+                others = sum(1 for o in self.zombies if o is not z and o.alive and not o.prone
+                             and hypot(o.x - hero.x, o.y - hero.y) <= GRAB_NEAR)       # crawlers cannot hold
+                if self.senses and others and hero.hp > 0 and not z.prone:
                     hero.grabbed = GRAB_TIME             # Zomboid's drag-down: two on him hold him
                     hero.slash = None
                     self.message = "붙잡혔다! Space로 구르면 빠져나감"
@@ -647,14 +718,10 @@ class Game:
             return
         w = hero.weapon
         aim = self.aimed(*self.aim)
-        if aim is not None:
-            tx, ty = aim[0].x, aim[0].y + CHEST
-        else:
-            tx, ty = self.mouse_world(*self.aim)
+        tx, ty = self.mouse_world(*self.aim)              # the path runs toward the cursor
         part = aim[1] if aim is not None else "torso"
-        colour = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210)}[part]
-        if aim is not None and aim[0].prone:
-            colour = (196, 170, 92)                       # a crawler: the stomp
+        colour = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210),
+                  "ground": (214, 128, 52)}[part]
         sx, sy = hero.x, hero.y + CHEST
         ang = atan2(ty - sy, tx - sx)
         length = w["reach"] + w["lunge"]
@@ -667,15 +734,19 @@ class Game:
                 a = ang + k * w["arc"] / 6
                 ex, ey = sx + cos(a) * length - cx, sy + sin(a) * length - cy
                 pico2d.draw_rectangle(ex - 1, ey - 1, ex + 1, ey + 1, *colour, filled=True)
-        if aim is not None and not aim[0].prone:          # the part it goes for, on the body
+        if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
-            low, high = next((lo, hi) for p, lo, hi in weapons.PARTS if p == part)
-            l, r = z.x - weapons.PART_HALF_WIDTH - cx, z.x + weapons.PART_HALF_WIDTH - cx
+            if z.prone:                                   # a crawler: all of it, on the ground
+                low, high, half = -4, 14, weapons.PART_HALF_WIDTH * 2
+            else:
+                low, high = next((lo, hi) for p, lo, hi in weapons.PARTS if p == part)
+                half = weapons.PART_HALF_WIDTH
+            l, r = z.x - half - cx, z.x + half - cx
             b, t = z.y + low - cy, z.y + min(high, 56) - cy
             for (x0, y0, dx, dy) in ((l, t, 1, -1), (r, t, -1, -1), (l, b, 1, 1), (r, b, -1, 1)):
                 pico2d.draw_rectangle(min(x0, x0 + 5 * dx), y0 - 1, max(x0, x0 + 5 * dx), y0, *colour, filled=True)
                 pico2d.draw_rectangle(x0, min(y0, y0 + 5 * dy), x0 + 1, max(y0, y0 + 5 * dy), *colour, filled=True)
-            ui.world_text_center(z.x - cx, z.y + 62 - cy, weapons.PART_NAMES[part], colour, 12)
+            ui.world_text_center(z.x - cx, z.y + (24 if z.prone else 62) - cy, weapons.PART_NAMES[part], colour, 12)
 
     def draw_world_labels(self):
         """Words placed in the world, written crisp on the screen in the pixel font."""

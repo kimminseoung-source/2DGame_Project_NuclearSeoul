@@ -44,10 +44,11 @@ def image(name):
     return _images[name]
 
 
-def blit(name, x, y):
-    """Draw a canvas-sized picture with its top-left corner at canvas (x, y)."""
+def blit(name, x, y, scale=1):
+    """Draw a canvas-sized picture with its top-left corner at canvas (x, y), `scale` whole times."""
     img = image(name)
-    pico2d.Image.draw(img, (x + img.w / 2) * K, HEIGHT - (y + img.h / 2) * K, img.w * K, img.h * K)
+    w, h = img.w * scale, img.h * scale
+    pico2d.Image.draw(img, (x + w / 2) * K, HEIGHT - (y + h / 2) * K, w * K, h * K)
 
 
 def _font(bold):
