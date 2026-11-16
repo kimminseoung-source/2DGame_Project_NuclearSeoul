@@ -732,17 +732,20 @@ class Game:
         self.draw_world(cx, cy)
 
     def draw_aim(self, cx, cy):
-        """While the weapon is held raised: the path of the blow toward the cursor and the part it
-        goes for, marked on the body (2026-11-16 "공격 경로가 보이면서"). Dotted on the canvas."""
+        """The reach of the weapon toward the cursor, as the arc its blow ends on - always shown,
+        faint; while the weapon is held raised it takes the colour of the part it goes for and that
+        part is marked on the body (2026-11-16 "차징 안 할 때도 범위가 뜨면", "그림처럼 끝부분만").
+        Dotted on the canvas."""
         hero = self.hero
-        if hero.ready is None or hero.ready < weapons.QUICK_PRESS or self.aim[0] is None:
+        if self.aim[0] is None or hero.dead or self.left or self.bag_open:
             return
+        holding = hero.ready is not None and hero.ready >= weapons.QUICK_PRESS
         w = hero.weapon
-        aim = self.aimed(*self.aim)
-        tx, ty = self.mouse_world(*self.aim)              # the path runs toward the cursor
+        aim = self.aimed(*self.aim) if holding else None
+        tx, ty = self.mouse_world(*self.aim)              # toward the cursor
         part = aim[1] if aim is not None else "torso"
         colour = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210),
-                  "ground": (214, 128, 52)}[part]
+                  "ground": (214, 128, 52)}[part] if holding else (120, 116, 104)
         sx, sy = hero.x, hero.y + CHEST
         ang = atan2(ty - sy, tx - sx)
         length = weapons.attack_range(w)                   # exactly the range the hit uses
@@ -751,17 +754,10 @@ class Game:
         def dot(x, y, size=1):
             pico2d.draw_rectangle(x - size - cx, y - size - cy, x + size - cx, y + size - cy, *colour, filled=True)
 
-        # the whole area the blow covers (2026-11-16 "공격 범위에 맞춰서 점선을"): both edges
-        # and the far arc, dotted; the middle line toward the cursor a little brighter
-        for edge in (-w["arc"], w["arc"]):
-            for i in range(2, int(length // step) + 1):
-                dot(sx + cos(ang + edge) * i * step, sy + sin(ang + edge) * i * step)
-        n = max(2, int(length * w["arc"] / step))
+        n = max(2, int(length * w["arc"] / step))          # only the far arc: where the blow ends
         for k in range(-n, n + 1):
             a = ang + k * w["arc"] / n
             dot(sx + cos(a) * length, sy + sin(a) * length)
-        for i in range(2, int(length // step) + 1, 2):    # the aim line
-            dot(sx + cos(ang) * i * step, sy + sin(ang) * i * step)
         if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
             if z.prone:                                   # a crawler: all of it, on the ground
