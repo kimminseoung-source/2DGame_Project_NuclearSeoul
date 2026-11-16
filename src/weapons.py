@@ -117,8 +117,8 @@ def _sprite_length(sprite):
 
 
 # The range in cells (2026-11-16 "범위를 칸으로 정해서, 식칼은 칸 1개 마체테는 2개"): one cell = 8
-# dot px (CELL_WORLD world units). The end of the range is shown as `cells` squares side by side,
-# and the blow's width is exactly that row: the arc is the angle the row covers at the reach.
+# dot px (CELL_WORLD world units). The blow's width at its reach is `cells` cells, and the end of
+# the range is a dotted row exactly that wide: the arc is the angle the row covers at the reach.
 CELL_WORLD = 8 * SPRITE_TO_WORLD
 
 

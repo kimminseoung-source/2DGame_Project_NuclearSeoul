@@ -733,6 +733,8 @@ class Game:
         self.draw_area_edges(cx, cy)
         self.draw_world(cx, cy)
 
+    DOT_GAP = 4                    # canvas px between the range's dots (a 2 px dot, a 2 px gap)
+
     def draw_aim(self, cx, cy):
         """The reach of the weapon toward the cursor, as the arc its blow ends on - always shown,
         faint; while the weapon is held raised it takes the colour of the part it goes for and that
@@ -754,14 +756,16 @@ class Game:
         sx, sy = hero.x, hero.y + CHEST
         ang = atan2(ty - sy, tx - sx)
         length = weapons.attack_range(w)                   # exactly the range the hit uses
-        # Where the blow ends: the dotted arc at the reach, as before, but in cells (2026-11-16
-        # "칸으로 정해서"; the squares were "너무 큽니다 - 점들처럼"): one dot per cell on the arc,
-        # a cell apart, so 1, 2 or 3 dots are counted at a glance (a pair per cell ran together). Faint
-        # until the button is held; then the cells fill with colour from the middle out (the charge).
-        cell, count = weapons.CELL_WORLD, w["cells"]
+        # Where the blow ends: a dotted arc at the reach, exactly as wide as the hit (2026-11-16
+        # "점들처럼"; "점 1, 2, 3개는 예시 - 실제 범위에 알맞게"): dots DOT_GAP canvas px apart from one
+        # edge of the hit's arc (±arc) to the other, so the dotted row is the real width and a wider
+        # weapon simply has a longer row. Faint until the button is held; then the dots fill with
+        # colour from the middle out (the charge).
+        half = w["cells"] * weapons.CELL_WORLD / 2         # = length * arc: the hit's half-width there
+        count = round(2 * half * DOT / self.DOT_GAP) + 1
         for i in range(count):
-            off = (i - (count - 1) / 2) * cell             # the cell's middle, across the aim
-            middle = abs(i - (count - 1) / 2) / max(1, count / 2)      # 0 in the middle .. ~1 at the ends
+            off = (i / (count - 1) * 2 - 1) * half         # across the aim, edge to edge
+            middle = abs(off) / half                       # 0 in the middle .. 1 at the ends
             tint = full if charge > 0 and middle <= charge else faint
             a = ang + off / length
             # a 2 x 2 canvas-pixel square on the canvas grid: even, crisp dots at any camera
