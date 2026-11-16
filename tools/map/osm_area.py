@@ -337,7 +337,11 @@ def main(src, name, lat0, lon0, width_m, height_m):
         for piece, l_, b_, r_, t_, h_m in room["furniture"]:
             look = f"f_{piece}"
             blocks.append([l_, b_, r_, t_, look])
-            house.sprite(piece, (r_ - l_) * DOT, (t_ - b_) * DOT, h_m * SCALE * DOT).save(out / f"{look}.png")
+            drawn = ROOT / "assets" / "furniture" / f"{piece}.png"     # hand-placed dot art, if there is one
+            if drawn.exists():
+                Image.open(drawn).save(out / f"{look}.png")
+            else:
+                house.sprite(piece, (r_ - l_) * DOT, (t_ - b_) * DOT, h_m * SCALE * DOT).save(out / f"{look}.png")
         # floor, the north wall's face, walls and windows into the ground; the roof into its own picture
         flat = [canvas_xy(p) for p in poly]
         d.polygon(flat, fill=PAVING)
