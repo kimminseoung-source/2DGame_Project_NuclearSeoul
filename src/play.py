@@ -21,6 +21,7 @@ import pixel_ui as px
 import stamina as stamina_rules
 import ui
 from hero import PICKUP_TIME
+import area
 from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_H, ROOM_W, SUPPLIES,
                   WEAPONS_LYING, ZOMBIE_STARTS)
 from character_look import SheetLook
@@ -59,7 +60,7 @@ class Game:
         self.zombie_look = SheetLook(ROOT / f"assets/characters/infected{LOOK_SUFFIX}")
         self.aim = (None, None)
         self.deaths = 0
-        self.vision = VisionCone(BLOCKS)    # wrecks block the light
+        self.vision = VisionCone(BLOCKS, area.near_blocks)    # wrecks and walls block the light
         self.hurt_flash = 0.0               # s left of the red screen edge after the hero is hit
         self.used = set()                   # actions done at least once (their key marks go away)
         self.note_folded = False            # the goal note, folded to a tab by a click on it
@@ -83,6 +84,8 @@ class Game:
         pictures = {look: pico2d.load_image(str(area_dir / f"{look}.png")) for look in set(BLOCK_LOOKS)
                     if (area_dir / f"{look}.png").exists()}
         self.wreck_imgs = [pictures.get(look) for look in BLOCK_LOOKS]
+        self.roofs = [pico2d.load_image(str(area.AREA_PATH / f"{bd['roof']}.png")) for bd in area.BUILDINGS] \
+            if DOT_LOOK else []
         # what is drawn standing up: the wrecks (a building's walls are painted in the ground)
         self.standing = [(b[1], "block", (b, img)) for b, look, img in zip(BLOCKS, BLOCK_LOOKS, self.wreck_imgs)
                          if look != "building"]
@@ -97,7 +100,10 @@ class Game:
         self.zombies = [Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
                         for x, y in ZOMBIE_STARTS]
         self.effects = []
-        self.cam = [0.0, 0.0]
+        # the camera starts on the hero (a real-map area is big: from the corner it slid across it)
+        self.cam = [self.hero.x - getattr(self, "view_w", 0) / 2, self.hero.y - getattr(self, "view_h", 0) / 2]
+        if hasattr(self, "view_w"):
+            self.clamp_camera()
         self.hitstop = self.shake = 0.0
         self.slow = False
         self.slow_blend = 0.0
@@ -446,7 +452,8 @@ class Game:
             # Zomboid: a sound heard through a wreck or wall can't be placed exactly - the
             # infected heads for a spot off by up to MUFFLED_OFFSET px (open ground: exact).
             dist = hypot(hx - z.x, hy - z.y)
-            if dist > 1 and ray_hit(z.x, z.y, (hx - z.x) / dist, (hy - z.y) / dist, BLOCKS) < dist:
+            if dist > 1 and ray_hit(z.x, z.y, (hx - z.x) / dist, (hy - z.y) / dist,
+                                    area.blocks_between(z.x, z.y, hx, hy)) < dist:
                 ox, oy = random.uniform(-1, 1) * MUFFLED_OFFSET, random.uniform(-1, 1) * MUFFLED_OFFSET
                 z.hear(hx + ox, hy + oy, radius, origin=(hx, hy))
             else:
@@ -600,6 +607,7 @@ class Game:
             if z.state != state:
                 if z.state == "chase" and state in ("idle", "alert", "search"):
                     z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
+                    z.rush = infected.RUSH_TIME                               # ... and runs at him
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
                 elif z.state == "windup":
                     self.sounds.play("warn", 0.9, at=(z.x, z.y))
@@ -726,6 +734,13 @@ class Game:
             self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy, ROOM_W, ROOM_H)
         else:
             self.draw_plain_ground(cx, cy)
+        # roofs over the buildings one can go into - except the one the hero is in, whose floor
+        # and walls show (2026-11-16 "건물들도 들어갈 수 있게")
+        inside = area.building_at(self.hero.x, self.hero.y)
+        for i, (bd, img) in enumerate(zip(area.BUILDINGS, self.roofs)):
+            if i != inside:
+                l, b, r, t = bd["box"]
+                img.draw((l + r) / 2 - cx, (b + t) / 2 - cy, r - l, t - b)
         self.draw_area_edges(cx, cy)
         self.draw_world(cx, cy)
 

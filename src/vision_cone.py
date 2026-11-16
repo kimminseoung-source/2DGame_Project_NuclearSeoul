@@ -27,12 +27,14 @@ HIDE_FROM = 150            # bodies are hidden where the darkness is at least th
 # slightly larger circle.
 CONE_HALF = 0.7            # radians either side of the look direction (~80 degrees in all)
 CONE_SOFT = 0.16           # radians over which the cone's sides fade into the dark
-CONE_RANGE = 250           # px the cone reaches
+# 2026-11-16 "앞을 볼 수 있는 시야가 살짝 더 커야 할 듯, 맵이 커지게 된다면": 250 -> 330, so the
+# cone's end reaches about the side of the screen at the default zoom.
+CONE_RANGE = 330           # px the cone reaches
 RANGE_SOFT = 50
 NEAR_CLEAR = 40            # px around the body that is always lit (melee range and a little more)
 NEAR_SOFT = 24
 STEPS = 96                 # mesh resolution around the eye
-RADII = (0, 15, 30, 40, 52, 64, 80, 120, 160, 200, 250, 275, 300, 900)
+RADII = (0, 15, 30, 40, 52, 64, 80, 120, 160, 200, 250, 290, 330, 355, 380, 900)
 FAR = RADII[-1]
 SHADOW_SOFT = 10           # px behind a blocker's edge over which its shadow darkens
 
@@ -72,8 +74,11 @@ def alpha_at(dx, dy, look, scale=1.0):
 
 
 class VisionCone:
-    def __init__(self, blockers=()):
+    def __init__(self, blockers=(), nearby=None):
         self.blockers = list(blockers)
+        # nearby(l, b, r, t) -> the blockers that may touch that box (a spatial index); without
+        # one every blocker is looked at
+        self.nearby = nearby or (lambda l, b, r, t: self.blockers)
         self.scale = 1.0                 # < 1 while panicking: a narrower, shorter cone
         n, m = STEPS, len(RADII) + 2
         self.spoke = m
@@ -93,7 +98,8 @@ class VisionCone:
         r = hypot(dx, dy)
         dark = alpha_at(dx, dy, look, self.scale)
         if r > 0 and self.blockers:
-            hit = ray_hit(eye[0], eye[1], dx / r, dy / r, self.blockers)
+            hit = ray_hit(eye[0], eye[1], dx / r, dy / r,
+                          self.nearby(min(eye[0], x), min(eye[1], y), max(eye[0], x), max(eye[1], y)))
             if r > hit:
                 dark = max(dark, FOG * _ramp((r - hit) / SHADOW_SOFT))
         return dark
@@ -111,7 +117,7 @@ class VisionCone:
         # only what stands within the light's reach can cast a shadow that shows (a real-map area
         # has ~150 building rectangles: every ray against all of them was needless work)
         reach = CONE_RANGE + RANGE_SOFT
-        near = [(l, b, r, t) for l, b, r, t in self.blockers
+        near = [(l, b, r, t) for l, b, r, t in self.nearby(eye[0] - reach, eye[1] - reach, eye[0] + reach, eye[1] + reach)
                 if max(l - eye[0], 0, eye[0] - r) ** 2 + max(b - eye[1], 0, eye[1] - t) ** 2 <= reach * reach]
         for a, angle in enumerate(self.angles):
             ca, sa = cos(angle), sin(angle)

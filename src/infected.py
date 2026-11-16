@@ -8,7 +8,7 @@ import random
 from math import atan2, cos, hypot, pi
 
 import ui
-from area import BLOCKS, move_body, waypoint
+from area import BLOCKS, blocks_between, move_body, waypoint
 from settings import TEMPO, ZOMBIE_ARC, ZOMBIE_REACH, ZOMBIE_RECOVER, ZOMBIE_SPEED, ZOMBIE_STRIKE, ZOMBIE_WINDUP
 from vision_cone import ray_hit
 
@@ -61,6 +61,10 @@ CRAWLER_SHARE = 0.25            # share of infected that crawl
 PACES = (("slow", 0.25, 0.7), ("normal", 0.55, 1.0), ("fast", 0.2, 1.4))
 CRAWL_SPEED = 0.18              # share of the walking speed (2026-11-16 "속도가 많이 느려지게": was 0.35)
 CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
+# The rush (2026-11-16 "좀비가 ! 해서 발견하면 갑자기 달려오면 좋겠음"): the moment it spots the
+# hero it breaks into a run for a moment - faster than the hero walks - then settles to its pace.
+RUSH_TIME = 1.4                 # s of running after the "!"
+RUSH_SPEED = 1.8                # times its own pace (a normal one: 126 px/s, the hero walks 110)
 
 
 class Zombie:
@@ -77,6 +81,7 @@ class Zombie:
         self.windup = ZOMBIE_WINDUP
         self.spotted = 0.0           # s left of the "!" shown the moment it spots the hero
         self.heard = 0.0             # s left of the "?" shown the moment it hears a noise
+        self.rush = 0.0              # s left of the run it breaks into on spotting the hero
         self.seen_time = 0.0         # how long it has kept the hero in sight
         self.turn_from = self.turn_to = 0.0
         self.time = random.random()
@@ -99,7 +104,10 @@ class Zombie:
 
     @property
     def speed(self):
-        return ZOMBIE_SPEED * (CRAWL_SPEED if self.prone else self.pace)
+        if self.prone:
+            return ZOMBIE_SPEED * CRAWL_SPEED
+        rushing = self.rush > 0 and self.state == "chase"
+        return ZOMBIE_SPEED * self.pace * (RUSH_SPEED if rushing else 1.0)
 
     @property
     def reach(self):
@@ -163,7 +171,8 @@ class Zombie:
             off = abs((atan2(dy, dx) - self.heading + pi) % (2 * pi) - pi)
             if off > SIGHT_HALF:
                 return False
-        return dist < 1 or ray_hit(self.x, self.y, dx / dist, dy / dist, BLOCKS) >= dist
+        return dist < 1 or ray_hit(self.x, self.y, dx / dist, dy / dist,
+                                   blocks_between(self.x, self.y, hero.x, hero.y)) >= dist
 
     def hear(self, x, y, radius, origin=None):
         """A noise of `radius` px; (x, y) is where it seems to come from (a muffled sound is
@@ -191,7 +200,7 @@ class Zombie:
         if dist < 1:
             return dist
         way = dist
-        if BLOCKS and ray_hit(self.x, self.y, dx / dist, dy / dist, BLOCKS) < dist:
+        if BLOCKS and ray_hit(self.x, self.y, dx / dist, dy / dist, blocks_between(self.x, self.y, x, y)) < dist:
             wx, wy = waypoint(self.x, self.y, x, y)         # something in the way: go around it
             dx, dy = wx - self.x, wy - self.y
             way = hypot(dx, dy)
@@ -209,6 +218,7 @@ class Zombie:
         self.time += dt
         self.spotted = max(0.0, self.spotted - dt)
         self.heard = max(0.0, self.heard - dt)
+        self.rush = max(0.0, self.rush - dt)
         if self.state == "dead":
             self.timer += dt
             move_body(self, self.death[0] * dt, self.death[1] * dt)

@@ -47,11 +47,62 @@ if AREA != "test":
     EXIT = tuple(_data["exit"])
     GROUND = _dir / "ground.png"
     CREDIT = _data.get("credit", "")
+    AREA_PATH = _dir
+    # Buildings one can go into (2026-11-16 "건물들도 들어갈 수 있게"): their outline, the roof
+    # picture drawn over them while the hero is outside, and its box (world l, b, r, t).
+    BUILDINGS = [{"poly": [tuple(p) for p in bd["poly"]], "roof": bd["roof"], "box": tuple(bd["box"])}
+                 for bd in _data.get("buildings", [])]
+else:
+    AREA_PATH = None
+    BUILDINGS = []
+
+
+def inside(poly, x, y):
+    """Is (x, y) inside the polygon (a list of (x, y))?"""
+    hit = False
+    for (x1, y1), (x2, y2) in zip(poly, poly[1:] + poly[:1]):
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            hit = not hit
+    return hit
+
+
+def building_at(x, y):
+    """The index of the building (x, y) is in, or None."""
+    for i, bd in enumerate(BUILDINGS):
+        l, b, r, t = bd["box"]
+        if l <= x <= r and b <= y <= t and inside(bd["poly"], x, y):
+            return i
+    return None
+
+
+# The blocks by place (a real-map area has hundreds of wall pieces): each BUCKET square lists the
+# blocks touching it, so a question about one spot only looks at the few nearby.
+BUCKET = 128
+_buckets = {}
+for _b in BLOCKS:
+    for _i in range(int((_b[0] - 32) // BUCKET), int((_b[2] + 32) // BUCKET) + 1):
+        for _j in range(int((_b[1] - 32) // BUCKET), int((_b[3] + 32) // BUCKET) + 1):
+            _buckets.setdefault((_i, _j), []).append(_b)
+
+
+def near_blocks(l, b, r, t):
+    """The blocks that may touch the box (l, b, r, t)."""
+    found = set()
+    for i in range(int(l // BUCKET), int(r // BUCKET) + 1):
+        for j in range(int(b // BUCKET), int(t // BUCKET) + 1):
+            found.update(_buckets.get((i, j), ()))
+    return list(found)
+
+
+def blocks_between(x1, y1, x2, y2):
+    """The blocks that may stand between two points (for sight and light rays)."""
+    return near_blocks(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
 
 
 def blocked(x, y, pad=8):
     return (not (pad <= x <= ROOM_W - pad and pad <= y <= ROOM_H - pad)
-            or any(l - pad <= x <= r + pad and b - pad / 2 <= y <= t + pad / 2 for l, b, r, t in BLOCKS))
+            or any(l - pad <= x <= r + pad and b - pad / 2 <= y <= t + pad / 2
+                   for l, b, r, t in _buckets.get((int(x // BUCKET), int(y // BUCKET)), ())))
 
 
 # Ways around blocks (2026-11-16: on the real map the infected walked straight into buildings and
