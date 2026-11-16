@@ -248,10 +248,9 @@ class Game:
         self.aim = (sx, sy)
         before = self.hero.slash
         aim = self.aimed(sx, sy)
-        if aim is not None:                              # aimed at a body: go for it
-            ax, ay = aim[0].x, aim[0].y + CHEST
-        else:
-            ax, ay = self.mouse_world(sx, sy)
+        # the blow goes toward the cursor - exactly where the shown arc is (2026-11-16 "두 검로가
+        # 같아야"); the aimed body is still hit, being on that path
+        ax, ay = self.mouse_world(sx, sy)
         angle = atan2(ay - (self.hero.y + CHEST), ax - self.hero.x)
         if aim is None:                                  # a crawler toward the aim: the stomp's target
             crawler = self.ground_target(angle)
@@ -726,8 +725,8 @@ class Game:
         part is marked on the body (2026-11-16 "차징 안 할 때도 범위가 뜨면", "그림처럼 끝부분만").
         Dotted on the canvas."""
         hero = self.hero
-        if self.aim[0] is None or hero.dead or self.left or self.bag_open:
-            return
+        if self.aim[0] is None or hero.dead or self.left or self.bag_open or hero.slash:
+            return                                         # while it swings, its trail is the arc
         charge = hero.charge if hero.ready is not None and hero.ready >= weapons.QUICK_PRESS else 0.0
         charged = charge >= 1.0
         w = hero.weapon

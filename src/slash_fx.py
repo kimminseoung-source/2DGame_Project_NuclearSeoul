@@ -41,7 +41,7 @@ class Streak:
     """Realistic slash: a quick bright arc where the blade passed - on the same arc the game shows
     as the weapon's reach (2026-11-16: the trail and the shown range were two different arcs)."""
 
-    LIFE = 0.12
+    LIFE = 0.16
 
     def __init__(self, x, y, angle, radius=44, arc=SLASH_ARC):
         self.x, self.y, self.angle = x, y, angle
@@ -55,11 +55,11 @@ class Streak:
     def draw(self, cam_x, cam_y):
         fade = 1 - self.age / self.LIFE
         cx, cy = self.x - cam_x, self.y - cam_y
-        n = max(2, int(self.radius * self.arc / 3))
+        n = max(2, int(self.radius * self.arc / 6))       # the same dots as the shown arc (play.draw_aim)
         for k in range(-n, n + 1):
             t = self.angle + k * self.arc / n
             x, y = cx + cos(t) * self.radius, cy + sin(t) * self.radius
-            pico2d.draw_rectangle(x - 1, y - 1, x + 1, y + 1, 230, 232, 236, round(220 * fade), filled=True)
+            pico2d.draw_rectangle(x - 1, y - 1, x + 1, y + 1, 236, 238, 240, round(255 * fade), filled=True)
 
 
 class Blood:
