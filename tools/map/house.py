@@ -8,9 +8,14 @@ On the 0.5 m wall grid of tools/map/osm_area.py:
   - windows in the south / east / west walls: they stop bodies but not light or sight
   - a few pieces of furniture against the walls, drawn here as pixel art (no downloaded assets)
 """
+import sys
 from math import ceil
+from pathlib import Path
 
 from PIL import Image, ImageDraw
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sprites"))
+import house_dots  # noqa: E402  (the hand-placed dot pieces of a house front)
 
 N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 FACE_CELLS = 3             # the north wall's inside face: 3 cells = 1.5 m
@@ -149,14 +154,10 @@ def front(img, mask, face_px, box, cells, glass, doors, to_px, grid):
     shifted = mask.transform(mask.size, Image.AFFINE, (1, 0, 0, 0, 1, face_px))
     roof = ImageChops.multiply(mask, shifted)
     wallm = ImageChops.subtract(mask, roof)
-    tiles = Image.new("RGBA", (w, h), ROOF_TILE + (255,))
-    td = ImageDraw.Draw(tiles)
-    for y in range(0, h, 4):                               # rows of roof tiles, seams offset
-        td.line((0, y, w, y), fill=ROOF_LINE + (255,))
-        for x in range((y // 4) % 2 * 3, w, 6):
-            td.line((x, y, x, y + 3), fill=ROOF_LINE + (255,))
-    img.paste(tiles, (0, 0), roof)
-    img.paste(PLASTER + (255,), (0, 0, w, h), wallm)
+    # hand-placed dot pieces (tools/sprites/house_dots.py): red brick, barred windows, steel door,
+    # a green flat roof (2026-11-16 "이대로 가자")
+    img.paste(house_dots.flat_roof(roof, seed=w * 7 + h), (0, 0), roof)
+    img.paste(house_dots.brick_wall(w, h, seed=w + h), (0, 0), wallm)
     bottom = {}
     for c, r in cells:
         bottom[c] = min(bottom.get(c, r), r)
@@ -167,18 +168,27 @@ def front(img, mask, face_px, box, cells, glass, doors, to_px, grid):
     def y_px(r):
         return round(to_px((0, r * grid))[1]) - box[1]
 
-    d = ImageDraw.Draw(img)
-    for c, r in glass:                                     # windows of the south wall
+    runs = {}                                              # windows of the south wall, run by run
+    for c, r in sorted(glass):
         if r == bottom.get(c) and (c, r - 1) not in cells:
-            y0 = y_px(r) - round(face_px * 0.75)
-            d.rectangle((x_px(c), y0, x_px(c + 1) - 1, y0 + round(face_px * 0.4)), fill=GLASS + (255,), outline=FRAME + (255,))
-    for x, y in doors:                                     # the door
+            runs.setdefault(r, []).append(c)
+    for r, cols_ in runs.items():
+        group = [cols_[0]]
+        for c in cols_[1:] + [None]:
+            if c is not None and c == group[-1] + 1:
+                group.append(c)
+                continue
+            x0, x1 = x_px(group[0]), x_px(group[-1] + 1)
+            win = house_dots.window(x1 - x0, round(face_px * 0.36))
+            img.alpha_composite(win, (x0, y_px(r) - round(face_px * 0.72)))
+            group = [c] if c is not None else []
+    for x, y in doors:                                     # the front door
         c0, c1 = int((x - 32) // grid), int((x + 32) // grid)
         r = min(bottom.get(c, 1 << 30) for c in range(c0, c1))
         if r == 1 << 30:
             continue
-        d.rectangle((x_px(c0) + 1, y_px(r) - round(face_px * 0.85), x_px(c1) - 2, y_px(r) - 1),
-                    fill=DOOR_WOOD + (255,), outline=FRAME + (255,))
+        dw, dh = x_px(c1) - x_px(c0) - 4, round(face_px * 0.72)
+        img.alpha_composite(house_dots.door(dw, dh), (x_px(c0), y_px(r) - dh - 4))
 
 
 def sprite(name, w, dep, h):
