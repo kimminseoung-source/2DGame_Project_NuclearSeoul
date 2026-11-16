@@ -37,7 +37,10 @@ def item_text(kind):
     """The line shown for a bag item: what a supply does, or a weapon's way of hitting."""
     import weapons
     key = weapons.key_of(kind)
-    return weapons.STYLE_TEXT[weapons.WEAPONS[key]["style"]] + " · Enter로 들기" if key else KINDS[kind][3]
+    if not key:
+        return KINDS[kind][3]
+    w = weapons.WEAPONS[key]
+    return f"{weapons.STYLE_TEXT[w['style']]} · 속도 {weapons.speed_word(w)} · Enter로 들기"
 
 
 def bag_weight(bag):

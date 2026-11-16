@@ -102,7 +102,8 @@ class Hero:
         start = hit * weapons.READY_SKIP if held and not stomp else 0.0
         self.slash = {"time": start, "angle": angle, "hit": False, "stomp": stomp, "aim": aim,
                       "whole": whole, "hit_at": hit, "pose": "stomp" if stomp else w["pose"],
-                      "reach": w["reach"], "arc": w["arc"], "weapon": w, "held": held}
+                      "reach": w["reach"], "arc": w["arc"], "weapon": w, "held": held,
+                      "from": (self.x, self.y + CHEST)}            # the range is measured from here
         speed = lunge * LUNGE_SPEED                     # covers about `lunge` px whatever the tempo
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
 
@@ -183,8 +184,8 @@ class Hero:
             move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)
             self.lunge = (self.lunge[0] * 0.82, self.lunge[1] * 0.82)
             if self.slash["time"] >= self.slash["whole"]:
+                self.slash_cooldown = self.slash["weapon"].get("cooldown", SLASH_COOLDOWN)   # the weapon's rest
                 self.slash = None
-                self.slash_cooldown = SLASH_COOLDOWN
         elif mx or my:
             length = hypot(mx, my)
             speed = RUN_SPEED * (SNEAK_SPEED if self.sneaking else 1.0) * (1 - self.slowed)

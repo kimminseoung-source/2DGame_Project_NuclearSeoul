@@ -218,7 +218,7 @@ class Game:
         sx0, sy0 = hero.x, hero.y + CHEST
         length = hypot(wx - sx0, wy - sy0) or 1
         dx, dy = (wx - sx0) / length, (wy - sy0) / length
-        reach = w["reach"] + w["lunge"] + 8
+        reach = weapons.attack_range(w)
         best = None
         for z in seen:
             # where the path passes closest to the middle of the body, and at what height
@@ -505,6 +505,8 @@ class Game:
             if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
                 hero.stamina.pay(stamina_rules.MISS)          # swung at nothing: more breath gone
             stomp = hero.slash["stomp"]
+            ox, oy = hero.slash["from"]                        # measured from where the blow started
+            span = reach + hero.slash["weapon"]["lunge"]       # the range shown by the dotted path
             for z in self.zombies:
                 if not z.alive:
                     continue
@@ -513,9 +515,13 @@ class Game:
                 if not stomp and z.prone and weapon["style"] not in weapons.REACHES_GROUND:
                     continue                                   # a stab or a swing passes over a crawler
                 zx, zy = z.x, z.y + CHEST
-                diff = (atan2(zy - sy, zx - sx) - hero.slash["angle"] + pi) % (2 * pi) - pi
-                dist = hypot(zx - sx, zy - sy)
-                if dist <= BODY_CONTACT or (dist <= reach and abs(diff) <= arc):  # touching: hit
+                diff = (atan2(zy - oy, zx - ox) - hero.slash["angle"] + pi) % (2 * pi) - pi
+                from_start = hypot(zx - ox, zy - oy)
+                touching = hypot(zx - sx, zy - sy) <= BODY_CONTACT
+                marked = aim is not None and aim[0] is z and from_start <= span + weapons.PART_HALF_WIDTH
+                # the one marked when the button was let go is hit (2026-11-16 "어디가 맞을지 뜨면
+                #그때는 공격 판정이 들어가게"); others: inside the shown range and its arc
+                if touching or marked or (from_start <= span and abs(diff) <= arc):
                     opening = (z.state if z.helpless else "idle" if z in hero.slash.get("unaware", ())
                                else None)                      # helpless: one slash is enough
                     part = aim[1] if aim is not None and aim[0] is z else "torso"
@@ -724,16 +730,16 @@ class Game:
                   "ground": (214, 128, 52)}[part]
         sx, sy = hero.x, hero.y + CHEST
         ang = atan2(ty - sy, tx - sx)
-        length = w["reach"] + w["lunge"]
+        length = weapons.attack_range(w)                   # exactly the range the hit uses
         step = 6
         for i in range(2, int(length // step) + 1):        # the path: a dotted line
             px_, py_ = sx + cos(ang) * i * step - cx, sy + sin(ang) * i * step - cy
             pico2d.draw_rectangle(px_ - 1, py_ - 1, px_ + 1, py_ + 1, *colour, filled=True)
-        if w["style"] in ("swingh", "chop"):              # a swing or a chop sweeps: its arc at the end
-            for k in range(-3, 4):
-                a = ang + k * w["arc"] / 6
-                ex, ey = sx + cos(a) * length - cx, sy + sin(a) * length - cy
-                pico2d.draw_rectangle(ex - 1, ey - 1, ex + 1, ey + 1, *colour, filled=True)
+        n = max(2, int(length * w["arc"] / step))          # the arc it sweeps, at the end, dot every ~6
+        for k in range(-n, n + 1):
+            a = ang + k * w["arc"] / n
+            ex, ey = sx + cos(a) * length - cx, sy + sin(a) * length - cy
+            pico2d.draw_rectangle(ex - 1, ey - 1, ex + 1, ey + 1, *colour, filled=True)
         if aim is not None:                               # the part it goes for, on the body
             z = aim[0]
             if z.prone:                                   # a crawler: all of it, on the ground

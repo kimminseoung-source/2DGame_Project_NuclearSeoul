@@ -34,6 +34,7 @@ WEAPONS = {
         "name": "마체테", "style": "chop", "pose": "chop", "sprite": "machete",
         "time": 0.42 * TEMPO,       # the whole blow
         "hit": 0.2 * TEMPO,         # when it lands
+        "cooldown": 0.12,           # s before the next blow can start
         "lunge": 24.0,              # px stepped in along the aim
         "reach": 58.0, "arc": 1.0,  # px from chest to chest, radians either side of the aim
         "damage": {"head": 3, "torso": 1, "legs": 1},   # an aware infected takes 2-3
@@ -42,28 +43,28 @@ WEAPONS = {
     },
     "knife": {                      # quick, short, precise: a stab to the head ends it
         "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
-        "time": 0.3 * TEMPO, "hit": 0.12 * TEMPO, "lunge": 18.0,
+        "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 18.0,
         "reach": 44.0, "arc": 0.45,
         "damage": {"head": 3, "torso": 1, "legs": 1},
         "stamina": 8.0, "push": 25,
     },
     "bat": {                        # wide and pushing, weak: keeps them off
         "name": "야구방망이", "style": "swingh", "pose": "swingh", "sprite": "bat",
-        "time": 0.5 * TEMPO, "hit": 0.26 * TEMPO, "lunge": 16.0,
+        "time": 0.52 * TEMPO, "hit": 0.27 * TEMPO, "cooldown": 0.2, "lunge": 16.0,
         "reach": 62.0, "arc": 1.35,
         "damage": {"head": 2, "torso": 1, "legs": 1},
         "stamina": 16.0, "push": 150,
     },
     "pipe": {                       # like the bat, longer and heavier
         "name": "쇠파이프", "style": "swingh", "pose": "swingh", "sprite": "pipe",
-        "time": 0.56 * TEMPO, "hit": 0.3 * TEMPO, "lunge": 16.0,
+        "time": 0.6 * TEMPO, "hit": 0.31 * TEMPO, "cooldown": 0.26, "lunge": 16.0,
         "reach": 66.0, "arc": 1.3,
         "damage": {"head": 2, "torso": 1, "legs": 2},
         "stamina": 18.0, "push": 170,
     },
     "axe": {                        # slow and costly, but even the torso takes two
         "name": "소방 도끼", "style": "chop", "pose": "chop", "sprite": "axe",
-        "time": 0.62 * TEMPO, "hit": 0.32 * TEMPO, "lunge": 20.0,
+        "time": 0.78 * TEMPO, "hit": 0.4 * TEMPO, "cooldown": 0.35, "lunge": 20.0,
         "reach": 60.0, "arc": 0.9,
         "damage": {"head": 3, "torso": 2, "legs": 2},
         "stamina": 22.0, "push": 80,
@@ -75,6 +76,18 @@ DEFAULT = "machete"
 WEIGHT = {"machete": 0.4, "knife": 0.2, "bat": 0.6, "pipe": 0.6, "axe": 0.8}
 STYLE_TEXT = {"chop": "내려치기 · 바닥에 기는 놈에게도 닿는다", "stab": "찌르기 · 빠르고 짧다",
               "swingh": "가로 휘두르기 · 넓고 밀어낸다"}
+
+
+def attack_range(w):
+    """How far a blow reaches, from where the hero stands when it starts: its reach plus the step
+    in. The dotted path, the aim and the hit all use this one number (2026-11-16 "보이는 점선
+    범위가 공격 범위랑 동일하게")."""
+    return w["reach"] + w["lunge"]
+
+
+def speed_word(w):
+    t = w["time"] + w["cooldown"]
+    return "빠름" if t < 0.45 else "보통" if t < 0.8 else "느림"
 
 
 def item(key):
