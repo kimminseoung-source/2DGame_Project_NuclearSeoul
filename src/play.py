@@ -32,7 +32,7 @@ import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
                       ROLL_TIME, ROOT, SLOW_WORLD, WIDTH,
                       ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
-from slash_fx import Blood, Crescent, Spark, Streak, draw_stains
+from slash_fx import Blood, Crescent, Spark, Streak, Tracer, draw_stains
 from sound import Sounds
 import supplies as supply_rules
 from supplies import KINDS, PILL_EFFECT, Supply
@@ -133,6 +133,7 @@ class Game:
         bag_screen.reset(self)
         self.message_at = 0.0
         self.bag = {kind: 0 for kind in KINDS}
+        self.ammo = 0                # rounds for the gun (weapons.py "shot"); found with a gun
         self.kills = 0
         self.left = False            # reached the exit: the area is done
 
@@ -289,7 +290,14 @@ class Game:
         if aim is None:                                  # a crawler toward the aim: the stomp's target
             crawler = self.ground_target(angle)
             aim = (crawler, "ground") if crawler is not None else None
-        stomp = aim is not None and aim[0].prone
+        shot = self.hero.weapon.get("shot")
+        if shot and self.ammo <= 0:                      # an empty gun: a click, nothing more
+            if self.hero.free:
+                self.sounds.play("dry", 0.7)
+                self.hero.slash_cooldown = 0.2
+            self.hero.ready = None
+            return
+        stomp = aim is not None and aim[0].prone and not shot      # a gun is fired at a crawler too
         if aim is not None and aim[1] in ("head", "legs") and self.hero.charge < 1.0:
             aim = (aim[0], "torso")                      # not charged: the torso, whatever the aim
         self.hero.start_slash(ax, ay, stomp=stomp, aim=aim)
@@ -297,7 +305,8 @@ class Game:
             self.used.add("attack")
         if self.hero.slash is not None and self.hero.slash is not before:
             self.hero.slash["quiet"] = False
-            self.sounds.play("slash", 0.45 if self.hero.slash["quiet"] else 0.8)
+            if not shot:
+                self.sounds.play("slash", 0.8)
 
     def equip(self, key):
         """Take a carried weapon in hand; the one in hand goes into the bag (2026-11-16)."""
@@ -430,6 +439,7 @@ class Game:
         it in hand), otherwise swap it for the one in hand, which is left in its place."""
         hero = self.hero
         key = lying[2]
+        self.ammo += weapons.WEAPONS[key].get("shot", {}).get("rounds", 0)   # a gun comes loaded
         hero.pickup = PICKUP_TIME
         self.sounds.play("pickup", 0.8)
         if supply_rules.bag_weight(self.bag) + weapons.WEIGHT[key] <= supply_rules.BAG_CAPACITY + 1e-6:
@@ -440,6 +450,33 @@ class Game:
         lying[2] = weapons.key_of_weapon(hero.weapon)
         hero.weapon = weapons.WEAPONS[key]
         self.message = f"배낭이 가득 차 {supply_rules.with_object_particle(hero.weapon['name'])} 바꿔 들었다"
+
+    def fire(self, slash, shot):
+        """A gun goes off (weapons.py "shot"): one round less, the bullet along the aim to the first
+        infected on its line (a wall stops it, a window does not), the flash, and a bang that
+        carries far. Returns the infected hit, or None."""
+        hero = self.hero
+        self.ammo -= 1
+        ox, oy = slash["from"]
+        ux, uy = cos(slash["angle"]), sin(slash["angle"])
+        limit = min(shot["range"], ray_hit(hero.x, hero.y, ux, uy,
+                                           area.sight_blocks(hero.x - shot["range"], hero.y - shot["range"],
+                                                             hero.x + shot["range"], hero.y + shot["range"])))
+        struck, at = None, limit
+        for z in self.zombies:
+            if not z.alive:
+                continue
+            for up in ((6,) if z.prone else (8, CHEST, 40)):      # legs, chest, head: any of the body
+                dx, dy = z.x - ox, z.y + up - oy
+                t = dx * ux + dy * uy
+                if 0 < t < at and abs(dx * uy - dy * ux) <= shot["width"]:
+                    struck, at = z, t
+        self.effects.append(Tracer(ox + ux * 16, oy + uy * 16, ox + ux * at, oy + uy * at))
+        self.sounds.play("shot", 1.0)
+        self.hitstop, self.shake = max(self.hitstop, 0.03), max(self.shake, 0.12)
+        if self.senses:
+            self.make_noise(shot["noise"])
+        return struck
 
     def hero_sees(self, zombie):
         """Is the infected inside the hero's view cone? (The small lit circle around the body
@@ -535,7 +572,11 @@ class Game:
         if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= hero.slash["hit_at"]:
             hero.slash["hit"] = True
             sx, sy = hero.x, hero.y + CHEST
-            if hero.slash["stomp"]:                      # the foot comes down on it
+            shot = hero.slash["weapon"].get("shot")
+            struck = self.fire(hero.slash, shot) if shot else None
+            if shot:
+                pass                                         # the bullet's line is its trail
+            elif hero.slash["stomp"]:                    # the foot comes down on it
                 self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
             else:
                 ox0, oy0 = hero.slash["from"]                  # the trail runs on the shown arc
@@ -543,7 +584,7 @@ class Game:
                                            hero.slash["arc"]) if self.real else Crescent(sx, sy, hero.slash["angle"]))
             reach, arc, weapon = hero.slash["reach"], hero.slash["arc"], hero.slash["weapon"]
             aim = hero.slash.get("aim")
-            if not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
+            if not shot and not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
                 hero.stamina.pay(stamina_rules.MISS)          # swung at nothing: more breath gone
             stomp = hero.slash["stomp"]
             ox, oy = hero.slash["from"]                        # measured from where the blow started
@@ -553,7 +594,7 @@ class Game:
                     continue
                 if stomp and not (aim is not None and aim[0] is z):
                     continue                                   # a stomp lands on the one it was for
-                if not stomp and z.prone and weapon["style"] not in weapons.REACHES_GROUND:
+                if not stomp and not shot and z.prone and weapon["style"] not in weapons.REACHES_GROUND:
                     continue                                   # a stab or a swing passes over a crawler
                 zx, zy = z.x, z.y + CHEST
                 diff = (atan2(zy - oy, zx - ox) - hero.slash["angle"] + pi) % (2 * pi) - pi
@@ -562,7 +603,7 @@ class Game:
                 marked = aim is not None and aim[0] is z and from_start <= span + weapons.PART_HALF_WIDTH
                 # the one marked when the button was let go is hit (2026-11-16 "어디가 맞을지 뜨면
                 #그때는 공격 판정이 들어가게"); others: inside the shown range and its arc
-                if touching or marked or (from_start <= span and abs(diff) <= arc):
+                if (z is struck) if shot else (touching or marked or (from_start <= span and abs(diff) <= arc)):
                     # no sure kills: the weapon's damage range, by the part (weapons.roll_damage)
                     part = aim[1] if aim is not None and aim[0] is z else "torso"
                     part = "ground" if stomp else "torso" if part == "ground" else part
@@ -781,6 +822,16 @@ class Game:
         # colour from the middle out (the charge).
         half = w["cells"] * weapons.CELL_WORLD / 2         # = length * arc: the hit's half-width there
         count = round(2 * half * DOT / self.DOT_GAP) + 1
+        if w.get("shot"):                                  # a gun: a dotted sight line as far as it flies
+            count = 0
+            ux, uy = cos(ang), sin(ang)
+            far = min(length, ray_hit(hero.x, hero.y, ux, uy, area.sight_blocks(
+                hero.x - length, hero.y - length, hero.x + length, hero.y + length)))
+            tint = full if charged else faint if self.ammo > 0 else (120, 60, 54)
+            for d in range(24, int(far), 3 * self.DOT_GAP):
+                qx = round((sx + ux * d - cx) * DOT) / DOT
+                qy = round((sy + uy * d - cy) * DOT) / DOT
+                pico2d.draw_rectangle(qx, qy, qx + 1.99 / DOT, qy + 1.99 / DOT, *tint, filled=True)
         for i in range(count):
             off = (i / (count - 1) * 2 - 1) * half         # across the aim, edge to edge
             middle = abs(off) / half                       # 0 in the middle .. 1 at the ends

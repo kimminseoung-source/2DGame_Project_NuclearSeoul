@@ -97,6 +97,21 @@ WEAPONS = {
         "stagger": False,
         "good": "피해 가장 셈", "bad": "가장 느림·기력 많이",
     },
+    # A gun (2026-11-17 "총기를 넣고 좀 더 전투 중심으로", first step: one pistol, 6 rounds, a big
+    # noise). "shot" makes a weapon a gun: the blow is a bullet along the aim - the first infected
+    # on the line up to `range` is hit (walls stop it, windows do not) - and the bang carries
+    # `noise` far, so everything around comes. Rounds are counted by the game (Game.ammo); a gun
+    # found on the ground comes with `rounds`. Strong but loud: to spare or to shoot.
+    "pistol": {
+        "name": "권총", "style": "stab", "pose": "stab", "sprite": "pistol",
+        "time": 0.3 * TEMPO, "hit": 0.05 * TEMPO, "cooldown": 0.22, "lunge": -5.0,   # a step back: recoil
+        "cells": 1,
+        "damage": (12, 15),         # ends a plain infected (health 8-12) in one; armour will not
+        "stamina": 0.0, "push": 140,
+        "stagger": True,
+        "shot": {"range": 420.0, "noise": 900, "width": 12.0, "rounds": 6},
+        "good": "멀리서 한 방", "bad": "소리가 모두를 부름·탄 적음",
+    },
 }
 # Reach follows the drawn weapon (2026-11-16 "보이는 칼의 길이에 비해 공격 범위가 너무 길다"): the
 # blade's tip at the hit = how far the hand is out in that style's hit frame (measured on the hero
@@ -132,10 +147,10 @@ for _w in WEAPONS.values():
 DEFAULT = "machete"
 # Carried weapons are bag items "w:<key>" with a weight, so they take cells on the bag's sheet
 # (2026-11-16 "무기를 인벤토리나 어디를 통해서 바꿀 수 있게"); the weapon in hand weighs nothing.
-WEIGHT = {"machete": 0.4, "knife": 0.2, "bat": 0.6, "pipe": 0.6, "axe": 0.8}
+WEIGHT = {"machete": 0.4, "knife": 0.2, "bat": 0.6, "pipe": 0.6, "axe": 0.8, "pistol": 0.2}
 # Weapons are long: on the bag's sheet they lie flat, wide and low (cells >= weight / 0.1), so a
 # full bag still fits them (a 3 x 3 axe left no room for a bat, which was squeezed into one cell).
-SHAPE = {"knife": (2, 1), "machete": (4, 1), "bat": (3, 2), "pipe": (3, 2), "axe": (4, 2)}
+SHAPE = {"knife": (2, 1), "machete": (4, 1), "bat": (3, 2), "pipe": (3, 2), "axe": (4, 2), "pistol": (2, 1)}
 STYLE_TEXT = {"chop": "내려치기 · 바닥에 기는 놈에게도 닿는다", "stab": "찌르기 · 빠르고 짧다",
               "swingh": "가로 휘두르기 · 넓고 밀어낸다"}
 
@@ -143,7 +158,9 @@ STYLE_TEXT = {"chop": "내려치기 · 바닥에 기는 놈에게도 닿는다",
 def attack_range(w):
     """How far a blow reaches, from where the hero stands when it starts: its reach plus the step
     in. The dotted path, the aim and the hit all use this one number (2026-11-16 "보이는 점선
-    범위가 공격 범위랑 동일하게")."""
+    범위가 공격 범위랑 동일하게"). A gun reaches as far as its bullet flies."""
+    if "shot" in w:
+        return w["shot"]["range"]
     return w["reach"] + w["lunge"]
 
 

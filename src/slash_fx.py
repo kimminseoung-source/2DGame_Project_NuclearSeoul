@@ -107,6 +107,26 @@ def draw_stains(stains, cam_x, cam_y):
                               filled=True)
 
 
+class Tracer:
+    """A bullet's line and the flash at the muzzle, gone in a blink."""
+
+    def __init__(self, x0, y0, x1, y1):
+        self.a, self.b = (x0, y0), (x1, y1)
+        self.age = 0.0
+
+    def update(self, dt):
+        self.age += dt
+        return self.age < 0.09
+
+    def draw(self, cam_x, cam_y):
+        (x0, y0), (x1, y1) = self.a, self.b
+        fade = 1 - self.age / 0.09
+        pico2d.draw_line(x0 - cam_x, y0 - cam_y, x1 - cam_x, y1 - cam_y, 255, round(200 + 40 * fade), round(140 * fade))
+        if self.age < 0.05:                              # the muzzle flash
+            pico2d.draw_circle(x0 - cam_x, y0 - cam_y, 5, 255, 236, 170, filled=True)
+            pico2d.draw_circle(x0 - cam_x, y0 - cam_y, 2, 255, 255, 240, filled=True)
+
+
 class Spark:
     """A short burst where a blow lands."""
 

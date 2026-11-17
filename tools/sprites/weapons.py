@@ -61,17 +61,6 @@ def machete_dot():
                     "...g............"], c)
 
 
-def concept_bat(length=22):
-    """The concept art's baseball bat (parts sheet), shrunk to game size."""
-    import clean_concept as cc
-    sheet = cc.key_out(Image.open(ROOT / "assets/characters/concepts/hero_parts_a.webp").convert("RGBA"),
-                       [255, 0, 255], 150)
-    bat = sheet.crop((752, 383, 968, 411))
-    bat = bat.resize((length, max(2, round(bat.height * length / bat.width) + 1)), Image.NEAREST)
-    bat.putalpha(bat.getchannel("A").point(lambda a: 255 if a >= 128 else 0))
-    return bat
-
-
 def _sprite(rows, colours):
     """A small sprite from text rows: each character a pixel ('.' empty, others keys of colours)."""
     img = Image.new("RGBA", (max(len(r) for r in rows), len(rows)))
@@ -115,6 +104,17 @@ def pipe_dot():
                     "pppppppppppprrpppppppppo"], c)
 
 
+def pistol_dot():
+    """A service pistol, 9 px (2026-11-17): a dark slide with a lit top edge and an open muzzle,
+    the grip down at the hand end."""
+    c = {"S": (120, 124, 130, 255), "s": (64, 66, 72, 255), "o": (20, 20, 24, 255), "k": (46, 34, 28, 255),
+         "K": (70, 52, 40, 255), "g": (60, 60, 64, 255)}
+    return _sprite(["..SSSSSSS",
+                    ".gsssssso",
+                    "kKg......",
+                    "kK......."], c)
+
+
 def axe_dot():
     """A fire axe, 2 cells = 16 px: a wooden handle with a red head and a bright edge at the end."""
     c = dict(WOOD, h=(168, 34, 30, 255), H=(196, 60, 46, 255), e=(214, 218, 222, 255))
@@ -127,7 +127,8 @@ def axe_dot():
 WEAPONS = {"machete": machete, "bat": concept_bat}
 # The dot look's weapons, drawn for the 32 px person and held in the game (not painted into the
 # sheets): any weapon here can be held by any character without new animation.
-DOT_SPRITES = {"machete": machete_dot, "knife": knife_dot, "bat": bat_dot, "pipe": pipe_dot, "axe": axe_dot}
+DOT_SPRITES = {"machete": machete_dot, "knife": knife_dot, "bat": bat_dot, "pipe": pipe_dot, "axe": axe_dot,
+               "pistol": pistol_dot}
 # Weapons drawn for the small dot look; others are shrunk from the full-size drawing.
 DOT_WEAPONS = DOT_SPRITES
 

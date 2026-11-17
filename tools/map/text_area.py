@@ -186,7 +186,7 @@ def debug(img, blocks, rows):
 # ------------------------------------------------------------------ a whole game area
 # More characters for a hand-made map (2026-11-16 "골목 만들어"):
 #   E  a house one can go into (a rectangle)   D  its doorway (2 m, on its south row)
-#   S  the hero's start   z  an infected   c  a wrecked car   +  a supply   w  a weapon
+#   S  the hero's start   z  an infected   c  a wrecked car   +  a supply   w  a weapon   g  a gun
 SUPPLY_KINDS = ("can", "bandage", "can", "bandage", "pill")
 WEAPON_KINDS = ("knife", "bat", "pipe", "axe")
 WRECKS = {"wreck_0": (100, 40), "wreck_1": (80, 40), "wreck_2": (100, 40)}
@@ -209,7 +209,7 @@ def build(rows, name, seed=16):
     n, cols = len(rows), len(rows[0])
     W, H = cols * M, n * M
     flat = [r.replace("E", ".").replace("D", ".") for r in rows]     # houses are drawn below
-    img, blocks = draw([r.translate(str.maketrans("Szc+wX", "......")) for r in flat])
+    img, blocks = draw([r.translate(str.maketrans("Szc+wXg", ".......")) for r in flat])
     blocks = [list(b) for b in blocks]
     d = ImageDraw.Draw(img)
 
@@ -219,7 +219,7 @@ def build(rows, name, seed=16):
     def to_px(p):
         return p[0] * DOT, (H - p[1]) * DOT
 
-    found = {ch: [(c, r) for r in range(n) for c in range(cols) if rows[r][c] == ch] for ch in "EDSzc+wX"}
+    found = {ch: [(c, r) for r in range(n) for c in range(cols) if rows[r][c] == ch] for ch in "EDSzc+wXg"}
     buildings = []
     if found["E"]:                                         # the house one can go into
         es = found["E"] + found["D"]
@@ -299,7 +299,8 @@ def build(rows, name, seed=16):
             "hero_start": [round(hero[0]), round(hero[1])],
             "zombie_starts": [list(map(round, world(c, r))) for c, r in found["z"]],
             "supplies": supplies,
-            "weapons": [[*map(round, world(c, r)), WEAPON_KINDS[i % len(WEAPON_KINDS)]] for i, (c, r) in enumerate(found["w"])]}
+            "weapons": [[*map(round, world(c, r)), WEAPON_KINDS[i % len(WEAPON_KINDS)]] for i, (c, r) in enumerate(found["w"])]
+            + [[*map(round, world(c, r)), "pistol"] for c, r in found["g"]]}
     img.save(out / "ground.png")
     (out / "area.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"{name}: {cols}x{n} m, {len(blocks)} blocks, {len(buildings)} house(s), {len(entrances)} entrances")

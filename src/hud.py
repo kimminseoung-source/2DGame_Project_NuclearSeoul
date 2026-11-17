@@ -158,6 +158,8 @@ def draw_status(game):
     wx = 160                                            # between the health bar and the quick slots
     px.blit(f"../weapons/{w['sprite']}.png", wx, y + 6, 2)
     px.text(wx + img.w * 2 + 4, y + 2, w["name"], LIGHT)
+    if "shot" in w:                                     # a gun: its rounds, red when empty
+        px.text(wx + img.w * 2 + 8 + px.width(w["name"]), y + 2, f"{game.ammo}발", BLOOD if game.ammo <= 0 else ORANGE, bold=True)
     px.text(wx + img.w * 2 + 4, y + 16, "Q 바꾸기", GREY_C)
     pct = max(0, round(hero.hp / HERO_HP * 100))
     px.text(x, y, f"{pct}", LIGHT if pct > 50 else ORANGE if pct > 25 else BLOOD, bold=True, scale=2)
