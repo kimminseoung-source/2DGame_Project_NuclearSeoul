@@ -38,8 +38,8 @@ ui.enable_blending()
 random.seed(int(sys.argv[1]) if len(sys.argv) > 1 else 1)
 g = play.Game()
 g.note_folded = True
-g.to_spawn = 0
-g.spawn_in = 1e9                                         # no arrivals: each scene brings its own
+g.to_spawn = 99                                          # more to come, so it never reads "구역 정리"...
+g.spawn_in = 1e9                                         # ...but no arrivals: each scene brings its own
 g.zombies[:] = []
 g.used |= {"move", "attack", "roll", "charge", "sneak", "pick"}   # no key marks over the head
 g.bag["bandage"] = 1
