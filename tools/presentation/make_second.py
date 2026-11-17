@@ -103,6 +103,17 @@ def main():
         "피폭체는 앞을 보고 소리를 듣고, 저를 발견하면 달려옵니다. 머리·몸통·다리를 조준해 베고, 할퀴기 직전에 밀쳐 받아칠 수 있습니다. "
         "집 안을 뒤져 물자를 챙기고 지하철 입구로 빠져나가는 것이 한 구역의 목표입니다.")
 
+    # the demo: the game playing itself (tools/presentation/record_demo.py), a GIF that plays in the show
+    if (IMG / "demo.gif").exists():
+        s = new_slide(prs, "게임 시연")
+        picture(s, IMG / "demo.gif", 1.9, 1.35, w=9.5, alt="골목 구역 시연: 전투, 집에서 물자 챙기기, 지하철 출구로 탈출")
+        text(s, 1.9, 6.8, 9.5, 0.4, "발견하면 달려오는 피폭체 → 머리 조준 · 받아치기 → 집에서 물자 → 지하철 입구로 탈출",
+             size=13, color=DIM, align=PP_ALIGN.CENTER)
+        s.notes_slide.notes_text_frame.text = (
+            "실제 게임 화면입니다. 앞을 비추는 시야만 보이고, 피폭체는 저를 발견하면 느낌표와 함께 달려옵니다. "
+            "클릭을 누르고 있으면 머리를 노릴 수 있고, 할퀴기 직전에 밀치면 휘청여서 반격할 틈이 생깁니다. "
+            "집에 들어가면 지붕이 걷히고, 물자를 챙겨 지하철 입구로 빠져나가면 한 구역이 끝납니다.")
+
     # 2. progress against the 1st plan
     s = new_slide(prs, "1차 계획 대비 진행 상황")
     stages = [("01 탐색 기반", "20%", 100, GREEN, "완료", "이동·충돌, 물자 줍기·사용, 배낭(칸·무게), 출구로 탈출"),
