@@ -104,8 +104,10 @@ class Game:
 
     def reset(self):
         self.hero = Hero(self.hero_look)
-        self.zombies = [Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
-                        for x, y in ZOMBIE_STARTS]
+        # a start marked "crawler" is one; the others crawl by chance (infected.CRAWLER_SHARE)
+        self.zombies = [Zombie(self.zombie_look, s[0], s[1],
+                               crawler=s[2] == "crawler" if len(s) > 2 else random.random() < infected.CRAWLER_SHARE)
+                        for s in ZOMBIE_STARTS]
         self.effects = []
         # the camera starts on the hero (a real-map area is big: from the corner it slid across it)
         self.cam = [self.hero.x - getattr(self, "view_w", 0) / 2, self.hero.y - getattr(self, "view_h", 0) / 2]
