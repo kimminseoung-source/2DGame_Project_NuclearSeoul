@@ -33,7 +33,7 @@ SEED = int(sys.argv[1]) if len(sys.argv) > 1 else 3
 OUT = ROOT / "docs" / "presentation" / "img" / "demo.gif"
 KEEP = 5                       # every 5th frame of 60: 12 fps
 SIZE = (640, 360)
-MAX_SECONDS = 55
+MAX_SECONDS = 30               # the demo slide's length (2026-11-17 "30초로 가능해?")
 
 keys = (sdl2.Uint8 * sdl2.SDL_NUM_SCANCODES)()
 pico2d.open_canvas(settings.WIDTH, settings.HEIGHT, sync=False)
@@ -84,19 +84,37 @@ inside = [(x, y) for x, y, _ in area.SUPPLIES if area.building_at(x, y) is not N
 door = area.BUILDINGS[0]["box"]
 door_x = (door[0] + door[2]) / 2
 ex = ((area.EXIT[0] + area.EXIT[2]) / 2, (area.EXIT[1] + area.EXIT[3]) / 2)
-route = [("go", (520, 480)), ("go", (576, 720))] + [("pick", p) for p in inside] + \
+pistols = [(x, y) for x, y, k in area.WEAPONS_LYING if k == "pistol"]
+route = [("gun", pistols[0])] if pistols else []
+route += [("go", (520, 480)), ("go", (576, 720))] + [("pick", p) for p in inside] + \
         [("go", (576, 720)), ("go", (990, 500)), ("go", ex), ("leave", ex)]
 step, holding, shoved, tick, done_at = 0, False, 0.0, 0, None
 look = (h.x + 200, h.y)
 
-while tick < MAX_SECONDS * 60 and (done_at is None or tick < done_at + 100):
+while tick < MAX_SECONDS * 60 and (done_at is None or tick < done_at + 60):
     foe = min((z for z in g.zombies if z.alive and hypot(z.x - h.x, z.y - h.y) < 170
                and area.building_at(z.x, z.y) == area.building_at(h.x, h.y)),
               key=lambda z: hypot(z.x - h.x, z.y - h.y), default=None)
     shoved = max(0.0, shoved - 1 / 60)
     if h.ready is None:
         holding = False                                   # the stance was lost (hit, rolled)
-    if foe is not None and not g.left and not h.dead:     # a fight
+    gun = h.weapon.get("shot") is not None
+    if gun and g.ammo <= 0 and h.free:                    # out of rounds: back to the blade
+        g.equip("machete")
+        gun = False
+    if gun and g.ammo > 0 and foe is None:               # a gun reaches further: look further
+        foe = min((z for z in g.zombies if z.alive and hypot(z.x - h.x, z.y - h.y) < 300
+                   and area.building_at(z.x, z.y) == area.building_at(h.x, h.y)
+                   and g.vision.visible((h.x, h.y), g.look, z.x, z.y)),
+                  key=lambda z: hypot(z.x - h.x, z.y - h.y), default=None)
+    if foe is not None and gun and not g.left and not h.dead:    # shoot it, chest high
+        stop()
+        look = (foe.x, foe.y + (8 if foe.prone else 26))
+        g.aim = screen(*look)
+        if h.free and shoved <= 0:
+            g.click(*g.aim)
+            shoved = 0.35                                  # a breath between shots
+    elif foe is not None and not g.left and not h.dead:   # a fight
         d = hypot(foe.x - h.x, foe.y - h.y)
         look = (foe.x, foe.y + (10 if foe.prone else 46))  # the head
         sx, sy = screen(*look)
@@ -131,9 +149,13 @@ while tick < MAX_SECONDS * 60 and (done_at is None or tick < done_at + 100):
                 step += 1
             else:
                 steer(tx, ty)
-        elif d < (28 if kind == "pick" else 22):
-            if kind == "pick":
+        elif d < (28 if kind in ("pick", "gun") else 22):
+            if kind in ("pick", "gun"):
                 g.interact()
+            if kind == "gun":
+                for _ in range(25):                        # the pick-up motion, then the gun in hand
+                    g.update(1 / 60, keys)
+                g.equip("pistol")
             step += 1
         else:
             steer(tx, ty)
