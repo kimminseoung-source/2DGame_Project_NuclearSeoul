@@ -498,6 +498,7 @@ class Game:
         return off <= CONE_HALF
 
     def make_noise(self, radius):
+        dev_tools.heard(self, self.hero.x, self.hero.y, radius)    # F5 rings
         if radius >= NOISE_ROLL:                          # loud: pulls the next arrivals here
             if self.loud is None or self.clock - self.loud[2] > 0.5:
                 self.spawn_in = min(self.spawn_in, SPAWN_AFTER_NOISE)
@@ -539,6 +540,7 @@ class Game:
 
     def update(self, real_dt, keys):
         real_dt *= self.dev.speed                          # dev panel: the whole game slower / faster
+        dev_tools.age_noises(self, real_dt)
         hero = self.hero
         self.ease_zoom(real_dt)
         if self.left or self.bag_open:                     # summary or bag open: the world waits
@@ -986,6 +988,7 @@ class Game:
         if self.near_exit() and not self.left:
             ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "[E]", (220, 255, 225), 12)
         self.draw_teach(cx, cy)
+        dev_tools.draw_senses(self, cx, cy)                 # F5
         dev_tools.draw_boxes(self, cx, cy)                  # F1
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)

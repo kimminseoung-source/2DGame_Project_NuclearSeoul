@@ -2,6 +2,9 @@
 
 - F1: debug boxes over the world, only what decides hits (no numbers): walls and wrecks, the
   hero's blow toward the cursor, each infected's body parts (head / torso / legs) and its claw.
+- F5: what the infected sense (2026-11-18 "어디까지 들어오면 ! 뜨는지, ?는 어디까지 소리를"): each
+  one's sight cone (where "!" can happen) with the all-round and the at-once rings, and every noise
+  the hero makes as a ring as far as it carries (where "?" can happen).
 - F4: the dev settings panel (top right). Up/Down choose a row, Left/Right change it, Enter does it;
   or click a row (left = up / do, right = down). The game keeps running behind it.
 
@@ -33,6 +36,8 @@ class Dev:
     def __init__(self):
         self.open = False            # F4: the panel
         self.boxes = False           # F1: debug boxes
+        self.senses = False          # F5: the infected's sight and the hero's noises
+        self.noises = []             # [x, y, radius, age] of noises the hero made (F5 rings)
         self.god = False             # blows do nothing, no bleeding
         self.speed = 1.0             # the whole game's time
         self.freeze = False          # the infected stand still
@@ -109,6 +114,7 @@ def _restart(game, step):
 # (label, value shown or None for an action, change(game, step))
 ROWS = (
     ("공격 범위·히트박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
+    ("시야·소리 범위 (F5)", lambda g: _on(g.dev.senses), _flip("senses")),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("게임 속도", lambda g: f"x{g.dev.speed:g}", _speed),
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
@@ -136,6 +142,9 @@ def key(game, k):
     dev = game.dev
     if k == sdl2.SDLK_F1:
         dev.boxes = not dev.boxes
+        return True
+    if k == sdl2.SDLK_F5:
+        dev.senses = not dev.senses
         return True
     if k == sdl2.SDLK_F4:
         dev.open = not dev.open
@@ -275,3 +284,38 @@ def draw_boxes(game, cx, cy):
         striking = z.state in ("windup", "strike")
         _wedge(zx, zy, z.reach + 8, z.heading, ZOMBIE_ARC,
                (255, 60, 50) if striking else (150, 60, 56), 1 if striking else 3)                     # its claw (bright when it comes)
+
+
+SIGHT, NEAR, SURE = (110, 150, 240), (150, 190, 255), (230, 240, 255)
+NOISE = (240, 200, 90)
+NOISE_SHOW = 0.8                     # s a noise ring stays
+
+
+def heard(game, x, y, radius):
+    """play.make_noise calls this: remember the noise for the F5 rings."""
+    game.dev.noises.append([x, y, radius, 0.0])
+
+
+def age_noises(game, dt):
+    game.dev.noises = [n for n in game.dev.noises if n[3] + dt < NOISE_SHOW]
+    for n in game.dev.noises:
+        n[3] += dt
+
+
+def draw_senses(game, cx, cy):
+    """F5. Sight: an infected spots the hero only inside its cone (SIGHT_RANGE, +-SIGHT_HALF) or the
+    all-round ring (NOTICE_NEAR), with a clear line; inside the bright ring (SPOT_SURE) at once,
+    farther out by chance, less the farther. Hearing: a noise reaches every infected inside its ring."""
+    if not game.dev.senses:
+        return
+    for z in game.zombies:
+        if not z.alive:
+            continue
+        zx, zy = z.x - cx, z.y - cy
+        _wedge(zx, zy, infected.SIGHT_RANGE, z.heading, infected.SIGHT_HALF, SIGHT, 3)
+        _arc(zx, zy, infected.SPOT_SURE, z.heading - infected.SIGHT_HALF, z.heading + infected.SIGHT_HALF, SURE, 2)
+        _arc(zx, zy, infected.NOTICE_NEAR, -3.15, 3.15, NEAR, 2)
+    for x, y, radius, age in game.dev.noises:                     # noises made: a ring each
+        fade = 1 - age / NOISE_SHOW
+        _arc(x - cx, y - cy, radius, -3.15, 3.15, tuple(round(c * (0.4 + 0.6 * fade)) for c in NOISE), 2)
+
