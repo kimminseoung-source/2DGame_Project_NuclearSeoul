@@ -1,7 +1,7 @@
 """Developer tools (2026-11-18 "디버그용 박스가 필요함", "개발용 설정창 테스트를 할 수 있게").
 
-- F1: debug boxes over the world - walls and wrecks, the hero's reach and pick-up range, each
-  infected's reach, sight cone, state and health, things to pick up, the exit.
+- F1: debug boxes over the world, only what decides hits (no numbers): walls and wrecks, the
+  hero's blow toward the cursor, each infected's body parts (head / torso / legs) and its claw.
 - F4: the dev settings panel (top right). Up/Down choose a row, Left/Right change it, Enter does it;
   or click a row (left = up / do, right = down). The game keeps running behind it.
 
@@ -9,7 +9,7 @@ Every setting is a row in ROWS, so a new one is one line. Values that live in ot
 (speeds, bleeding) are changed there, so the game uses them at once; R keeps them.
 """
 
-from math import cos, pi, sin
+from math import atan2, cos, hypot, sin
 
 import pico2d
 import sdl2
@@ -19,9 +19,8 @@ import condition
 import hero as hero_rules
 import infected
 import pixel_ui as px
-import ui
 import weapons
-from settings import CHEST, HERO_HP
+from settings import CHEST, DOT, HERO_HP, ZOMBIE_ARC
 
 SPEEDS = (0.25, 0.5, 1.0, 2.0)
 PANEL = (440, 34, 632)              # canvas px: left, top, right (the rows set the bottom)
@@ -109,7 +108,7 @@ def _restart(game, step):
 
 # (label, value shown or None for an action, change(game, step))
 ROWS = (
-    ("디버그 박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
+    ("공격 범위·히트박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("게임 속도", lambda g: f"x{g.dev.speed:g}", _speed),
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
@@ -197,47 +196,82 @@ def draw_panel(game):
             px.text(r - 6, y, v, (120, 200, 120) if v == "켬" else GREY if v == "끔" else PANEL_EDGE, anchor="r")
 
 
-def _circle(x, y, radius, colour, steps=32):
-    for i in range(steps):
-        a0, a1 = 2 * pi * i / steps, 2 * pi * (i + 1) / steps
-        pico2d.draw_line(x + cos(a0) * radius, y + sin(a0) * radius, x + cos(a1) * radius, y + sin(a1) * radius, *colour)
+# The world canvas has DOT canvas px per world unit (< 1), so a 1-unit line falls between pixels and
+# parts of it vanish: every mark is made of whole canvas pixels instead.
+PIXEL = 1 / DOT
+
+
+def _dot(x, y, colour):
+    qx, qy = round(x * DOT) / DOT, round(y * DOT) / DOT
+    pico2d.draw_rectangle(qx, qy, qx + PIXEL * 0.99, qy + PIXEL * 0.99, *colour, filled=True)
+
+
+def _line(x0, y0, x1, y1, colour, gap=1):
+    n = max(1, int(hypot(x1 - x0, y1 - y0) * DOT / gap))
+    for i in range(n + 1):
+        _dot(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, colour)
+
+
+def _arc(x, y, radius, a0, a1, colour, gap=1):
+    n = max(2, int(radius * abs(a1 - a0) * DOT / gap))
+    for i in range(n + 1):
+        a = a0 + (a1 - a0) * i / n
+        _dot(x + cos(a) * radius, y + sin(a) * radius, colour)
+
+
+def _wedge(x, y, radius, ang, half, colour, gap=1):
+    """The area a blow covers: radius out from (x, y), half radians either side of ang."""
+    _arc(x, y, radius, ang - half, ang + half, colour, gap)
+    for a in (ang - half, ang + half):
+        _line(x, y, x + cos(a) * radius, y + sin(a) * radius, colour, gap)
 
 
 def _box(l, b, r, t, colour):
-    pico2d.draw_rectangle(l, b, r, t, *colour)
+    _line(l, b, r, b, colour)
+    _line(l, t, r, t, colour)
+    _line(l, b, l, t, colour)
+    _line(r, b, r, t, colour)
+
+
+PART_COLOURS = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210)}
 
 
 def draw_boxes(game, cx, cy):
-    """World-space outlines (called inside the world canvas, after everything else)."""
+    """F1: only what decides hits, no numbers (2026-11-18 "숫자는 빼고 공격 범위, 히트박스"):
+    walls bodies bump into, the hero's blow, each infected's body parts and its claw."""
     if not game.dev.boxes:
         return
-    from supplies import PICK_RANGE
-    vl, vb = cx, cy
-    vr, vt = cx + game.view_w, cy + game.view_h
-    for bl, bb, br, bt in area.near_blocks(vl, vb, vr, vt):          # what bodies bump into
-        _box(bl - cx, bb - cy, br - cx, bt - cy, (240, 150, 40))
-    for bl, bb, br, bt in area.sight_blocks(vl, vb, vr, vt):         # what blocks the view
-        _box(bl + 2 - cx, bb + 2 - cy, br - 2 - cx, bt - 2 - cy, (110, 120, 240))
-    el, eb, er, et = area.EXIT
-    _box(el - cx, eb - cy, er - cx, et - cy, (80, 230, 120))
+    for bl, bb, br, bt in area.near_blocks(cx, cy, cx + game.view_w, cy + game.view_h):
+        _box(bl - cx, bb - cy, br - cx, bt - cy, (240, 150, 40))                  # walls, wrecks
     h = game.hero
     hx, hy = h.x - cx, h.y - cy
-    _circle(hx, hy + CHEST, weapons.attack_range(h.weapon), (240, 220, 80))     # the weapon's reach
-    _circle(hx, hy, PICK_RANGE, (90, 220, 110), 20)                             # pick-up range
-    pico2d.draw_line(hx - 6, hy, hx + 6, hy, 255, 255, 255)
-    pico2d.draw_line(hx, hy - 6, hx, hy + 6, 255, 255, 255)
-    ui.world_text_center(hx, hy - 14, f"{h.x:.0f},{h.y:.0f} 체력{h.hp:.0f}", (255, 255, 255), 10)
-    for s in game.supplies:
-        if not s.taken:
-            _box(s.x - 6 - cx, s.y - 6 - cy, s.x + 6 - cx, s.y + 6 - cy, (90, 220, 110))
-    for x, y, _ in game.ground_weapons:
-        _box(x - 8 - cx, y - 4 - cy, x + 8 - cx, y + 4 - cy, (90, 220, 110))
+    _line(hx - 6, hy, hx + 6, hy, (255, 255, 255))                                # where claws aim
+    _line(hx, hy - 6, hx, hy + 6, (255, 255, 255))
+    w = h.weapon
+    length = weapons.attack_range(w)
+    if game.aim[0] is not None:                                                   # the blow toward the cursor
+        tx, ty = game.mouse_world(*game.aim)
+        ang = atan2(ty - (h.y + CHEST), tx - h.x)
+        if w.get("shot"):                                                         # a gun: the bullet's lane
+            half = w["shot"]["width"] / 2
+            nx, ny = -sin(ang) * half, cos(ang) * half
+            ex, ey = hx + cos(ang) * length, hy + CHEST + sin(ang) * length
+            for sgn in (1, -1):
+                _line(hx + nx * sgn, hy + CHEST + ny * sgn, ex + nx * sgn, ey + ny * sgn, (240, 220, 80), 2)
+        else:
+            half = w["cells"] * weapons.CELL_WORLD / 2 / length                   # as wide as the hit (draw_aim)
+            _wedge(hx, hy + CHEST, length, ang, half, (240, 220, 80))
     for z in game.zombies:
         if not z.alive:
             continue
         zx, zy = z.x - cx, z.y - cy
-        _circle(zx, zy, z.reach, (240, 70, 60), 20)                                # where its blow lands
-        for a in (z.heading - infected.SIGHT_HALF, z.heading + infected.SIGHT_HALF):   # its sight cone
-            pico2d.draw_line(zx, zy, zx + cos(a) * infected.SIGHT_RANGE, zy + sin(a) * infected.SIGHT_RANGE, 90, 140, 240)
-        ui.world_text_center(zx, zy + 66, f"{z.state} {z.health}", (255, 200, 190), 10)
-
+        if z.prone:                                                               # a crawler: all of it is "밟기"
+            hw = weapons.PART_HALF_WIDTH * 2
+            _box(zx - hw, zy - 4, zx + hw, zy + 14, (214, 128, 52))
+        else:
+            hw = weapons.PART_HALF_WIDTH
+            for part, low, high in weapons.PARTS:
+                _box(zx - hw, zy + low, zx + hw, zy + high, PART_COLOURS[part])
+        striking = z.state in ("windup", "strike")
+        _wedge(zx, zy, z.reach + 8, z.heading, ZOMBIE_ARC,
+               (255, 60, 50) if striking else (150, 60, 56), 1 if striking else 3)                     # its claw (bright when it comes)
