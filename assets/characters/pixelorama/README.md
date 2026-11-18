@@ -14,6 +14,16 @@
 
 지금 준비된 시트: 피폭체 `idle`(4프레임)·`walk`(12)·`attack`(8), 주인공 `idle`(4)·`walk`(12). **처음엔 피폭체 `idle` 하나만.**
 
+## 가장 쉬운 방법: 1번 그림만 그리기 (키 프레임)
+
+2026-11-18 사용자 "내가 작업하면 4개가 다 일정하지 않은데" → **맨 왼쪽(1번) 그림만** 다듬는다. 다 하면 Claude가 1번에서 바뀐 점을 2·3·4번에 옮긴다. 프레임마다 그 부분이 움직인 만큼(숨 쉬느라 머리가 1~2픽셀 오르내림) 자리를 맞춰서 옮기므로 네 장이 일정하다.
+
+```
+.venv\Scripts\python.exe tools/sprites/pixelorama_kit.py spread infected_dot/idle
+```
+
+결과는 `guide/<캐릭터>_<동작>_spread.png`에서 확인하고, 괜찮으면 `in`으로 게임에 넣는다. 애니메이션에서 쓰는 **키 프레임**(중요한 한 장을 먼저 제대로 그리고 나머지를 맞춘다)과 같은 생각이다.
+
 ## 순서
 
 1. **설치:** [Pixelorama 공식 GitHub 릴리스](https://github.com/Orama-Interactive/Pixelorama/releases) 또는 [itch.io](https://orama-interactive.itch.io/pixelorama)에서 Windows 버전 받기 → 압축 풀고 실행.
