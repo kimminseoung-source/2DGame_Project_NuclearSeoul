@@ -304,6 +304,7 @@ class Zombie:
         return event
 
     show_marks = True        # "!" / "?" over the head
+    keep_out = []            # rects closed to the infected (area.kept_out; play sets the station's)
     blink_corpse = True      # the corpse blinks; off in the realistic look (bodies stay)
 
     def draw(self, cx, cy):

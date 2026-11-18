@@ -53,6 +53,7 @@ DEFENSE_TIME = 60.0          # s from the start of the station defense to the tr
 DEFENSE_EVERY = (2.5, 4.0)   # s between arrivals while defending (outside: SPAWN_EVERY)
 DEFENSE_ALIVE = 9            # at most this many up at once while defending
 DEFENSE_WAYS = 3             # they come in by this many entrances nearest the station
+STATION_PAD = (120, 40, 80)   # the fenced station: this far left, right and up from the exit
 STATION_PEOPLE = (("soldier", -90, 10), ("civilian", -10, 40), ("civilian", 30, 30))   # kind, offset from the exit
 SHOVE_REACH = 46             # px a shove reaches
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
@@ -124,6 +125,11 @@ class Game:
         self.people = [survivors.place(kind, (ex + dx, ey + dy)) for kind, dx, dy in STATION_PEOPLE]
         self.defense = None          # s left until the train, while the defense runs
         self.station = None
+        # the station is fenced off until the hero gets there (2026-11-18 "역에 가니까 이미 다 죽어
+        # 있음, 공간을 분리해서 유지되게"): the infected can't step in and don't go for the people
+        self.station_zone = (EXIT[0] - STATION_PAD[0], EXIT[1], EXIT[2] + STATION_PAD[1], EXIT[3] + STATION_PAD[2])
+        self.station_open = False
+        Zombie.keep_out = [self.station_zone]
         # the camera starts on the hero (a real-map area is big: from the corner it slid across it)
         self.cam = [self.hero.x - getattr(self, "view_w", 0) / 2, self.hero.y - getattr(self, "view_h", 0) / 2]
         if hasattr(self, "view_w"):
@@ -538,6 +544,8 @@ class Game:
         """At the station: hold out with the people there until the train comes."""
         self.defense = DEFENSE_TIME
         self.station = (self.hero.x, self.hero.y)         # where the infected are drawn to
+        self.station_open = True                          # the fence opens: they can get in now
+        Zombie.keep_out = []
         self.to_spawn = max(self.to_spawn, 99)            # they keep coming until the train
         self.spawn_in = 1.0
         self.message = f"기차 도착까지 {DEFENSE_TIME:.0f}초 · 버텨라"
@@ -558,10 +566,12 @@ class Game:
         hero = self.hero
         if z.state in ("chase", "poised", "windup", "strike", "recover") and getattr(z, "prey", hero) is hero:
             return hero
-        bodies = [hero] + [s for s in self.people if s.alive]
+        bodies = [hero] + [s for s in self.people if s.alive and self.station_open]
         return min(bodies, key=lambda b: (b.x - z.x) ** 2 + (b.y - z.y) ** 2)
 
     def update_people(self, dt):
+        if not self.station_open:                          # behind the fence they wait, the soldier holds fire
+            return
         for s in self.people:
             happened = s.update(dt, self)
             if not happened:
@@ -625,6 +635,25 @@ class Game:
         self.to_spawn -= 1
         self.sounds.play("alert", 0.7, at=(x, y))          # heard coming in, maybe unseen
         return True
+
+    def draw_fence(self, cx, cy):
+        """A low metal fence with posts round the station (open side: the exit's own wall). Rails
+        and posts are filled bars at least one canvas pixel thick (a 1-unit line falls between
+        canvas pixels and vanishes, 2026-11-18)."""
+        l, b, r, t = self.station_zone
+        px_ = 1 / DOT                                       # one canvas pixel in world units
+        rail, post, edge = (150, 154, 156), (104, 108, 112), (40, 42, 46)
+        for x0, y0, x1, y1 in ((l, b, l, t), (l, t, r, t), (r, t, r, b)):
+            for lift in (4, 11):                            # two rails
+                if y0 == y1:
+                    pico2d.draw_rectangle(x0 - cx, y0 + lift - cy, x1 - cx, y0 + lift + px_ * 1.5 - cy, *rail, filled=True)
+                else:
+                    pico2d.draw_rectangle(x0 - cx, min(y0, y1) + lift - cy, x0 + px_ * 1.5 - cx, max(y0, y1) + lift - cy, *rail, filled=True)
+            steps = max(1, int(hypot(x1 - x0, y1 - y0) // 18))
+            for k in range(steps + 1):                      # posts
+                qx, qy = x0 + (x1 - x0) * k / steps, y0 + (y1 - y0) * k / steps
+                pico2d.draw_rectangle(qx - px_ * 1.5 - cx, qy - cy, qx + px_ * 1.5 - cx, qy + 14 - cy, *edge, filled=True)
+                pico2d.draw_rectangle(qx - px_ * 0.5 - cx, qy - cy, qx + px_ * 0.5 - cx, qy + 13 - cy, *post, filled=True)
 
     def update(self, real_dt, keys):
         real_dt *= self.dev.speed                          # dev panel: the whole game slower / faster
@@ -1040,6 +1069,8 @@ class Game:
             pico2d.draw_line(l + 4 - cx, b + 6 + i * 12 - cy, r - 4 - cx, b + 6 + i * 12 - cy, 60, 64, 66)
         pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 90, 96, 92)
         draw_stains(self.stains, cx, cy)
+        if not self.station_open:                          # the station's fence, until the defense
+            self.draw_fence(cx, cy)
         near_weapon = self.nearest_weapon()
         for w in self.ground_weapons:                       # weapons lying flat on the ground
             x, y, name = w

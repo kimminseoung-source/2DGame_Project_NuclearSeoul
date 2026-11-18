@@ -169,9 +169,18 @@ def waypoint(x, y, tx, ty):
     return (c + 0.5) * PATH_CELL, (r + 0.5) * PATH_CELL
 
 
+def kept_out(body, x, y):
+    """A body with `keep_out` rects (l, b, r, t) may not step into them from outside (2026-11-18:
+    the station is closed to the infected until the defense). One already inside may move."""
+    for l, b, r, t in getattr(body, "keep_out", ()):
+        if l <= x <= r and b <= y <= t and not (l <= body.x <= r and b <= body.y <= t):
+            return True
+    return False
+
+
 def move_body(body, dx, dy):
     """Slide along obstacles one axis at a time."""
-    if not blocked(body.x + dx, body.y):
+    if not blocked(body.x + dx, body.y) and not kept_out(body, body.x + dx, body.y):
         body.x += dx
-    if not blocked(body.x, body.y + dy):
+    if not blocked(body.x, body.y + dy) and not kept_out(body, body.x, body.y + dy):
         body.y += dy
