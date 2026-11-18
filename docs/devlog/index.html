@@ -79,6 +79,18 @@ header h1 span { color: var(--hazard); }
 .what { color: var(--ink); }
 .how { font-size: 13.5px; color: var(--muted); }
 .how code { color: var(--ink); background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+.card.wide { grid-column: 1 / -1; }
+.card.wide .media { aspect-ratio: 21 / 9; }
+.more { border-top: 1px solid var(--line); padding-top: 8px; }
+.more summary { cursor: pointer; color: var(--exit); font-weight: 700; font-size: 13.5px; }
+.more-body { display: grid; gap: 8px; padding-top: 8px; max-width: 70ch; }
+.more-body h4 { margin: 6px 0 0; font-family: var(--display); font-weight: 400; font-size: 18px; }
+.more-body .ref { font-size: 12.5px; color: var(--muted); }
+.demo { display: grid; gap: 8px; }
+.demo svg { width: 100%; height: auto; border-radius: 6px; cursor: crosshair; display: block; }
+.demo-controls { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); align-items: center; }
+.demo-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.demo-controls .hint { font-size: 12px; }
 .ours { font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; color: var(--muted); }
 .ours b { color: var(--exit); font-weight: 700; }
 
@@ -107,6 +119,7 @@ a:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
   <section class="view log" id="view-dev" aria-labelledby="logtitle">
     <div class="section-title"><h2 id="logtitle">개발 일지</h2><small>무엇을 만들었나 · 최신이 위</small></div>
     <ol>
+      <li><span class="d">11.18</span><span>보이는 것과 그려지는 것 나눔: 거리·건물은 늘 보이고 피폭체는 시야 안에서만, 시야 길이는 낮 520·밤 300 → <a href="#visibility">우리 게임의 시야</a></span></li>
       <li><span class="d">11.18</span><span>장애물 뒤 그림자: 가슴 높이에서 그리던 어둠을 발에서, 장애물 모서리마다 빛줄기 추가, 차 밑 밝은 칸 제거. 그림과 계산의 차이 1.54% → 0.18% → <a href="#visibility">가시성 다각형</a></span></li>
       <li><span class="d">11.18</span><span>몸 주변을 살짝 밝게, 앞 시야 400, 낮은 덜 보이게. F4 설정창을 묶음 제목·스크롤로 정리하고 시야·빛 슬라이더 추가</span></li>
       <li><span class="d">11.18</span><span>낮과 밤: 30초가 1시간, 낮엔 시야 밖도 흐리게 보이고 밤엔 시야 안만 밝다</span></li>
@@ -222,13 +235,39 @@ stateDiagram-v2
       </div>
     </article>
 
-    <article class="card" id="visibility">
+    <article class="card wide" id="visibility">
       <div class="media"><img src="img/shadow_corner_rays.png" alt="밤, 주인공이 폐차를 바라보는 장면. 차 뒤쪽부터 그림자가 또렷한 경계로 시작한다" loading="lazy" width="1280" height="720"></div>
       <div class="body">
-        <span class="kind">빛·그림자</span>
-        <h3>가시성 다각형 (모서리 광선)</h3>
-        <p class="what">눈에서 빛줄기를 고르게 쏘면 줄기 사이에서 그림자 경계가 번진다. 장애물 <b>모서리마다 바로 양옆으로</b> 줄기를 더 쏘면 경계가 모서리에 딱 맞는다.</p>
-        <p class="ours"><b>우리 게임:</b> 고른 줄기 96 + 모서리 줄기 · <code>vision_cone.draw</code></p>
+        <span class="kind">빛·그림자 · 시야</span>
+        <h3>우리 게임의 시야 = 기법 다섯 개</h3>
+        <p class="what">시야 원뿔, 광선 쏘기, <b>가시성 다각형</b>, 정점 어둡기, 보이는 것/그려지는 것 나누기를 겹쳐서 "눈앞만 보인다"를 만든다.</p>
+        <p class="ours"><b>우리 게임:</b> <code>vision_cone.py</code> · <code>daylight.py</code> · F5(피폭체 시야)</p>
+        <details class="more">
+          <summary>자세히 보기</summary>
+          <div class="more-body">
+            <h4>1. 시야 원뿔</h4>
+            <p>바라보는 방향 좌우 약 40도, 정해진 거리까지만 보인다. 거리는 <code>hypot</code>, 방향 차이는 <code>atan2</code>로 잰다. 시야 길이는 낮 520, 밤 300.</p>
+            <h4>2. 광선 쏘기 (시야 막힘)</h4>
+            <p>눈에서 그 점까지 광선을 쏴서 사이에 벽·차가 있으면 막힌다. 사각형과 광선은 가로·세로 구간이 겹치는지로 판정한다(슬랩 방식). 그림자는 장애물 뒷면부터.</p>
+            <h4>3. 가시성 다각형과 모서리 광선</h4>
+            <p>화면을 칠할 때는 발에서 사방으로 빛줄기를 쏘고, 줄기 끝점을 이어 삼각형으로 채운다. 이 모양이 <b>가시성 다각형</b>이다. 고른 줄기만 쓰면 비켜 간 줄기와 맞은 줄기 사이 삼각형이 그림자 속을 비스듬히 가로질러 경계가 번진다. 그래서 장애물 <b>모서리마다 바로 양옆으로</b> 줄기를 더 쏜다. 아래 그림에서 눌러 눈을 옮기고, "모서리 광선"을 껐다 켜 보자.</p>
+            <div class="demo">
+              <svg id="vpdemo" viewBox="0 0 680 340" role="img" aria-label="눈에서 빛줄기를 쏴 밝은 영역을 만드는 그림, 모서리 광선이 있을 때와 없을 때를 비교"></svg>
+              <div class="demo-controls">
+                <label><input type="checkbox" id="vp-corner" checked> 모서리 광선</label>
+                <label>고른 빛줄기 <input type="range" id="vp-n" min="8" max="96" value="24" step="4"> <span id="vp-nl">24개</span></label>
+                <label><input type="checkbox" id="vp-rays" checked> 빛줄기 보기</label>
+                <span class="hint">그림을 누르면 눈이 옮겨 간다</span>
+              </div>
+            </div>
+            <p>우리 게임: 고른 줄기 96 + 모서리 줄기. 그림과 계산이 어긋난 곳 1.54% → 0.07%, 한 프레임 12ms 이하.</p>
+            <h4>4. 정점마다 어둡기</h4>
+            <p>어둠은 검은 삼각형 그물 하나다. 꼭짓점마다 투명도를 정하면 그래픽 카드가 사이를 부드럽게 섞는다(<code>SDL_RenderGeometry</code>).</p>
+            <h4>5. 보이는 것 / 그려지는 것 나누기</h4>
+            <p>피폭체가 보이는지는 늘 가장 어두운 값으로 판정한다(시야 밖·벽 뒤는 낮에도 안 보임). 화면은 살짝만 어둡게 그려 거리와 건물은 늘 보인다. 전략 게임의 <b>전장의 안개</b>와 같은 생각.</p>
+            <p class="ref">더 보기: Red Blob Games "2D Visibility", 섀도 캐스팅, 로그라이크 FOV · 노트: <code>docs/study/02_시야_시스템.md</code></p>
+          </div>
+        </details>
       </div>
     </article>
 
@@ -372,7 +411,58 @@ stateDiagram-v2
     }
   }
   window.addEventListener("hashchange", show);
-  function drawAll() { camera(); grid(); bfs(); }
+  // visibility polygon demo: even rays (+ corner rays) from the eye, their ends joined
+  const vp = { eye: { x: 150, y: 180 }, boxes: [[330, 110, 420, 170], [430, 220, 490, 290]] };
+  function vpHit(ox, oy, dx, dy) {
+    let best = 320;
+    for (const [l, t, r, b] of vp.boxes) {
+      let n = 0, f = 320;
+      for (const [p, u, lo, hi] of [[ox, dx, l, r], [oy, dy, t, b]]) {
+        if (Math.abs(u) < 1e-9) { if (p < lo || p > hi) { n = 1; f = 0; } continue; }
+        const t1 = (lo - p) / u, t2 = (hi - p) / u;
+        n = Math.max(n, Math.min(t1, t2)); f = Math.min(f, Math.max(t1, t2));
+      }
+      if (n <= f && n > 0 && n < best) best = n;
+    }
+    return best;
+  }
+  function vpDraw() {
+    const svg = document.getElementById("vpdemo"); if (!svg) return;
+    const N = +document.getElementById("vp-n").value;
+    document.getElementById("vp-nl").textContent = N + "개";
+    let angs = []; for (let i = 0; i < N; i++) angs.push(i / N * Math.PI * 2);
+    const corners = [];
+    if (document.getElementById("vp-corner").checked) {
+      for (const [l, t, r, b] of vp.boxes) for (const [x, y] of [[l, t], [r, t], [r, b], [l, b]]) {
+        const a = Math.atan2(y - vp.eye.y, x - vp.eye.x); angs.push(a - 0.0015, a + 0.0015); corners.push([x, y]);
+      }
+    }
+    angs = angs.map(a => (a % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)).sort((a, b) => a - b);
+    const pts = [], rays = [];
+    for (const a of angs) {
+      const dx = Math.cos(a), dy = Math.sin(a), d = vpHit(vp.eye.x, vp.eye.y, dx, dy);
+      const x = (vp.eye.x + dx * d).toFixed(1), y = (vp.eye.y + dy * d).toFixed(1);
+      pts.push(x + "," + y);
+      rays.push(`<line x1="${vp.eye.x}" y1="${vp.eye.y}" x2="${x}" y2="${y}" stroke="${css("--hazard")}" stroke-width="0.6" opacity="0.8"/>`);
+    }
+    svg.innerHTML = `<rect width="680" height="340" fill="#232527"/>` +
+      `<polygon points="${pts.join(" ")}" fill="#e7cf86" opacity="0.85"/>` +
+      (document.getElementById("vp-rays").checked ? rays.join("") : "") +
+      vp.boxes.map(([l, t, r, b]) => `<rect x="${l}" y="${t}" width="${r - l}" height="${b - t}" fill="#5f5e5a" stroke="#b4b2a9"/>`).join("") +
+      corners.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="#1D9E75"/>`).join("") +
+      `<circle cx="${vp.eye.x}" cy="${vp.eye.y}" r="7" fill="#E24B4A"/>`;
+  }
+  (function () {
+    const svg = document.getElementById("vpdemo"); if (!svg) return;
+    svg.addEventListener("click", ev => {
+      const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+      const q = p.matrixTransform(svg.getScreenCTM().inverse());
+      if (vp.boxes.some(([l, t, r, b]) => q.x > l && q.x < r && q.y > t && q.y < b)) return;
+      vp.eye = { x: Math.max(5, Math.min(675, q.x)), y: Math.max(5, Math.min(335, q.y)) }; vpDraw();
+    });
+    ["vp-corner", "vp-n", "vp-rays"].forEach(id => document.getElementById(id).addEventListener("input", vpDraw));
+  })();
+  function drawAll() { camera(); grid(); bfs(); vpDraw(); }
   drawAll();
   show();
   try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll); } catch (e) {}
