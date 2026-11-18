@@ -1,6 +1,6 @@
 """Screen UI over the world (2026-11-15 "UI적인 측면을 많이 개선해 보자, 인벤토리 등등").
 
-- bottom left: the status panel - the health bar and the status icons (bleeding, wounds, slowed, sneaking: condition.py)
+- bottom left: the status panel - the health bar and the status icons (bleeding, slowed, sneaking: condition.py)
 - bottom middle: quick slots (bag contents with their keys)
 - top left: the goal and how many infected are left
 - above the slots: the latest message, fading away
@@ -92,7 +92,7 @@ def draw_hud(game):
     latest message. No boxes, no rounded chips; Galmuri with a 1 px outline."""
     hero = game.hero
     # the screen edge goes red, dithered: while bleeding, and for a moment when hit (2026-11-16 C:
-    # the "긁힘! 체력 -12%" line is gone, the hit is felt instead)
+    # the old "긁힘! 체력 -12%" line is gone, the hit is felt instead)
     if (game.condition.bleeding or game.hurt_flash > 0) and not hero.dead:
         px.blit("bleed_edge.png", 0, 0)
     # goal: a taped, torn note; a click folds it to a small tab and opens it again
@@ -219,9 +219,8 @@ ROAD, BLOOD, ORANGE = (196, 170, 92), (168, 34, 30), (214, 128, 52)
 PENCIL = (78, 74, 70)
 FOOT_BAG, FOOT_BAG_CHOSEN, FOOT_BAG_EDGE = (74, 80, 58), (108, 114, 86), (50, 54, 38)
 FOOT_NEAR, FOOT_NEAR_CHOSEN, FOOT_NEAR_EDGE = (40, 42, 46), (62, 64, 68), (70, 72, 76)
-# a wound's mark on the body outline (canvas px from its top-left), by kind
-WOUND_SPOTS = {"scratch": [(3, 28), (36, 46), (14, 70)], "laceration": [(26, 30), (10, 80)],
-               "bite": [(37, 38), (20, 8)]}
+# where blows leave marks on the body outline (canvas px from its top-left), in order
+WOUND_SPOTS = [(26, 30), (3, 28), (37, 38), (14, 70), (36, 46), (10, 80), (20, 8)]
 
 
 def nearby_items(game):
@@ -341,20 +340,17 @@ def draw_body_column(game):
     px.text(l + 112, t, f"{hp}%", BLOOD if hp < 60 else LIGHT, bold=True, anchor="r")
     bx, by = l + 10, t + 26
     px.blit("bag/body.png", bx, by)
-    used = {}
-    for wound in game.condition.injuries:
-        k = used.get(wound["kind"], 0)
-        used[wound["kind"]] = k + 1
-        sx, sy = WOUND_SPOTS[wound["kind"]][k % len(WOUND_SPOTS[wound["kind"]])]
-        colour = BLOOD if wound["bleed"] > 0 else (92, 40, 40)
+    cond = game.condition
+    for sx, sy in WOUND_SPOTS[:cond.blows]:
+        colour = BLOOD if cond.bleeding else (92, 40, 40)
         px.rect(bx + sx - 2, by + sy - 2, bx + sx + 2, by + sy + 2, colour)
-    wounds = game.condition.injuries
-    for k, wound in enumerate(wounds[:4]):
-        y = t + 40 + k * 30
-        px.text(l + 62, y, wound["name"], LIGHT)
-        state = "피가 난다" if wound["bleed"] > 0 else "감았다" if wound.get("dressed") else ""
-        px.text(l + 62, y + 14, state, BLOOD if wound["bleed"] > 0 else GREY_C)
-    if not wounds:
+    if cond.bleeding:
+        px.text(l + 62, t + 40, "출혈", LIGHT)
+        px.text(l + 62, t + 54, "피가 난다", BLOOD)
+    elif cond.dressed:
+        px.text(l + 62, t + 40, "붕대", LIGHT)
+        px.text(l + 62, t + 54, "감았다", GREY_C)
+    else:
         px.text(l + 62, t + 40, "다친 곳 없음", GREY_C)
     # the hand slot: a weapon dragged here from the bag is taken in hand (2026-11-18 bag step 2)
     hl, ht, hr, hb = HAND_RECT

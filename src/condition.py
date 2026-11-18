@@ -2,10 +2,10 @@
 
 - tension: rises while infected that have spotted the hero are close, falls when they are gone;
   at panic the blade is slower to come back after a slash and the hero's view narrows
-- injuries from blows: a scratch, a laceration (bleeds) or a bite (bleeds, and will matter for
-  exposure later). Each blow takes health by its kind (percent); a bleeding wound keeps draining
-  health every second until a bandage stops it.
-- `moodles()` lists what the HUD shows as status icons: bleeding, wounds, slowed, sneaking.
+- one kind of wound, bleeding (2026-11-18 "출혈만 하나로 정리하죠", was scratch/laceration/bite):
+  every blow takes BLOW_DAMAGE % health and BLEED_CHANCE of blows start bleeding, which drains
+  BLEED_RATE % a second until a bandage stops it. More bleeding blows do not stack.
+- `moodles()` lists what the HUD shows as status icons: bleeding, slowed, sneaking.
   Tension and panic are not shown (2026-11-16 "왜 표시하는지 모르겠음"); they are felt instead.
 """
 
@@ -16,15 +16,18 @@ TENSION_FALL = 0.12          # per second when none are close
 TENSION_NEAR = 170           # px
 PANIC = 0.66                 # tension level where panic starts
 PANIC_RECOVER = 1.5          # slash cooldown multiplier while panicking
-INJURIES = (("scratch", "긁힘", 0.6, 12, 0.0), ("laceration", "찢어짐", 0.3, 22, 1.2), ("bite", "물림", 0.1, 35, 2.0))
-# (kind, name, chance, health % the blow takes, health % lost per second while it bleeds)
+BLOW_DAMAGE = 17            # health % every blow takes (the old three kinds averaged ~17)
+BLEED_CHANCE = 0.4          # chance a blow starts bleeding (the old laceration + bite: 30% + 10%)
+BLEED_RATE = 1.5            # health % lost per second while bleeding
 BANDAGE_HEAL = 15.0          # health % a bandage gives back
 
 
 class Condition:
     def __init__(self):
         self.tension = 0.0
-        self.injuries = []           # dicts: kind, name, bleed (health % per second, 0 = not bleeding)
+        self.bleeding = False
+        self.blows = 0               # blows taken: marks on the bag's body outline
+        self.dressed = False         # a bandage is on (the body column says so)
 
     # ------------------------------------------------------------------ tension
     def update(self, dt, hero, zombies):
@@ -35,7 +38,7 @@ class Condition:
             self.tension = min(1.0, self.tension + TENSION_RISE * close * dt)
         else:
             self.tension = max(0.0, self.tension - TENSION_FALL * dt)
-        return sum(w["bleed"] for w in self.injuries) * dt
+        return BLEED_RATE * dt if self.bleeding else 0.0
 
     @property
     def panic(self):
@@ -49,31 +52,18 @@ class Condition:
 
     # ------------------------------------------------------------------ wounds
     def wound(self):
-        """A blow lands: returns (wound name, health % it takes)."""
-        roll, total = random.random(), 0.0
-        for kind, name, chance, damage, bleed in INJURIES:
-            total += chance
-            if roll <= total:
-                self.injuries.append({"kind": kind, "name": name, "bleed": bleed})
-                return name, damage
-        return INJURIES[0][1], INJURIES[0][3]
-
-    @property
-    def bleeding(self):
-        return any(w["bleed"] > 0 for w in self.injuries)
+        """A blow lands: returns (bleeds, health % it takes)."""
+        self.blows += 1
+        if random.random() < BLEED_CHANCE:
+            self.bleeding, self.dressed = True, False
+        return self.bleeding, BLOW_DAMAGE
 
     def treat(self):
-        """A bandage on the worst wound: stops its bleeding (a bite first, then a laceration)."""
-        order = {"bite": 0, "laceration": 1, "scratch": 2}
-        for wound in sorted(self.injuries, key=lambda w: (w["bleed"] <= 0, order[w["kind"]])):
-            if wound["bleed"] > 0 or wound["kind"] == "scratch":
-                wound["bleed"] = 0.0
-                if wound["kind"] == "scratch":
-                    self.injuries.remove(wound)              # a scratch, once dressed, is gone
-                else:
-                    wound["dressed"] = True
-                return wound["name"]
-        return None
+        """A bandage: stops the bleeding. True if there was bleeding to stop."""
+        if not self.bleeding:
+            return False
+        self.bleeding, self.dressed = False, True
+        return True
 
     # ------------------------------------------------------------------ HUD
     def moodles(self, hero):
@@ -81,10 +71,6 @@ class Condition:
         out = []                     # tension/panic is felt (narrow view, slow blade), not shown
         if self.bleeding:
             out.append(("출혈", (190, 40, 40), 3))
-        for kind, label in (("bite", "물림"), ("laceration", "찢김"), ("scratch", "긁힘")):
-            n = sum(1 for w in self.injuries if w["kind"] == kind)
-            if n:
-                out.append((label if n == 1 else f"{label}{n}", (170, 110, 100), 1))
         if hero.slowed > 0.05:
             out.append(("느림", (130, 150, 190), 1))
         if hero.sneaking:

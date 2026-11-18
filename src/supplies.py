@@ -14,7 +14,7 @@ PICK_NOISE = 100           # px the rummaging carries
 KINDS = {
     # kind: (name, body colour, band colour, description shown in the bag); its size in the bag:
     # bag_grid.SUPPLY_SHAPE (the bag is cells, not weight - 2026-11-17)
-    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "가장 심한 상처의 피를 멈추고 체력 +15%"),
+    "bandage": ("붕대", (220, 216, 200), (120, 160, 120), "출혈을 멈추고 체력 +15%"),
     "pill": ("피폭 억제제", (70, 150, 90), (200, 240, 200), "피폭을 늦춘다. 피폭 -30"),
     "can": ("통조림", (150, 150, 158), (190, 120, 60), "오래 버티는 식량. 다음 구역 여정에 쓴다"),
 }

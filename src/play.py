@@ -343,14 +343,14 @@ class Game:
             return
         if self.hero.dead or not self.bag.get(kind):
             return
-        if kind == "bandage" and (self.hero.hp < HERO_HP or self.condition.injuries):
+        if kind == "bandage" and (self.hero.hp < HERO_HP or self.condition.bleeding):
             self.bag[kind] -= 1
             self.used.add("bandage")
             treated = self.condition.treat()
             before = self.hero.hp
             self.hero.hp = min(HERO_HP, self.hero.hp + BANDAGE_HEAL)
             gained = self.hero.hp - before
-            self.message = "붕대를 감았다" + (f" ({treated} 치료)" if treated else "") +                 (f" 체력 +{gained:.0f}%" if gained >= 1 else "")
+            self.message = "붕대를 감았다" + (" (피가 멎었다)" if treated else "") +                 (f" 체력 +{gained:.0f}%" if gained >= 1 else "")
             self.sounds.play("pickup", 0.6)
         elif kind == "pill" and EXPOSURE_ON:
             self.bag[kind] -= 1
@@ -669,7 +669,7 @@ class Game:
             if event == "hit" and not hero.invulnerable and not hero.dead:
                 self.sounds.play("hurt", 1.0)
                 hero.take_blow()                              # slowed, more with every blow
-                wound, damage = self.condition.wound()        # the blow's kind sets how much it takes
+                _, damage = self.condition.wound()            # a fixed share, and maybe bleeding
                 hero.hp = max(0.0, hero.hp - damage)
                 self.hurt_flash = 0.25                        # the screen edge flashes red
                 hero.hurt = HURT_INVULNERABLE
