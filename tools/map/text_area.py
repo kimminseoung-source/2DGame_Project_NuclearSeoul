@@ -193,6 +193,34 @@ WRECKS = {"wreck_0": (100, 40), "wreck_1": (80, 40), "wreck_2": (100, 40)}
 GRID = 16                  # the wall grid of a house one can go into (house.py)
 
 
+MARKERS = "Szkc+wXg"
+
+
+def ground_under_markers(rows):
+    """What the ground is under a marker (a car, an infected, a supply...): the ground most of its
+    neighbours have - road on a road, pavement on a pavement (2026-11-18: every marker became "."
+    pavement, so a pale square showed under each car standing on the road)."""
+    n, cols = len(rows), len(rows[0])
+    out = [list(r) for r in rows]
+    for r in range(n):
+        for c in range(cols):
+            if rows[r][c] not in MARKERS:
+                continue
+            seen = {}
+            for reach in (1, 2, 3):                        # the nearest ring that has any ground
+                for dr in range(-reach, reach + 1):
+                    for dc in range(-reach, reach + 1):
+                        rr, cc = r + dr, c + dc
+                        if 0 <= rr < n and 0 <= cc < cols and rows[rr][cc] not in MARKERS:
+                            seen[rows[rr][cc]] = seen.get(rows[rr][cc], 0) + 1
+                if seen:
+                    break
+            out[r][c] = max(seen, key=seen.get) if seen else "."
+            if out[r][c] in "#BED":                        # never a wall under a marker
+                out[r][c] = "."
+    return ["".join(r) for r in out]
+
+
 def build(rows, name, seed=16):
     """Write assets/areas/<name>/ (area.json, ground.png, roof and furniture pictures) for src/area.py."""
     import json
@@ -209,7 +237,7 @@ def build(rows, name, seed=16):
     n, cols = len(rows), len(rows[0])
     W, H = cols * M, n * M
     flat = [r.replace("E", ".").replace("D", ".") for r in rows]     # houses are drawn below
-    img, blocks = draw([r.translate(str.maketrans("Szkc+wXg", "........")) for r in flat])
+    img, blocks = draw(ground_under_markers(flat))
     blocks = [list(b) for b in blocks]
     d = ImageDraw.Draw(img)
 

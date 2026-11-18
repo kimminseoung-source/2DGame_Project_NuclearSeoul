@@ -38,7 +38,9 @@ NEAR_SOFT = 24
 NEAR_GLOW = 120
 GLOW_SOFT = 30
 GLOW_DARK = 0.5
-STEPS = 96                 # mesh resolution around the eye
+STEPS = 96                 # mesh resolution around the eye (even spokes)
+MAX_EXTRA = 160            # more spokes, through the corners of near blockers and the cone's sides
+CORNER_EPS = 0.002         # radians either side of a corner its two spokes go
 RADII = (0, 15, 30, 40, 52, 64, 80, 120, 160, 200, 250, 290, 330, 355, 380, 900)
 FAR = RADII[-1]
 SHADOW_SOFT = 10           # px behind a blocker's edge over which its shadow darkens
@@ -88,18 +90,21 @@ class VisionCone:
         self.scale = 1.0                 # < 1 while panicking: a narrower, shorter cone
         self.fog = FOG                   # darkness outside the light: lower by day (daylight.py);
                                          # behind walls it stays FOG
-        n, m = STEPS, len(RADII) + 2 + 4     # + the shadow's start and end, + the glow's and the cone's edges
+        m = len(RADII) + 2 + 4           # + the shadow's start and end, + the glow's and the cone's edges
         self.spoke = m
-        self.count = n * m
-        self.vertices = (sdl2.SDL_Vertex * self.count)()
+        # spokes: STEPS even ones + up to MAX_EXTRA through blocker corners and the cone's sides, and
+        # the first again at the end (so neighbours are always a, a + 1 and the triangles are fixed)
+        most = STEPS + MAX_EXTRA + 1
+        self.vertices = (sdl2.SDL_Vertex * (most * m))()
         indices = []
-        for a in range(n):
-            b = (a + 1) % n
+        for a in range(most - 1):
             for k in range(m - 1):
-                p, q, r, s = a * m + k, b * m + k, a * m + k + 1, b * m + k + 1
+                p, q, r, s = a * m + k, (a + 1) * m + k, a * m + k + 1, (a + 1) * m + k + 1
                 indices += [p, q, r, q, s, r]
         self.indices = (sdl2.c_int * len(indices))(*indices)
-        self.angles = [2 * pi * a / n for a in range(n)]
+        self.angles = [2 * pi * a / STEPS for a in range(STEPS)]
+        for v in self.vertices:                    # the colour of the dark never changes, only its alpha
+            v.color.r, v.color.g, v.color.b = 6, 8, 12
 
     def darkness(self, eye, look, x, y):
         dx, dy = x - eye[0], y - eye[1]
@@ -127,19 +132,51 @@ class VisionCone:
         reach = CONE_RANGE + RANGE_SOFT
         near = [(l, b, r, t) for l, b, r, t in self.nearby(eye[0] - reach, eye[1] - reach, eye[0] + reach, eye[1] + reach)
                 if max(l - eye[0], 0, eye[0] - r) ** 2 + max(b - eye[1], 0, eye[1] - t) ** 2 <= reach * reach]
-        for a, angle in enumerate(self.angles):
+        # Rays through every corner of what is near, just either side of it (2026-11-18 "장애물 뒤
+        # 그림자 인식이 이상"): with only the even spokes (3.75 degrees apart) the triangle between a
+        # ray that passed a car and one that hit it blended the two, so the shadow's edge smeared
+        # sideways over lit ground - wider the farther away. A corner ray puts a spoke exactly on the
+        # edge (the visibility-polygon way of 2D lights).
+        ex, ey = eye
+        side = CONE_HALF * self.scale
+        night = self.fog >= FOG - 1                    # outside the cone it is as dark as a shadow
+        lit_ring = NEAR_GLOW + GLOW_SOFT
+        extra = []
+        near.sort(key=lambda bl: max(bl[0] - ex, 0, ex - bl[2]) ** 2 + max(bl[1] - ey, 0, ey - bl[3]) ** 2)
+        for l, b, r, t in near:
+            close = max(l - ex, 0, ex - r) ** 2 + max(b - ey, 0, ey - t) ** 2 <= lit_ring * lit_ring
+            for x, y in ((l, b), (r, b), (r, t), (l, t)):
+                a = atan2(y - ey, x - ex)
+                # at night a corner outside the cone changes nothing on screen (dark both sides),
+                # unless the blocker is inside the half-lit ring round the body
+                if night and not close and abs((a - look + pi) % (2 * pi) - pi) > side + CONE_SOFT + 0.05:
+                    continue
+                extra += [a - CORNER_EPS, a + CORNER_EPS]
+            if len(extra) >= MAX_EXTRA - 4:
+                break
+        extra += [look - side - CONE_SOFT, look - side, look + side, look + side + CONE_SOFT]
+        angles = sorted({a % (2 * pi) for a in self.angles + extra[:MAX_EXTRA]})
+        angles.append(angles[0] + 2 * pi)                  # close the ring
+        # the same darkness as alpha_at, split: along one spoke the direction never changes, so the
+        # cone's side term is worked out once per spoke and only the distance terms per point
+        fog, reach_c = self.fog, CONE_RANGE * self.scale
+        edges = (NEAR_GLOW, NEAR_GLOW + GLOW_SOFT, reach_c, reach_c + RANGE_SOFT)
+        verts, flip = self.vertices, view_h - 1
+        for a, angle in enumerate(angles):
             ca, sa = cos(angle), sin(angle)
-            hit = ray_hit(eye[0], eye[1], ca, sa, near) if near else FAR
-            edges = (NEAR_GLOW, NEAR_GLOW + GLOW_SOFT, CONE_RANGE * self.scale, CONE_RANGE * self.scale + RANGE_SOFT)
+            hit = ray_hit(ex, ey, ca, sa, near) if near else FAR
+            off = abs((angle - look + pi) % (2 * pi) - pi)
+            side_dark = _ramp((off - side) / CONE_SOFT)
             radii = sorted(RADII + (min(hit, FAR - 1), min(hit + SHADOW_SOFT, FAR)) + tuple(min(e, FAR) for e in edges))
+            base = a * m
             for k, radius in enumerate(radii):
-                v = self.vertices[a * m + k]
-                dx, dy = ca * radius, sa * radius
-                v.position.x = ox + dx
-                v.position.y = view_h - 1 - (oy + dy)
-                v.color.r, v.color.g, v.color.b = 6, 8, 12
-                dark = alpha_at(dx, dy, look, self.scale, self.fog)
+                v = verts[base + k]
+                v.position.x = ox + ca * radius
+                v.position.y = flip - (oy + sa * radius)
+                near_dark = GLOW_DARK * _ramp((radius - NEAR_CLEAR) / NEAR_SOFT) + (1 - GLOW_DARK) * _ramp((radius - NEAR_GLOW) / GLOW_SOFT)
+                dark = fog * min(near_dark, max(side_dark, _ramp((radius - reach_c) / RANGE_SOFT)))
                 if radius > hit:
                     dark = max(dark, FOG * _ramp((radius - hit) / SHADOW_SOFT))
                 v.color.a = round(dark)
-        sdl2.SDL_RenderGeometry(renderer, None, self.vertices, self.count, self.indices, len(self.indices))
+        n = len(angles)
+        sdl2.SDL_RenderGeometry(renderer, None, self.vertices, n * m, self.indices, (n - 1) * (m - 1) * 6)

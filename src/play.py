@@ -719,7 +719,7 @@ class Game:
             self.sounds.play("step", 0.1 if hero.sneaking else 0.25)
         if self.aim[0] is not None:          # the hero looks toward the mouse
             ax, ay = self.mouse_world(*self.aim)
-            self.look = atan2(ay - (hero.y + CHEST), ax - hero.x)
+            self.look = atan2(ay - hero.y, ax - hero.x)    # from the feet, like the light it turns
         else:
             self.look = 0.0 if hero.facing > 0 else pi
 
@@ -1142,7 +1142,9 @@ class Game:
         for e in self.effects:
             e.draw(cx, cy)
         self.draw_aim(cx, cy)
-        self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y + CHEST - cy),
+        # drawn from the feet, where it is worked out (2026-11-18 "장애물 뒤 그림자 인식이 이상": drawn from
+        # the chest, every shadow sat CHEST units above where it is - behind a car looked lit)
+        self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y - cy),
                          self.view_w, self.view_h)
         if self.real:                                      # a muted, colder tone over everything
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 26, 30, 34, 70, filled=True)
