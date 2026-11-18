@@ -6,7 +6,10 @@ the ground's left edge comes back (패드식 칸 이동, GROUND_INVENTORY_UI_RES
 - Enter / right click: use the chosen thing (bag) or pick it up (ground)
 - X: put the chosen thing down on the ground
 - F: pick up every nearby thing of the chosen kind; Shift+F: everything nearby (as much as fits)
-- mouse: hovering chooses, dragging a thing from one grid to the other moves it
+- mouse: hovering chooses; dragging moves a thing to another spot on the sheet (it stays where it
+  is put, 2026-11-18 "커서로 정리할 수 있게") or between the sheet and the ground. While it is
+  carried, its landing cells show green (fits) or red; R or a right click turns it a quarter.
+- R on a thing in the bag turns it where it lies, if it fits turned
 The world waits while the bag is open (play.update).
 """
 
@@ -27,6 +30,9 @@ GRIDS = {"bag": bag_grid.BAG_GRID, "near": bag_grid.NEAR_GRID}
 def reset(game):
     game.bag_side, game.bag_cell = "bag", (0, 0)
     game.bag_drag = None             # (side, placed thing) carried by the mouse
+    game.bag_grab = (0, 0)           # the cell of the thing the mouse took it by
+    game.bag_turned = False          # the carried thing is turned a quarter
+    game.bag_target = None           # (col, row, turned, fits): where it would land on the sheet
     game.bag_mouse = (0.0, 0.0)      # canvas px
     game.bag_note_from = None        # the message showing when the bag opened (not repeated in it)
 
@@ -81,7 +87,7 @@ def took(game, count):
         if game.senses:
             game.make_noise(supply_rules.PICK_NOISE)
     else:
-        game.message = "배낭이 무겁다 · 더 넣을 수 없다"
+        game.message = "배낭에 자리가 없다"
 
 
 def act(game, thing, side):
@@ -117,6 +123,38 @@ def key(game, k, shift=False):
         drop(game, thing[0])
     elif k == sdl2.SDLK_f:
         take_many(game, None if shift or thing is None else thing[0])
+    elif k == sdl2.SDLK_r:
+        turn(game, thing)
+
+
+def turn(game, thing):
+    """R: turn the carried thing, or the chosen thing in the bag where it lies (if it fits)."""
+    if game.bag_drag is not None:
+        game.bag_turned = not game.bag_turned
+        game.bag_grab = (game.bag_grab[1], game.bag_grab[0])
+        aim(game)
+        return
+    if thing is None or game.bag_side != "bag":
+        return
+    place = thing[1]
+    if bag_grid.free(bag_grid.sync(game), place[0], place[1], place[2], not place[3], ignore=place):
+        place[3] = not place[3]
+        game.sounds.play("pickup", 0.4)
+
+
+def aim(game):
+    """Where the carried thing would land on the sheet (its grab cell under the mouse)."""
+    game.bag_target = None
+    spot = hud.cell_at(*game.bag_mouse)
+    if game.bag_drag is None or spot is None or spot[0] != "bag":
+        return
+    side, thing = game.bag_drag
+    c, r = spot[1] - game.bag_grab[0], spot[2] - game.bag_grab[1]
+    ignore = thing[1] if side == "bag" else None
+    ok = bag_grid.free(bag_grid.sync(game), thing[0], c, r, game.bag_turned, ignore=ignore)
+    if side == "near" and ok:
+        ok = hud.fits(game, thing[0])
+    game.bag_target = (c, r, game.bag_turned, ok)
 
 
 def mouse_move(game, sx, sy):
@@ -124,6 +162,7 @@ def mouse_move(game, sx, sy):
     spot = hud.cell_at(*game.bag_mouse)
     if spot is not None and game.bag_drag is None:
         game.bag_side, game.bag_cell = spot[0], spot[1:]
+    aim(game)
 
 
 def mouse_down(game, sx, sy, button):
@@ -133,10 +172,15 @@ def mouse_down(game, sx, sy, button):
         return
     game.bag_side, game.bag_cell = spot[0], spot[1:]
     thing = hud.chosen(game)
-    if button == "right":
+    if button == "right" and game.bag_drag is not None:
+        turn(game, thing)                                      # a right click while carrying: turn it
+    elif button == "right":
         act(game, thing, spot[0])
     elif thing is not None:
         game.bag_drag = (spot[0], thing)
+        game.bag_grab = (spot[1] - thing[2], spot[2] - thing[3])
+        game.bag_turned = bool(thing[1][3]) if spot[0] == "bag" else False
+        aim(game)
 
 
 def mouse_up(game, sx, sy):
@@ -144,11 +188,32 @@ def mouse_up(game, sx, sy):
     if game.bag_drag is None:
         return
     side, thing = game.bag_drag
-    game.bag_drag = None
-    spot = hud.cell_at(*px.to_canvas(sx, sy))
-    if spot is None or spot[0] == side:
+    game.bag_mouse = px.to_canvas(sx, sy)
+    aim(game)
+    target = game.bag_target
+    game.bag_drag, game.bag_target = None, None
+    spot = hud.cell_at(*game.bag_mouse)
+    if spot is None:
+        return
+    if side == "bag" and spot[0] == "bag":                       # moved to another spot on the sheet
+        if target is not None and target[3]:
+            place = thing[1]
+            place[1], place[2], place[3] = target[0], target[1], target[2]
+            game.bag_side, game.bag_cell = "bag", (target[0], target[1])
+            game.sounds.play("pickup", 0.4)
         return
     if side == "bag":
         drop(game, thing[0])
+        return
+    if spot[0] == "near":
+        return
+    if target is not None and not target[3]:                      # no room where it was let go
+        game.message = "거기에는 들어가지 않는다"
+        return
+    if take(game, thing[1]):
+        took(game, 1)
+        if target is not None:                                    # it lies where it was let go
+            new = next(p for p in reversed(bag_grid.sync(game)) if p[0] == thing[0])
+            new[1], new[2], new[3] = target[0], target[1], target[2]
     else:
-        took(game, 1 if take(game, thing[1]) else 0)
+        took(game, 0)

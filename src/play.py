@@ -14,6 +14,7 @@ import pico2d
 import sdl2
 from pico2d import pico2d as canvas
 
+import bag_grid
 import bag_screen
 import weapons
 import hud
@@ -135,6 +136,7 @@ class Game:
         bag_screen.reset(self)
         self.message_at = 0.0
         self.bag = {kind: 0 for kind in KINDS}
+        self.bag_places = []         # where each thing lies in the bag (bag_grid)
         self.ammo = 0                # rounds for the gun (weapons.py "shot"); found with a gun
         self.kills = 0
         self.left = False            # reached the exit: the area is done
@@ -316,9 +318,8 @@ class Game:
         held = weapons.key_of_weapon(hero.weapon)
         if key == held or not self.bag.get(weapons.item(key)):
             return
-        change = weapons.WEIGHT[held] - weapons.WEIGHT[key]
-        if supply_rules.bag_weight(self.bag) + change > supply_rules.BAG_CAPACITY + 1e-6:
-            self.message = "배낭이 무거워 손에 든 무기를 넣을 수 없다"
+        if not bag_grid.room_for(self, weapons.item(held), without=weapons.item(key)):
+            self.message = "배낭에 자리가 없어 손에 든 무기를 넣을 수 없다"
             return
         self.bag[weapons.item(key)] -= 1
         self.bag[weapons.item(held)] = self.bag.get(weapons.item(held), 0) + 1
@@ -418,7 +419,7 @@ class Game:
         item = supply_rules.nearest(self.supplies, self.hero.x, self.hero.y)
         if item is None or self.hero.pickup > 0 or self.hero.slash or self.hero.roll > 0:
             return
-        if supply_rules.bag_weight(self.bag) + supply_rules.weight_of(item.kind) > supply_rules.BAG_CAPACITY + 1e-6:
+        if not bag_grid.room_for(self, item.kind):
             self.message = "배낭이 무겁다 (Tab에서 X로 버리기)"
             return
         self.hero.pickup = PICKUP_TIME                     # a short crouch to pick it up
@@ -444,7 +445,7 @@ class Game:
         self.ammo += weapons.WEAPONS[key].get("shot", {}).get("rounds", 0)   # a gun comes loaded
         hero.pickup = PICKUP_TIME
         self.sounds.play("pickup", 0.8)
-        if supply_rules.bag_weight(self.bag) + weapons.WEIGHT[key] <= supply_rules.BAG_CAPACITY + 1e-6:
+        if bag_grid.room_for(self, weapons.item(key)):
             self.ground_weapons.remove(lying)
             self.bag[weapons.item(key)] = self.bag.get(weapons.item(key), 0) + 1
             self.message = f"{supply_rules.with_object_particle(weapons.WEAPONS[key]['name'])} 배낭에 넣었다 · Q로 들기"

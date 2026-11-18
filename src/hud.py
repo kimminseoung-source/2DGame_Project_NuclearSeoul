@@ -4,9 +4,10 @@
 - bottom middle: quick slots (bag contents with their keys)
 - top left: the goal and how many infected are left
 - above the slots: the latest message, fading away
-- Tab: the bag laid out on a ground sheet (2026-11-16, bag B v4): things take as many 0.1
-  cells as they weigh, a 20-segment weight bar, the ground nearby on the same grid, the body
-  with its wounds and the gear in hand. Pixel canvas + Galmuri (pixel_ui), not smooth shapes
+- Tab: the bag laid out on a ground sheet (2026-11-16, bag B v4; 2026-11-18 cells, not weight):
+  each thing has a shape and keeps the spot it was put in (bag_grid), dragged with a green / red
+  landing preview, a bar of taken cells, the ground nearby on the same grid, the body with its
+  wounds and the gear in hand. Pixel canvas + Galmuri (pixel_ui), not smooth shapes
 - the area summary once the hero has left
 
 Everything scales with the window (settings.UI_SCALE). Item icons are drawn here from simple
@@ -21,7 +22,7 @@ import ui
 from area import CREDIT, EXIT_NAME
 from settings import DOT, EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
 import weapons
-from supplies import BAG_CAPACITY, KINDS, bag_weight, item_name, item_text, weight_of
+from supplies import KINDS, item_name, item_text
 
 U = UI_SCALE
 PANEL = (14, 16, 20)
@@ -231,10 +232,8 @@ def nearby_items(game):
 
 def bag_layout(game):
     """{"bag": placed, "near": placed, "near_left": count} - placed as bag_grid.pack gives."""
-    shown = (lambda kind: EXPOSURE_ON or kind != "pill")
-    bag, _ = bag_grid.pack(bag_grid.bag_things(game.bag, shown), bag_grid.BAG_GRID)
     near, left = bag_grid.pack([(s.kind, s) for s in nearby_items(game)], bag_grid.NEAR_GRID)
-    return {"bag": bag, "near": near, "near_left": len(left)}
+    return {"bag": bag_grid.placed(game), "near": near, "near_left": len(left)}
 
 
 def grid_origin(side):
@@ -259,7 +258,7 @@ def chosen(game, layout=None):
 
 
 def fits(game, kind):
-    return bag_weight(game.bag) + weight_of(kind) <= BAG_CAPACITY + 1e-6
+    return bag_grid.room_for(game, kind)
 
 
 def corners(l, t, r, b, colour):
@@ -281,19 +280,50 @@ def draw_things(game, side, placed, pick):
         rr, bb = l + w * CELL, t + h * CELL
         px.rect(l + 2, t + 2, rr - 2, bb - 2, fill_chosen if p == pick else fill)
         px.frame(l + 2, t + 2, rr - 2, bb - 2, edge)
-        wkey = weapons.key_of(kind)
-        if wkey:                                                        # a carried weapon: its sprite x2
-            sprite = weapons.WEAPONS[wkey]["sprite"]
-            img = px.image(f"../weapons/{sprite}.png")
-            px.blit(f"../weapons/{sprite}.png", l + (w * CELL - img.w * 2) // 2, t + (h * CELL - img.h * 2) // 2, 2)
-        else:
-            px.blit(f"bag/big_{kind}.png", l + (w * CELL - 32) // 2, t + (h * CELL - 32) // 2)
+        draw_item(kind, l, t, w, h, turned=side == "bag" and ref[3])
         if p == pick:
             heavy = side == "near" and not fits(game, kind)          # it would not fit: red corners
             corners(l, t, rr, bb, BLOOD if heavy else ROAD)
     if pick is None and game.bag_side == side:                         # an empty cell is chosen
         c, r = game.bag_cell
         corners(gx + c * CELL, gy + r * CELL, gx + (c + 1) * CELL, gy + (r + 1) * CELL, GREY_C)
+
+
+def item_picture(kind, turned=False):
+    """The picture of a bag item: a weapon's sprite (turned upright when it lies turned), or the
+    supply's big icon."""
+    wkey = weapons.key_of(kind)
+    if wkey:
+        sprite = weapons.WEAPONS[wkey]["sprite"]
+        return f"../weapons/{sprite}{'_r' if turned else ''}.png", 2
+    return f"bag/big_{kind}.png", 1
+
+
+def draw_item(kind, l, t, w, h, turned=False):
+    """A bag item's picture in the middle of its w x h cells at (l, t)."""
+    name, scale = item_picture(kind, turned)
+    img = px.image(name)
+    px.blit(name, l + (w * CELL - img.w * scale) // 2, t + (h * CELL - img.h * scale) // 2, scale)
+
+
+def draw_ghost(game):
+    """While a thing is carried over the bag's sheet: where it would land - its cells green when it
+    fits there, red when it does not (2026-11-18 "커서로 정리할 수 있게")."""
+    target = game.bag_target
+    if game.bag_drag is None or target is None:
+        return
+    kind = game.bag_drag[1][0]
+    c, r, turned, ok = target
+    w, h = bag_grid.shape(kind, turned)
+    gx, gy = SHEET_GRID
+    l, t = gx + c * CELL, gy + r * CELL
+    colour = (96, 168, 92) if ok else BLOOD
+    for i in range(w):
+        for j in range(h):
+            cl, ct = l + i * CELL, t + j * CELL
+            if c + i < bag_grid.BAG_GRID[0] and r + j < bag_grid.BAG_GRID[1]:
+                px.frame(cl + 3, ct + 3, cl + CELL - 3, ct + CELL - 3, colour)
+    corners(l, t, l + w * CELL, t + h * CELL, colour)
 
 
 def draw_body_column(game):
@@ -326,13 +356,13 @@ def draw_body_column(game):
     px.text(l + 40, t + 160, "Q 바꾸기", GREY_C)
 
 
-def draw_weight_bar(x, y, used):
-    """20 segments of 0.1; orange past 1.6, red past the limit (Zomboid's heavy load)."""
-    colour = BLOOD if used > BAG_CAPACITY + 1e-6 else ORANGE if used > 1.6 + 1e-6 else ROAD
-    for i in range(round(BAG_CAPACITY / bag_grid.CELL_WEIGHT)):
+def draw_room_bar(x, y, used, total):
+    """One segment a cell: how much of the sheet is taken (orange when nearly full)."""
+    colour = ORANGE if used > total - 3 else ROAD
+    for i in range(total):
         sx = x + i * 9
         px.rect(sx, y, sx + 7, y + 5, INK_C)
-        px.rect(sx + 1, y + 1, sx + 6, y + 4, colour if i < round(used * 10 + 1e-6) else (40, 40, 38))
+        px.rect(sx + 1, y + 1, sx + 6, y + 4, colour if i < used else (40, 40, 38))
 
 
 def draw_inventory(game):
@@ -345,13 +375,14 @@ def draw_inventory(game):
     sl, st = gx - SHEET_MARGIN, gy - SHEET_MARGIN
     sr = gx + bag_grid.BAG_GRID[0] * CELL + SHEET_MARGIN
     sb = gy + bag_grid.BAG_GRID[1] * CELL + SHEET_MARGIN
-    used = bag_weight(game.bag)
+    used, total = bag_grid.used_cells(game), bag_grid.BAG_GRID[0] * bag_grid.BAG_GRID[1]
     px.blit("bag/icon_backpack.png", sl, st - 30)
     px.text(sl + 20, st - 27, "배낭", LIGHT, bold=True)
-    px.text(sr, st - 27, f"{used:.1f} / {BAG_CAPACITY:.1f}", LIGHT, anchor="r")
+    px.text(sr, st - 27, f"{used} / {total}칸", LIGHT, anchor="r")
     px.blit("bag/sheet.png", sl, st)
     draw_things(game, "bag", layout["bag"], pick if game.bag_side == "bag" else None)
-    draw_weight_bar(sl + 8, sb + 6, used)
+    draw_ghost(game)
+    draw_room_bar(sl + 8, sb + 6, used, total)
     nx, ny = NEAR_ORIGIN
     px.text(nx, ny - 39, "근처", LIGHT, bold=True)
     px.text(nx, ny - 23, "< 바닥 >", GREY_C)
@@ -370,20 +401,24 @@ def draw_inventory(game):
         name = item_name(kind)
         px.text(150, y, name, ROAD, bold=True)
         px.text(150 + px.width(name, True) + 8, y, item_text(kind), LIGHT)
-        px.text(px.CW - 22, y, f"칸 {pick[4] * pick[5]} · {weight_of(kind):.1f}", GREY_C, anchor="r")
+        px.text(px.CW - 22, y, f"{pick[4]}×{pick[5]}칸", GREY_C, anchor="r")
     else:
         px.text(150, y, "빈 칸", GREY_C)
     use_word = "줍기" if game.bag_side == "near" else "들기" if pick and weapons.key_of(pick[0]) else "쓰기"
     rows = ((("Enter", use_word), ("X", "내려놓기"),
              ("F", "같은 것 줍기"), ("Shift+F", "모두 줍기")),
-            (("WASD", "고르기 (D: 근처로)"), ("끌어 놓기", "옮기기"), ("Tab", "닫기")))
+            (("WASD", "고르기"), ("끌어 놓기", "옮기기"), ("R", "돌리기"), ("Tab", "닫기")))
     for row, keys in enumerate(rows):
         kx = 150
         for key, label in keys:
             kx = px.key_cap(kx, y + 16 + row * 16, key, label, LIGHT, INK_C, LIGHT)
     if game.bag_drag is not None:                                      # carried by the mouse
+        kind = game.bag_drag[1][0]
+        turned = game.bag_turned
+        w, h = bag_grid.shape(kind, turned)
+        gc, gr = game.bag_grab
         mx, my = game.bag_mouse
-        px.blit(f"bag/big_{game.bag_drag[1][0]}.png", round(mx) - 16, round(my) - 16)
+        draw_item(kind, round(mx) - gc * CELL - CELL // 2, round(my) - gr * CELL - CELL // 2, w, h, turned)
 
 
 def draw_death(game):

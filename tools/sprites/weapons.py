@@ -149,7 +149,9 @@ def export_dot(out):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     for name, make in DOT_SPRITES.items():
-        make().save(out / f"{name}.png")
+        img = make()
+        img.save(out / f"{name}.png")
+        img.transpose(Image.Transpose.ROTATE_90).save(out / f"{name}_r.png")   # standing up, for a turned bag spot
     return sorted(DOT_SPRITES)
 
 

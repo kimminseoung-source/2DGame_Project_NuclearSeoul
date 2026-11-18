@@ -145,11 +145,8 @@ for _w in WEAPONS.values():
 # Arcs are narrow (2026-11-16 "공격 범위가 너무 넓어, 세로로 말고 가로로"): a blow covers a long,
 # thin strip toward the aim, its end a short arc; the bat is still the widest, the knife the narrowest.
 DEFAULT = "machete"
-# Carried weapons are bag items "w:<key>" with a weight, so they take cells on the bag's sheet
-# (2026-11-16 "무기를 인벤토리나 어디를 통해서 바꿀 수 있게"); the weapon in hand weighs nothing.
-WEIGHT = {"machete": 0.4, "knife": 0.2, "bat": 0.6, "pipe": 0.6, "axe": 0.8, "pistol": 0.2}
-# Weapons are long: on the bag's sheet they lie flat, wide and low (cells >= weight / 0.1), so a
-# full bag still fits them (a 3 x 3 axe left no room for a bat, which was squeezed into one cell).
+# Carried weapons are bag items "w:<key>" that take cells on the bag's sheet (2026-11-16 "무기를
+# 인벤토리나 어디를 통해서 바꿀 수 있게"); the weapon in hand takes none. They lie flat, wide and low.
 SHAPE = {"knife": (2, 1), "machete": (4, 1), "bat": (3, 2), "pipe": (3, 2), "axe": (4, 2), "pistol": (2, 1)}
 STYLE_TEXT = {"chop": "내려치기 · 바닥에 기는 놈에게도 닿는다", "stab": "찌르기 · 빠르고 짧다",
               "swingh": "가로 휘두르기 · 넓고 밀어낸다"}
