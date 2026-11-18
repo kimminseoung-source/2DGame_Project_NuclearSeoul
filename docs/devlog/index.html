@@ -2,386 +2,341 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap">
 <style>
-/* Layout: a station-notice board. A route bar on top (서울 → 대전 → 부산), posts in one reading
-   column, a narrow side rail with the study map; the rail drops below the posts on phones. */
+/* Layout: a shelf of technique cards, one game technique per card like a shorts video - its name,
+   one picture, what it is, how it works, where it is in our game. A dated build log below. */
 :root {
   --bg: #e4e7e6;          /* concrete */
-  --surface: #f3f5f4;
+  --surface: #f4f6f5;
   --ink: #1b1f22;
   --muted: #586165;
-  --line: #c3c9c8;
+  --line: #c6ccca;
   --hazard: #8f6d12;      /* road-paint yellow, darkened to read on light */
-  --hazard-soft: #e7d9a8;
+  --hazard-soft: #ece0b4;
   --exit: #1f7346;        /* the exit sign */
   --exit-soft: #cfe6d7;
   --blood: #a1322a;
-  --code-bg: #e9ecea;
+  --sky: #3d68b5;
   --display: "Do Hyeon", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #131517; --surface: #1b1e21; --ink: #e2e5e2; --muted: #979ea0; --line: #2c3236;
-    --hazard: #d4b65f; --hazard-soft: #3a3320; --exit: #53b27e; --exit-soft: #1b3326;
-    --blood: #d65a4f; --code-bg: #171a1c; color-scheme: dark;
+    --bg: #131517; --surface: #1c1f22; --ink: #e2e5e2; --muted: #979ea0; --line: #2c3236;
+    --hazard: #d4b65f; --hazard-soft: #3a3320; --exit: #53b27e; --exit-soft: #1b3326; --blood: #d65a4f;
+    --sky: #7ea3e6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #131517; --surface: #1b1e21; --ink: #e2e5e2; --muted: #979ea0; --line: #2c3236;
-  --hazard: #d4b65f; --hazard-soft: #3a3320; --exit: #53b27e; --exit-soft: #1b3326;
-  --blood: #d65a4f; --code-bg: #171a1c; color-scheme: dark;
+  --bg: #131517; --surface: #1c1f22; --ink: #e2e5e2; --muted: #979ea0; --line: #2c3236;
+  --hazard: #d4b65f; --hazard-soft: #3a3320; --exit: #53b27e; --exit-soft: #1b3326; --blood: #d65a4f;
+  --sky: #7ea3e6; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.75;
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.6;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0 64px;
+  padding-block: 0 56px;
 }
-a { color: var(--exit); }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
-h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; line-height: 1.25; margin: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; line-height: 1.2; margin: 0; }
 p { margin: 0; }
-code, pre { font-family: var(--mono); font-size: 0.86em; }
-img { display: block; max-width: 100%; height: auto; image-rendering: pixelated; border-radius: 4px; }
+code { font-family: var(--mono); font-size: 0.85em; }
+img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.wrap { max-width: 1080px; margin: 0 auto; }
 
-.wrap { max-width: 1120px; margin: 0 auto; }
-
-/* ---- header */
-header { padding-block: 40px 28px; display: grid; gap: 18px; border-bottom: 1px solid var(--line); }
-.eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--muted); }
-header h1 { font-size: clamp(36px, 7vw, 60px); }
+header { padding-block: 36px 26px; display: grid; gap: 12px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+header h1 { font-size: clamp(34px, 7vw, 56px); }
 header h1 span { color: var(--hazard); }
-.lede { max-width: 62ch; color: var(--muted); }
+.lede { color: var(--muted); max-width: 60ch; }
 
-.route { display: flex; align-items: center; gap: 0; max-width: 560px; margin-top: 6px; }
-.stop { display: grid; justify-items: center; gap: 4px; font-size: 13px; color: var(--muted); flex: 0 0 auto; }
-.stop i { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--line); background: var(--surface); }
-.stop.now i { border-color: var(--exit); background: var(--exit); box-shadow: 0 0 0 4px var(--exit-soft); }
-.stop.now { color: var(--ink); font-weight: 700; }
-.track { flex: 1 1 auto; height: 3px; background: var(--line); margin: 0 6px 22px; min-width: 24px; }
-.route-note { font-size: 13px; color: var(--muted); }
-.route-note b { color: var(--exit); font-weight: 700; }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+.tabs a { padding: 9px 16px; font-family: var(--display); font-size: 20px; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--hazard); }
+.view[hidden] { display: none !important; }
+.section-title { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 14px; }
+.section-title h2 { font-size: 26px; }
+.section-title small { color: var(--muted); font-size: 13px; }
 
-/* ---- layout */
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 48px; padding-top: 36px; align-items: start; }
-@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 40px; } }
-main { display: grid; gap: 56px; min-width: 0; }
+/* ---- technique cards */
+.shelf { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+@media (max-width: 980px) { .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .shelf { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: grid; min-width: 0; }
+.media { aspect-ratio: 16 / 10; background: #0e1012; display: grid; place-items: center; overflow: hidden; max-width: 100%; }
+.media img { height: 100%; object-fit: cover; }
+.media.draw { background: var(--surface); border-bottom: 1px solid var(--line); padding: 8px; }
+.media.draw svg, .media.draw canvas { width: 100%; height: 100%; display: block; }
+.media.flow { background: var(--surface); border-bottom: 1px solid var(--line); padding: 6px; overflow: auto; }
+.media.flow pre { margin: 0; width: 100%; }
+.body { padding: 13px 15px 15px; display: grid; gap: 8px; }
+.kind { font-size: 11.5px; letter-spacing: 0.06em; color: var(--hazard); font-weight: 700; }
+.card h3 { font-size: 23px; }
+.what { color: var(--ink); }
+.how { font-size: 13.5px; color: var(--muted); }
+.how code { color: var(--ink); background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+.ours { font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; color: var(--muted); }
+.ours b { color: var(--exit); font-weight: 700; }
 
-/* ---- posts */
-article { display: grid; gap: 16px; min-width: 0; scroll-margin-top: 16px; }
-.meta { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.tag { padding: 1px 8px; border-radius: 3px; background: var(--hazard-soft); color: var(--ink); font-size: 12px; }
-article h2 { font-size: clamp(26px, 4.4vw, 34px); }
-article > p { max-width: 66ch; }
-figure { margin: 4px 0; display: grid; gap: 6px; }
-figcaption { font-size: 13px; color: var(--muted); }
+/* ---- build log */
+.log { margin-top: 0; }
+.log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; max-width: 760px; }
+.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log .d { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; padding-top: 1px; }
+.log a { color: var(--exit); }
 
-.key {
-  border-left: 4px solid var(--hazard); background: var(--surface); padding: 14px 18px; display: grid; gap: 4px; max-width: 66ch;
-}
-.key .label { font-size: 12px; letter-spacing: 0.08em; color: var(--hazard); font-weight: 700; }
-.key b { font-family: var(--display); font-weight: 400; font-size: 20px; }
-
-.talk { display: grid; gap: 10px; max-width: 66ch; }
-.talk .label { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
-.line { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: start; }
-.who { font-size: 12px; font-weight: 700; padding-top: 3px; color: var(--muted); }
-.who.me { color: var(--exit); }
-.bubble { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 13px; }
-.bubble.me { background: var(--exit-soft); border-color: transparent; }
-
-table { border-collapse: collapse; width: 100%; font-size: 14px; }
-.tablebox { overflow-x: auto; max-width: 66ch; }
-th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-size: 12px; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
-td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pick { color: var(--exit); font-weight: 700; }
-.drop { color: var(--muted); text-decoration: line-through; }
-
-pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; margin: 0; max-width: 66ch; line-height: 1.6; }
-.code-where { font-size: 13px; color: var(--muted); }
-.code-where code { color: var(--ink); }
-
-.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px; max-width: 66ch; overflow-x: auto; }
-.chart svg { display: block; width: 100%; min-width: 420px; height: auto; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); padding: 6px 4px 0; }
-.legend span::before { content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; background: currentColor; }
-.l20 { color: var(--blood); } .l60 { color: var(--hazard); } .lexp { color: var(--exit); }
-.status { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 3px; border: 1px solid var(--blood); color: var(--blood); }
-.status.done { border-color: var(--exit); color: var(--exit); }
-
-/* ---- side rail */
-aside { display: grid; gap: 28px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
-@media (max-width: 900px) { aside { position: static; } }
-aside h3 { font-size: 22px; }
-.rail-box { display: grid; gap: 12px; }
-.toc { display: grid; gap: 2px; padding: 0; margin: 0; list-style: none; font-size: 14px; }
-.toc a { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; padding: 6px 8px; border-radius: 4px; text-decoration: none; color: var(--ink); }
-.toc a:hover { background: var(--surface); }
-.toc .d { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 2px; }
-.map { display: grid; gap: 8px; }
-.concept { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
-.concept b { font-size: 14px; }
-.concept small { color: var(--muted); font-size: 12.5px; line-height: 1.55; }
-.concept code { font-size: 11.5px; }
-.rail-note { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-
-footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .stop.now i { animation: blink 2.4s ease-in-out infinite; }
-  @keyframes blink { 50% { box-shadow: 0 0 0 7px var(--exit-soft); } }
-}
+footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+a:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">2D 게임 프로그래밍 · Python + pico2d · 개인 프로젝트</div>
+    <div class="eyebrow">2D 게임 프로그래밍 · Python + pico2d</div>
     <h1>부산까지 <span>개발 일지</span></h1>
-    <p class="lede">핵 맞은 한국, 서울에서 부산까지 가는 탑뷰 생존 게임을 만들면서 부딪힌 문제와 그때 고른 방법을 남긴다. 기법 이름과, 그 기법이 우리 코드 어디에 있는지도 함께 적는다.</p>
-    <div class="route" aria-label="여정: 서울 다음 대전 다음 부산, 지금 서울 구간">
-      <div class="stop now"><i></i>서울</div>
-      <div class="track"></div>
-      <div class="stop"><i></i>대전</div>
-      <div class="track"></div>
-      <div class="stop"><i></i>부산</div>
-    </div>
-    <p class="route-note">지금: <b>서울 골목 → 역 디펜스</b> · 목표는 스테이지 1개 완성</p>
+    <p class="lede">개발 일지는 무엇을 만들었나, 공부 일지는 거기에 쓴 게임 기법. 둘 다 짧게.</p>
   </header>
+  <nav class="tabs" aria-label="일지 고르기">
+    <a href="#dev" id="tab-dev">개발 일지</a>
+    <a href="#study" id="tab-study">공부 일지</a>
+  </nav>
 
-  <div class="layout">
-    <main>
+  <section class="view log" id="view-dev" aria-labelledby="logtitle">
+    <div class="section-title"><h2 id="logtitle">개발 일지</h2><small>무엇을 만들었나 · 최신이 위</small></div>
+    <ol>
+      <li><span class="d">11.18</span><span>피폭체 발견 거리를 140 하나로 고정, 살금 걷기는 발소리만 줄임 → <a href="#sight">시야 판정</a></span></li>
+      <li><span class="d">11.18</span><span>역 울타리: 디펜스 전엔 피폭체가 못 들어옴 → <a href="#keepout">출입 금지 구역</a></span></li>
+      <li><span class="d">11.18</span><span>역 디펜스: 군인 1·시민 2와 함께 60초 동안 기차 기다리기 → <a href="#target">표적 고르기</a></span></li>
+      <li><span class="d">11.18</span><span>총소리 900 → 400, 소리 원 안의 입구에서만 새 피폭체 → <a href="#sound">소리 전파</a></span></li>
+      <li><span class="d">11.18</span><span>머리 히트박스를 그림에 맞춤, 통조림으로 체력 회복</span></li>
+      <li><span class="d">11.18</span><span>F1 히트박스, F4 설정창, F5 시야, F6 소리 → <a href="#debugdraw">디버그 드로우</a></span></li>
+      <li><span class="d">11.18</span><span>상처 3종을 출혈 하나로 정리</span></li>
+    </ol>
+  </section>
+  <section class="view" id="view-study" aria-labelledby="studytitle">
+  <div class="section-title"><h2 id="studytitle">공부 일지</h2><small>카드 하나에 기법 하나</small></div>
+  <div class="shelf">
 
-      <!-- newest first -->
-      <article id="camera">
-        <div class="meta"><span>2026-11-18</span><span class="tag">게임 수학</span><span class="tag">카메라</span></div>
-        <h2>카메라가 컴퓨터마다 다르게 따라온다</h2>
-        <p>유튜브 쇼츠 「게임 카메라에 숨겨진 수학 기법」을 보다가 우리 카메라 코드를 다시 봤다. 카메라는 주인공에게 바로 붙지 않고, 매 프레임 <b>남은 거리의 일정 비율</b>만큼 따라간다. 멀면 빠르게, 가까우면 천천히 다가가서 부드럽게 멈춘다. 이걸 <b>점근적 평균</b>(lerp smoothing)이라고 부른다.</p>
-<pre><code>self.cam[i] += (target - self.cam[i]) * min(1.0, real_dt * 8)</code></pre>
-        <p>그런데 이 식에는 함정이 있다. 1초에 화면을 몇 번 그리느냐(fps)에 따라 따라오는 속도가 달라진다.</p>
-        <div class="talk">
-          <div class="label">나눈 대화</div>
-          <div class="line"><div class="who">Claude</div><div class="bubble">60fps 컴퓨터와 30fps 컴퓨터에서, 카메라가 따라오는 속도가 똑같을까요, 다를까요?</div></div>
-          <div class="line"><div class="who me">나</div><div class="bubble me">다를 것 같습니다.</div></div>
-          <div class="line"><div class="who">Claude</div><div class="bubble">맞아요. 60fps는 남은 거리의 13.3%를 여러 번, 20fps는 40%를 적게 줄입니다. 조금씩 여러 번 줄이면 줄이는 양 자체가 점점 작아져서, 오히려 <b>느린 컴퓨터가 더 빨리</b> 따라붙어요.</div></div>
-        </div>
-        <div class="chart">
-          <svg id="camchart" viewBox="0 0 540 260" role="img" aria-label="시간에 따라 남은 거리: 20fps가 가장 빨리 줄고, exp 식은 fps와 상관없이 같다"></svg>
-          <div class="legend"><span class="l20">지금 식, 20fps</span><span class="l60">지금 식, 60fps</span><span class="lexp">exp 식 (어떤 fps든 같음)</span></div>
-        </div>
-        <div class="tablebox">
-          <table>
-            <thead><tr><th>화면 속도</th><th>한 프레임에 줄이는 거리</th><th>0.25초 뒤 남은 거리</th></tr></thead>
-            <tbody>
-              <tr><td>60fps</td><td class="num">13.3%</td><td class="num">11.7%</td></tr>
-              <tr><td>20fps</td><td class="num">40.0%</td><td class="num">7.8%</td></tr>
-              <tr><td>exp 식</td><td class="num">fps마다 다름</td><td class="num"><b>늘 13.5%</b></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="key">
-          <span class="label">핵심 한 가지</span>
-          <b>프레임 독립 감쇠 (exponential decay)</b>
-          <p><code>dt * 8</code> 대신 <code>1 - exp(-8 * dt)</code>를 쓰면, 0.1초씩 두 번 줄인 것과 0.2초를 한 번에 줄인 것이 정확히 같아진다. 곱셈으로 이어지는 감소는 지수(exp)로 써야 시간 조각을 어떻게 나눠도 결과가 같다.</p>
-        </div>
-        <p>우리 게임은 dt를 최대 0.05초(20fps)로 막아 두어서 차이가 크지 않다. 하지만 확대·축소도 같은 식을 쓰고, 앞으로 부드럽게 움직이는 것마다 이 식을 쓸 테니 습관을 바로잡아 두는 게 좋다. <span class="status">아직 안 고침 · 다음 작업</span></p>
-        <p class="code-where">코드: <code>src/play.py</code> 카메라 따라가기, <code>ease_zoom</code></p>
-      </article>
-
-      <article id="sight">
-        <div class="meta"><span>2026-11-18</span><span class="tag">AI 감각</span><span class="tag">설계</span></div>
-        <h2>보는 건 고정, 소리로 조절</h2>
-        <figure>
-          <img src="img/dev_senses.png" alt="F5를 켠 화면. 피폭체마다 파란 점선 부채꼴이 시야를, 노란 원이 소리가 닿는 범위를 보여 준다" loading="lazy" width="1280" height="720">
-          <figcaption>F5(시야)와 F6(소리)를 켠 화면. 파란 부채꼴이 "!"가 뜨는 범위, 노란 원이 소리가 닿는 범위.</figcaption>
-        </figure>
-        <p>처음엔 좀보이드를 따라, 주인공이 걸으면 160, 가만히 있거나 살금 걸으면 90 안에서 들키게 했다. 그랬더니 디버그 화면에서 피폭체 시야가 주인공 움직임에 따라 커졌다 작아졌다 해서 헷갈렸다.</p>
-        <div class="talk">
-          <div class="label">나눈 대화</div>
-          <div class="line"><div class="who me">나</div><div class="bubble me">움직일 때 들리는 소리로만 해도 괜찮을 것 같은데, 왜 좀비의 시야 범위를 조절하는 거죠? 주인공의 소리 범위만 조절하면 될 것 같아서요.</div></div>
-          <div class="line"><div class="who">Claude</div><div class="bubble">맞아요. 은신 하나를 시야와 소리 두 곳에서 조절하면, 숫자를 맞출 때 어디를 바꿔야 할지 알기 어려워집니다. 시야는 140으로 고정하고 살금 걷기는 발소리(70 → 28)만 줄이도록 바꿨어요.</div></div>
-        </div>
-        <div class="key">
-          <span class="label">핵심 한 가지</span>
-          <b>변수를 한 곳에 모으기</b>
-          <p>같은 결과(덜 들킴)를 여러 규칙이 나눠 만들면 맞추기 어렵다. 하나의 손잡이로 모으면 디버그 화면도, 조정도 단순해진다.</p>
-        </div>
-        <p class="code-where">코드: <code>src/infected.py</code> <code>SPOT_DIST</code>, <code>sees</code> · <code>src/play.py</code> 발소리 <code>make_noise</code></p>
-      </article>
-
-      <article id="fence">
-        <div class="meta"><span>2026-11-18</span><span class="tag">AI</span><span class="tag">이동</span></div>
-        <h2>역에 갔더니 다 죽어 있었다</h2>
-        <figure>
-          <img src="img/01_before_after.png" alt="왼쪽: 울타리가 없어 시민들이 쓰러져 있다(0/3). 오른쪽: 울타리 안에서 군인과 시민이 살아 있다(3/3)" loading="lazy" width="1280" height="400">
-          <figcaption>주인공이 멀리서 90초 동안 물자를 줍고 온 뒤의 역. 울타리 없이 0/3, 울타리가 있으면 3/3.</figcaption>
-        </figure>
-        <p>역 디펜스를 만들고 해 보니, 물자를 챙겨 역에 가면 지켜야 할 사람들이 이미 쓰러져 있었다. 범인은 같은 날 넣은 두 규칙이었다. 피폭체는 <b>가장 가까운 사람</b>을 노리고, 군인은 <b>보이면 쏘는데</b> 총소리는 피폭체를 부른다. 각각은 맞는 규칙인데, 합쳐지니 주인공이 오기 전에 역이 무너졌다.</p>
-        <figure>
-          <img src="img/01_before.gif" alt="울타리가 없을 때 골목의 피폭체가 역의 시민을 공격하는 장면" loading="lazy" width="640" height="360" style="max-width:640px">
-          <figcaption>울타리가 없을 때: 지나가던 피폭체가 시민을 덮친다.</figcaption>
-        </figure>
-        <div class="tablebox">
-          <table>
-            <thead><tr><th>방법</th><th>한 줄 평가</th></tr></thead>
-            <tbody>
-              <tr><td class="drop">맵에 진짜 벽</td><td>디펜스 때 벽을 치우고 길 찾기도 다시 계산해야 해서 무겁다</td></tr>
-              <tr><td class="pick">피폭체만 못 들어가는 구역</td><td>주인공은 지나가고 피폭체만 막힌다. 켜고 끄기 쉽다</td></tr>
-              <tr><td class="pick">디펜스 전엔 사람들을 노리지 않게</td><td>한 줄이면 되지만, 이것만 하면 그냥 걸어 들어온다</td></tr>
-              <tr><td class="drop">디펜스 때 사람들을 만들기</td><td>안전하지만 "사람들이 기다리는 역"이라는 느낌이 사라진다</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p>두 방법을 같이 쓰고, 군인도 디펜스 전엔 쏘지 않게 했다. <b>E를 누르는 순간</b> 울타리가 열리고, 피폭체가 사람들을 노리고, 군인이 사격을 시작한다.</p>
-        <div class="key">
-          <span class="label">핵심 한 가지</span>
-          <b>출입 금지 구역 (Keep-out zone)</b>
-          <p>특정 무리만 못 들어가는 영역. 언리얼의 Nav Modifier Volume, 유니티의 NavMesh Obstacle과 같은 생각이다. 몸마다 "들어가면 안 되는 사각형" 목록을 들고, 밖에서 안으로 들어가는 걸음만 막는다.</p>
-        </div>
-<pre><code>def kept_out(body, x, y):
-    for l, b, r, t in getattr(body, "keep_out", ()):
-        if l &lt;= x &lt;= r and b &lt;= y &lt;= t and not (l &lt;= body.x &lt;= r and b &lt;= body.y &lt;= t):
-            return True          # 밖에서 안으로 들어가려는 걸음만 막는다
-    return False</code></pre>
-        <p>무겁지 않다. 사각형 안인지 숫자 네 번 비교하는 게 전부이고, 움직이는 몸만 검사한다. 구역이 수십 개가 되면 근처 구역만 보게 바꾸면 되지만, 지금은 하나라서 하지 않았다.</p>
-        <div class="talk">
-          <div class="label">나눈 대화</div>
-          <div class="line"><div class="who">Claude</div><div class="bubble">울타리가 있으면 피폭체가 들어오지도 못하는데, 왜 군인 사격까지 멈췄을까요? 힌트: 오늘 바꾼 규칙 중에 "총"과 관련된 게 있어요.</div></div>
-          <div class="line"><div class="who me">나</div><div class="bubble me">(답을 기다리는 중)</div></div>
-        </div>
-        <p class="code-where">코드: <code>src/area.py</code> <code>kept_out</code>, <code>move_body</code> · <code>src/play.py</code> <code>start_defense</code>, <code>prey_for</code>, <code>draw_fence</code></p>
-      </article>
-
-      <article id="defense">
-        <div class="meta"><span>2026-11-18</span><span class="tag">게임 구조</span><span class="tag">AI</span></div>
-        <h2>기차가 올 때까지 버틴다</h2>
-        <figure>
-          <img src="img/station_defense_sheet.png" alt="역 앞의 군인 1명과 시민 2명, E를 눌러 60초 디펜스가 시작되는 화면, 기차 도착 요약 화면" loading="lazy" width="1280" height="780">
-          <figcaption>역 앞의 군인·시민 → E로 60초 디펜스 → 기차 도착.</figcaption>
-        </figure>
-        <p>한 구역의 흐름을 정했다. 골목에서 물자를 모으며 역으로 가고, 역에서 기차가 올 때까지 버티고, 기차를 타고 다음 구역으로 간다. 1차 발표의 "준비 → 탐색 → 위험 대응 → 거점 도착"과 같은 흐름이다. 물자를 모을 이유도 생긴다. 디펜스에서 버티려면 붕대와 탄약이 있어야 하니까.</p>
-        <p>역에는 군인과 시민이 있다. 군인은 입구 옆에 서서 보이는 피폭체를 쏘고, 시민은 가운데 모여 있다. 쓰러진 사람은 2.5초 뒤 피폭체로 일어나서, 지키던 자리 안쪽에서 위험이 생긴다.</p>
-        <div class="key">
-          <span class="label">핵심 한 가지</span>
-          <b>표적 고르기 (Target selection)</b>
-          <p>피폭체가 주인공만 쫓던 것을 "가장 가까운 살아 있는 몸"으로 바꿨다. 군인·시민도 주인공과 같은 이름의 속성(위치, 움직이는지)을 가지게 만들어서, AI 코드를 거의 고치지 않고 표적만 바꿀 수 있었다.</p>
-        </div>
-        <p class="code-where">코드: <code>src/survivors.py</code> · <code>src/play.py</code> <code>prey_for</code>, <code>update_people</code>, <code>start_defense</code></p>
-      </article>
-
-      <article id="noise">
-        <div class="meta"><span>2026-11-18</span><span class="tag">AI 감각</span><span class="tag">적 생성</span></div>
-        <h2>총소리가 맵 전체를 불렀다</h2>
-        <figure>
-          <img src="img/dev_sounds.png" alt="F6를 켠 화면. 총소리 원과, 새 피폭체를 부르는 입구가 노랗게 표시된다" loading="lazy" width="1280" height="720">
-          <figcaption>F6: 노란 원은 총소리(400)가 닿는 범위, 노란 상자는 그 소리가 새 피폭체를 부르는 입구.</figcaption>
-        </figure>
-        <p>총을 쏘면 디버그로 본 범위보다 훨씬 멀리서 피폭체가 왔다. 이유는 둘이었다. 총소리가 900이라 화면(720)보다 커서 원이 안 보였고, 큰 소리는 맵 어디서든 다음 피폭체를 빨리 불렀다. 총소리를 400으로 줄이고, 소리 원 안에 있는 입구에서만 부르게 바꿨다.</p>
-        <div class="key">
-          <span class="label">핵심 한 가지</span>
-          <b>보이는 범위 = 실제 범위</b>
-          <p>디버그 화면과 실제 규칙이 같아야 개발할 때 믿을 수 있다. 화면에 안 그려지는 규칙(맵 전체 부르기)이 있으면, 숫자를 맞출 때 엉뚱한 곳을 고치게 된다.</p>
-        </div>
-        <p class="code-where">코드: <code>src/play.py</code> <code>make_noise</code>, <code>pulled_entrances</code>, <code>spawn</code> · <code>src/dev_tools.py</code> <code>draw_sounds</code></p>
-      </article>
-
-      <article id="debug">
-        <div class="meta"><span>2026-11-18</span><span class="tag">도구</span></div>
-        <h2>안 보이는 규칙을 화면에 그리다</h2>
-        <figure>
-          <img src="img/dev_tools.png" alt="F1을 켠 화면. 주인공의 노란 공격 부채꼴, 피폭체 머리·몸통·다리 상자, 빨간 할퀴기 범위가 보인다" loading="lazy" width="1280" height="720">
-          <figcaption>F1: 노란 부채꼴은 실제 근접 판정 범위, 피폭체의 빨강·노랑·파랑 상자는 머리·몸통·다리, 흰 점은 칼이 닿아야 하는 가슴 점.</figcaption>
-        </figure>
-        <p>디버그 박스(F1)와 개발 설정창(F4)을 만들었다. F1을 켜자마자 문제가 하나 보였다. 피폭체 머리 판정이 그림 속 머리보다 위로 삐져나가 있었다. 그림이 구부정해서 머리가 낮은데, 판정은 똑바로 선 사람 기준이었다. 그림을 확대해 재고 머리를 35~48로 맞췄다.</p>
-        <p>선이 군데군데 끊겨 보이는 문제도 있었다. 이 게임은 작은 캔버스에 그린 뒤 정수 배로 키우는데, 1단위 두께 선은 캔버스 픽셀 사이에 떨어져 사라진다. 선을 캔버스 픽셀 단위 점으로 다시 찍었다.</p>
-        <div class="key">
-          <span class="label">핵심 한 가지</span>
-          <b>디버그 시각화 (Debug draw)</b>
-          <p>판정, 시야, 소리처럼 안 보이는 규칙을 그려 보면, 숫자로는 못 찾던 문제가 한눈에 보인다. 머리 판정 문제가 그랬다.</p>
-        </div>
-        <p class="code-where">코드: <code>src/dev_tools.py</code> <code>draw_boxes</code>, <code>ROWS</code>(설정창 항목은 한 줄씩)</p>
-      </article>
-
-    </main>
-
-    <aside>
-      <div class="rail-box">
-        <h3>글 목록</h3>
-        <ul class="toc">
-          <li><a href="#camera"><span class="d">11.18</span>카메라가 컴퓨터마다 다르게 따라온다</a></li>
-          <li><a href="#sight"><span class="d">11.18</span>보는 건 고정, 소리로 조절</a></li>
-          <li><a href="#fence"><span class="d">11.18</span>역에 갔더니 다 죽어 있었다</a></li>
-          <li><a href="#defense"><span class="d">11.18</span>기차가 올 때까지 버틴다</a></li>
-          <li><a href="#noise"><span class="d">11.18</span>총소리가 맵 전체를 불렀다</a></li>
-          <li><a href="#debug"><span class="d">11.18</span>안 보이는 규칙을 화면에 그리다</a></li>
-        </ul>
+    <article class="card" id="lerp">
+      <div class="media draw"><svg id="camchart" viewBox="0 0 480 290" role="img" aria-label="남은 거리 그래프: 20fps(빨강)가 가장 빨리 줄고, exp 식(초록)은 fps와 상관없이 같다"></svg></div>
+      <div class="body">
+        <span class="kind">게임 수학 · 카메라</span>
+        <h3>점근적 평균 (Lerp smoothing)</h3>
+        <p class="what">매 프레임 <b>남은 거리의 일정 비율</b>만큼 다가가서 부드럽게 멈춘다. fps마다 속도가 달라지지 않게 <code>1 - exp(-k·dt)</code>를 쓴다.</p>
+        <p class="ours"><b>우리 게임:</b> 카메라 따라가기, 확대·축소 (<code>play.py</code>) · exp 식으로 고칠 예정</p>
       </div>
-      <div class="rail-box">
-        <h3>공부 지도</h3>
-        <p class="rail-note">이 게임에 이미 들어 있는 기본 기법 다섯 가지.</p>
-        <div class="map">
-          <div class="concept"><b>게임 루프와 dt</b><small>1초에 60번 입력 → 움직임 → 그리기. 움직임에는 흐른 시간(dt)을 곱한다.</small><small><code>main.py</code>, <code>play.update</code></small></div>
-          <div class="concept"><b>상태 기계 (FSM)</b><small>피폭체는 대기 → 찾기 → 추격 → 공격 준비 → 공격 중 한 상태에 있다.</small><small><code>infected.Zombie.update</code></small></div>
-          <div class="concept"><b>감각: 보고 듣기</b><small>시야 부채꼴 140, 소리 원, 놓치면 8초 기억.</small><small><code>infected.sees</code>, <code>hear</code></small></div>
-          <div class="concept"><b>공간 나누기</b><small>맵을 128칸 격자로 나눠 근처 벽만 검사한다.</small><small><code>area.near_blocks</code></small></div>
-          <div class="concept"><b>길 찾기 (BFS)</b><small>목표에서 퍼져 나가며 칸마다 걸음 수를 적고, 줄어드는 쪽으로 간다.</small><small><code>area.waypoint</code></small></div>
-        </div>
+    </article>
+
+    <article class="card" id="fsm">
+      <div class="media flow"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  대기 --> 경계: 소리
+  경계 --> 찾기
+  대기 --> 추격: 봄 "!"
+  찾기 --> 추격: 봄
+  추격 --> 공격준비: 손 닿음
+  공격준비 --> 공격
+  공격 --> 회복
+  회복 --> 추격
+  추격 --> 찾기: 놓침
+  찾기 --> 대기: 8초 지남
+</pre></div>
+      <div class="body">
+        <span class="kind">AI</span>
+        <h3>유한 상태 기계 (FSM)</h3>
+        <p class="what">AI를 상태로 나누고, 조건이 맞으면 다음 상태로 넘긴다. 게임 AI의 기본 뼈대.</p>
+        <p class="ours"><b>우리 게임:</b> 피폭체 <code>infected.py</code> <code>Zombie.update</code></p>
       </div>
-    </aside>
+    </article>
+
+    <article class="card" id="sight">
+      <div class="media"><img src="img/dev_senses.png" alt="피폭체마다 파란 시야 부채꼴이 그려진 화면" loading="lazy" width="1280" height="720"></div>
+      <div class="body">
+        <span class="kind">AI 감각</span>
+        <h3>시야 판정: 부채꼴 + 광선</h3>
+        <p class="what">거리 안? 각도 안? 사이에 벽 없음? 셋 다 맞으면 보인다.</p>
+        <p class="ours"><b>우리 게임:</b> 140 거리, 좌우 63° · <code>infected.sees</code> · F5로 보기</p>
+      </div>
+    </article>
+
+    <article class="card" id="sound">
+      <div class="media"><img src="img/dev_sounds.png" alt="주인공 둘레의 노란 소리 원과 새 피폭체가 들어오는 노란 입구" loading="lazy" width="1280" height="720"></div>
+      <div class="body">
+        <span class="kind">AI 감각</span>
+        <h3>소리 전파 (Noise radius)</h3>
+        <p class="what">소리 = 반지름 하나짜리 원. 원 안의 AI가 듣고 그쪽으로 간다.</p>
+        <p class="ours"><b>우리 게임:</b> <code>play.make_noise</code>, <code>infected.hear</code> · F6로 보기</p>
+      </div>
+    </article>
+
+    <article class="card" id="grid">
+      <div class="media draw"><canvas id="gridpic" width="480" height="300" role="img" aria-label="맵을 격자로 나누고 피폭체가 있는 칸과 이웃 칸의 벽만 검사하는 그림"></canvas></div>
+      <div class="body">
+        <span class="kind">최적화</span>
+        <h3>균일 격자 공간 분할</h3>
+        <p class="what">맵을 칸으로 나눠 <b>근처 칸의 벽만</b> 검사한다. 모든 벽과 비교하지 않는다.</p>
+        <p class="ours"><b>우리 게임:</b> 128 단위 칸 · <code>area.near_blocks</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="bfs">
+      <div class="media draw"><svg id="bfspic" viewBox="0 0 480 300" role="img" aria-label="목표 칸에서부터 퍼져 나가며 칸마다 걸음 수를 적은 격자. 벽을 돌아가는 숫자가 보인다"></svg></div>
+      <div class="body">
+        <span class="kind">길 찾기</span>
+        <h3>BFS 거리 지도</h3>
+        <p class="what">목표에서 퍼져 나가며 칸마다 걸음 수를 적는다. 숫자가 줄어드는 쪽으로 가면 벽을 돌아 도착한다.</p>
+        <p class="ours"><b>우리 게임:</b> 32 단위 칸 · <code>area.waypoint</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="keepout">
+      <div class="media"><img src="img/station_fence.png" alt="역 둘레의 낮은 울타리와 그 안의 군인·시민" loading="lazy" width="1280" height="720"></div>
+      <div class="body">
+        <span class="kind">이동</span>
+        <h3>출입 금지 구역 (Keep-out zone)</h3>
+        <p class="what">특정 무리만 못 들어가는 영역. 밖에서 안으로 들어가는 걸음만 막는다.</p>
+        <p class="ours"><b>우리 게임:</b> 디펜스 전 역 울타리 · <code>area.kept_out</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="target">
+      <div class="media"><img src="img/station_defense_sheet.png" alt="역 앞 군인과 시민, 디펜스 중 화면, 기차 도착 화면" loading="lazy" width="1280" height="780"></div>
+      <div class="body">
+        <span class="kind">AI</span>
+        <h3>표적 고르기 (Target selection)</h3>
+        <p class="what">AI가 누구를 노릴지 정한다. 가까운 것, 약한 것, 나를 때린 것 중 기준을 고른다.</p>
+        <p class="ours"><b>우리 게임:</b> 가장 가까운 사람 · <code>play.prey_for</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="debugdraw">
+      <div class="media"><img src="img/dev_tools.png" alt="노란 공격 부채꼴과 피폭체 머리·몸통·다리 상자가 그려진 화면" loading="lazy" width="1280" height="720"></div>
+      <div class="body">
+        <span class="kind">도구</span>
+        <h3>히트박스와 디버그 드로우</h3>
+        <p class="what">안 보이는 판정을 화면에 그린다. 판정 코드와 같은 값으로 그려야 믿을 수 있다.</p>
+        <p class="ours"><b>우리 게임:</b> F1 히트박스, F4 설정창 · <code>dev_tools.py</code></p>
+      </div>
+    </article>
+
   </div>
+  </section>
 
-  <footer class="wrap">
-    「부산까지」 · 글의 원본은 저장소의 <code>docs/study/</code>와 <code>docs/DEVLOG.md</code> · 마지막 업데이트 2026-11-18
-  </footer>
+
+  <footer>「부산까지」 · 원본은 저장소의 <code>docs/devlog/</code> · 마지막 업데이트 2026-11-18</footer>
 </div>
 
 <script>
-// Remaining distance over time for the camera's lerp: the current per-frame formula at 20 and 60 fps
-// against the frame-independent exp form (the numbers in the table come from the same formulas).
+// Pictures drawn on the page, in the theme's colours (redrawn when the theme changes).
 (function () {
-  const svg = document.getElementById("camchart");
-  if (!svg) return;
-  const X0 = 52, Y0 = 16, W = 468, H = 200, T = 0.5;          // 0 .. 0.5 s, 100 % .. 0 %
-  const x = t => X0 + t / T * W, y = v => Y0 + (1 - v) * H;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ns = "http://www.w3.org/2000/svg";
-  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  function el(tag, attrs, text) {
+  function el(svg, tag, attrs, text) {
     const e = document.createElementNS(ns, tag);
     for (const k in attrs) e.setAttribute(k, attrs[k]);
     if (text != null) e.textContent = text;
     svg.appendChild(e);
-    return e;
   }
-  function draw() {
+
+  // Lerp smoothing: remaining distance over 0.5 s at 20 and 60 fps (steps) vs the exp form
+  function camera() {
+    const svg = document.getElementById("camchart"); if (!svg) return;
     svg.textContent = "";
+    const X0 = 40, Y0 = 12, W = 428, H = 236, T = 0.5;
+    const x = t => X0 + t / T * W, y = v => Y0 + (1 - v) * H;
     const ink = css("--muted"), line = css("--line");
-    for (let v = 0; v <= 1.0001; v += 0.25) {                    // grid and value labels
-      el("line", { x1: X0, x2: X0 + W, y1: y(v), y2: y(v), stroke: line, "stroke-width": 1 });
-      el("text", { x: X0 - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: ink }, Math.round(v * 100) + "%");
+    for (const v of [0, 0.5, 1]) {
+      el(svg, "line", { x1: X0, x2: X0 + W, y1: y(v), y2: y(v), stroke: line, "stroke-width": 1 });
+      el(svg, "text", { x: X0 - 6, y: y(v) + 4, "text-anchor": "end", "font-size": 12, fill: ink }, v * 100 + "%");
     }
-    for (let t = 0; t <= T + 1e-9; t += 0.125) {                 // time labels
-      el("text", { x: x(t), y: Y0 + H + 18, "text-anchor": "middle", "font-size": 11, fill: ink }, t.toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + "초");
-    }
-    el("text", { x: X0, y: Y0 + H + 36, "font-size": 11, fill: ink }, "남은 거리 (주인공까지)");
-    function steps(fps) {                                       // the camera only moves once a frame
-      const k = Math.min(1, 8 / fps); let v = 1, pts = [[x(0), y(1)]];
+    for (const t of [0, 0.25, 0.5]) el(svg, "text", { x: x(t), y: Y0 + H + 18, "text-anchor": t === 0 ? "start" : t === 0.5 ? "end" : "middle", "font-size": 12, fill: ink }, t + "초");
+    function steps(fps) {
+      const k = Math.min(1, 8 / fps); let v = 1; const pts = [[x(0), y(1)]];
       for (let n = 1; n / fps <= T + 1e-9; n++) { pts.push([x(n / fps), y(v)]); v *= 1 - k; pts.push([x(n / fps), y(v)]); }
       return pts.map(p => p.join(",")).join(" ");
     }
-    const smooth = []; for (let i = 0; i <= 200; i++) { const t = i / 200 * T; smooth.push([x(t), y(Math.exp(-8 * t))].join(",")); }
-    el("polyline", { points: smooth.join(" "), fill: "none", stroke: css("--exit"), "stroke-width": 3 });
-    el("polyline", { points: steps(60), fill: "none", stroke: css("--hazard"), "stroke-width": 2 });
-    el("polyline", { points: steps(20), fill: "none", stroke: css("--blood"), "stroke-width": 2 });
-    el("line", { x1: x(0.25), x2: x(0.25), y1: Y0, y2: Y0 + H, stroke: ink, "stroke-dasharray": "3 4", "stroke-width": 1 });
-    el("text", { x: x(0.25) + 6, y: Y0 + 14, "font-size": 11, fill: ink }, "0.25초");
+    const smooth = []; for (let i = 0; i <= 160; i++) { const t = i / 160 * T; smooth.push(x(t) + "," + y(Math.exp(-8 * t))); }
+    el(svg, "polyline", { points: smooth.join(" "), fill: "none", stroke: css("--exit"), "stroke-width": 3 });
+    el(svg, "polyline", { points: steps(60), fill: "none", stroke: css("--hazard"), "stroke-width": 2 });
+    el(svg, "polyline", { points: steps(20), fill: "none", stroke: css("--blood"), "stroke-width": 2 });
+    el(svg, "text", { x: X0 + W, y: Y0 + 16, "text-anchor": "end", "font-size": 12, fill: ink }, "남은 거리");
   }
-  draw();
-  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw); } catch (e) {}
-  try { new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch (e) {}
+
+  // Uniform grid: walls everywhere, only the cells around the infected are checked
+  function grid() {
+    const c = document.getElementById("gridpic"); if (!c) return;
+    const g = c.getContext("2d"), cols = 8, rows = 5, cw = c.width / cols, ch = c.height / rows;
+    g.clearRect(0, 0, c.width, c.height);
+    const zc = 3, zr = 2;                                   // the infected's cell
+    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+      const near = Math.abs(i - zc) <= 1 && Math.abs(j - zr) <= 1;
+      g.fillStyle = near ? css("--exit-soft") : css("--surface");
+      g.fillRect(i * cw, j * ch, cw, ch);
+      g.strokeStyle = css("--line"); g.lineWidth = 1; g.strokeRect(i * cw + 0.5, j * ch + 0.5, cw, ch);
+    }
+    const walls = [[20, 30], [75, 210], [130, 90], [190, 150], [230, 60], [250, 230], [300, 140], [335, 40], [370, 200], [420, 100], [440, 250], [160, 250], [60, 120], [280, 260], [400, 30]];
+    for (const [wx, wy] of walls) {
+      const near = Math.abs(Math.floor(wx / cw) - zc) <= 1 && Math.abs(Math.floor(wy / ch) - zr) <= 1;
+      g.fillStyle = near ? css("--exit") : css("--muted");
+      g.globalAlpha = near ? 1 : 0.45;
+      g.fillRect(wx - 10, wy - 6, 20, 12);
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = css("--blood");
+    g.beginPath(); g.arc(zc * cw + cw * 0.55, zr * ch + ch * 0.5, 8, 0, Math.PI * 2); g.fill();
+  }
+
+  // BFS distance map: steps to the goal spread out from it and go round the wall
+  function bfs() {
+    const svg = document.getElementById("bfspic"); if (!svg) return;
+    svg.textContent = "";
+    const cols = 8, rows = 5, cw = 60, ch = 60;
+    const wall = new Set(["3,0", "3,1", "3,2", "3,3"]);
+    const goal = [6, 1], dist = {}, queue = [goal];
+    dist[goal.join(",")] = 0;
+    while (queue.length) {
+      const [i, j] = queue.shift();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = [i + di, j + dj], key = n.join(",");
+        if (n[0] < 0 || n[1] < 0 || n[0] >= cols || n[1] >= rows || wall.has(key) || key in dist) continue;
+        dist[key] = dist[i + "," + j] + 1; queue.push(n);
+      }
+    }
+    const max = Math.max(...Object.values(dist));
+    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+      const key = i + "," + j, isWall = wall.has(key), d = dist[key];
+      const isGoal = i === goal[0] && j === goal[1];
+      el(svg, "rect", { x: i * cw, y: j * ch, width: cw, height: ch, fill: isWall ? css("--muted") : isGoal ? css("--exit") : css("--surface"),
+                        "fill-opacity": isWall ? 0.55 : isGoal ? 1 : 1, stroke: css("--line"), "stroke-width": 1 });
+      if (!isWall && d != null && !isGoal) {
+        el(svg, "rect", { x: i * cw + 1, y: j * ch + 1, width: cw - 2, height: ch - 2, fill: css("--sky"), "fill-opacity": 0.08 + 0.32 * (1 - d / max) });
+      }
+      if (!isWall) el(svg, "text", { x: i * cw + cw / 2, y: j * ch + ch / 2 + 6, "text-anchor": "middle", "font-size": 18,
+                                      fill: isGoal ? css("--surface") : css("--ink"), "font-family": "JetBrains Mono, monospace" }, isGoal ? "목표" : d);
+    }
+  }
+
+  function show() {
+    const study = location.hash === "#study" || ["#lerp", "#fsm", "#sight", "#sound", "#grid", "#bfs", "#keepout", "#target", "#debugdraw"].includes(location.hash);
+    document.getElementById("view-dev").hidden = study;
+    document.getElementById("view-study").hidden = !study;
+    document.getElementById("tab-dev").setAttribute("aria-current", study ? "false" : "page");
+    document.getElementById("tab-study").setAttribute("aria-current", study ? "page" : "false");
+    if (study) {
+      drawAll();
+      const card = location.hash.length > 1 && location.hash !== "#study" ? document.getElementById(location.hash.slice(1)) : null;
+      if (card) card.scrollIntoView({ block: "start" });
+    }
+  }
+  window.addEventListener("hashchange", show);
+  function drawAll() { camera(); grid(); bfs(); }
+  drawAll();
+  show();
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll); } catch (e) {}
+  try { new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch (e) {}
 })();
 </script>
