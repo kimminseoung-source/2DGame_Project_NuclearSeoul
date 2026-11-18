@@ -126,6 +126,7 @@ ROWS = (
     ("사실적 연출 (F3)", lambda g: _on(g.real), _real),
     ("주인공 속도", lambda g: f"{hero_rules.RUN_SPEED:g}", _number(hero_rules, "RUN_SPEED", 10, 30, 300)),
     ("피폭체 속도", lambda g: f"{infected.ZOMBIE_SPEED:g}", _number(infected, "ZOMBIE_SPEED", 10, 0, 300)),
+    ("피폭체 발견 거리", lambda g: f"{infected.SPOT_DIST:g}", _number(infected, "SPOT_DIST", 10, 30, 400)),
     ("출혈 확률", lambda g: f"{condition.BLEED_CHANCE * 100:.0f}%", _number(condition, "BLEED_CHANCE", 0.1, 0, 1)),
     ("맞을 때 체력", lambda g: f"-{condition.BLOW_DAMAGE:g}%", _number(condition, "BLOW_DAMAGE", 1, 0, 100)),
     ("체력 채우기·출혈 멈춤", None, _heal),
@@ -319,12 +320,12 @@ def age_noises(game, dt):
 
 
 def draw_sight(game, cx, cy):
-    """F5. The cone out to where the hero is spotted at once ("!") right now - SPOT_DIST while he
-    moves, SPOT_DIST_QUIET while still or sneaking - plus the all-round ring (NOTICE_NEAR);
+    """F5. The cone out to where the hero is spotted at once ("!") - SPOT_DIST, the same whatever
+    he does - plus the all-round ring (NOTICE_NEAR);
     a wall in between hides him."""
     if not game.dev.sight:
         return
-    spot = infected.spot_distance(game.hero)
+    spot = infected.SPOT_DIST
     for z in game.zombies:
         if not z.alive:
             continue

@@ -23,8 +23,9 @@ MEMORY = 8.0                    # s it keeps going to the last place it saw or h
 # Spotting (2026-11-18 "특정 거리에서 !가 뜨게, 순간 확률은 헷갈림"; was a chance every moment):
 # in its sight (the cone or NOTICE_NEAR, nothing in between) and this close, it spots the hero at
 # once ("!"). Farther, never - it only keeps one it has already spotted in sight up to SIGHT_RANGE.
-SPOT_DIST = 160                 # px while the hero walks, rolls or swings
-SPOT_DIST_QUIET = 90            # px while he stands still or sneaks (Ctrl)
+# One distance whatever the hero does (2026-11-18 "시야 범위를 일정하게, 움직일 때 변하니까 별로";
+# was 160 moving / 90 still or sneaking). Sneaking still pays off: its footsteps are quieter.
+SPOT_DIST = 140
 FRONT_SOUND = 0.6               # radians: a sound this close to where it faces needs no turn
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
@@ -66,12 +67,6 @@ CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
 # hero it breaks into a run for a moment - faster than the hero walks - then settles to its pace.
 RUSH_TIME = 1.4                 # s of running after the "!"
 RUSH_SPEED = 1.8                # times its own pace (a normal one: 126 px/s, the hero walks 110)
-
-
-def spot_distance(hero):
-    """How close the hero must be, in an infected's sight, to be spotted: nearer when he is quiet."""
-    quiet = (hero.sneaking or not hero.moving) and hero.roll <= 0 and not hero.slash
-    return SPOT_DIST_QUIET if quiet else SPOT_DIST
 
 
 class Zombie:
@@ -239,7 +234,7 @@ class Zombie:
             if self.state in ("idle", "search") and dist < 300:          # the old rule
                 self.state = "chase"
         elif self.state in ("idle", "alert", "search") and self.sees(hero):
-            if dist <= spot_distance(hero):               # close enough in its sight: "!"
+            if dist <= SPOT_DIST:                         # close enough in its sight: "!"
                 self.state, self.seen_time = "chase", 0.0
                 self.target, self.memory = (hero.x, hero.y), MEMORY
         elif self.state in ("chase", "poised"):
