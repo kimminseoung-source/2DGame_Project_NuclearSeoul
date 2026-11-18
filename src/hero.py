@@ -59,14 +59,6 @@ class Hero:
     def invulnerable(self):
         return self.roll > 0 or self.hurt > 0
 
-    def noticeability(self):
-        """How easily an infected that has the hero in view spots him (Zomboid: sneaking lowers it)."""
-        if self.roll > 0 or self.slash:
-            return 1.6
-        if not self.moving:
-            return 0.35
-        return 0.5 if self.sneaking else 1.0
-
     def take_blow(self):
         self.slowed = min(MAX_SLOW, self.slowed + HIT_SLOW)
         self.reeling = HURT_REACT

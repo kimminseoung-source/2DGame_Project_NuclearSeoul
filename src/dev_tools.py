@@ -286,7 +286,7 @@ def draw_boxes(game, cx, cy):
                (255, 60, 50) if striking else (150, 60, 56), 1 if striking else 3)                     # its claw (bright when it comes)
 
 
-SIGHT, NEAR, SURE = (110, 150, 240), (150, 190, 255), (230, 240, 255)
+SIGHT, NEAR = (110, 150, 240), (150, 190, 255)
 NOISE = (240, 200, 90)
 NOISE_SHOW = 0.8                     # s a noise ring stays
 
@@ -303,17 +303,17 @@ def age_noises(game, dt):
 
 
 def draw_senses(game, cx, cy):
-    """F5. Sight: an infected spots the hero only inside its cone (SIGHT_RANGE, +-SIGHT_HALF) or the
-    all-round ring (NOTICE_NEAR), with a clear line; inside the bright ring (SPOT_SURE) at once,
-    farther out by chance, less the farther. Hearing: a noise reaches every infected inside its ring."""
+    """F5. Sight: the cone out to where the hero is spotted at once ("!") right now - SPOT_DIST
+    while he moves, SPOT_DIST_QUIET while still or sneaking - plus the all-round ring (NOTICE_NEAR);
+    a wall in between hides him. Hearing: a noise reaches every infected inside its ring."""
     if not game.dev.senses:
         return
+    spot = infected.spot_distance(game.hero)
     for z in game.zombies:
         if not z.alive:
             continue
         zx, zy = z.x - cx, z.y - cy
-        _wedge(zx, zy, infected.SIGHT_RANGE, z.heading, infected.SIGHT_HALF, SIGHT, 3)
-        _arc(zx, zy, infected.SPOT_SURE, z.heading - infected.SIGHT_HALF, z.heading + infected.SIGHT_HALF, SURE, 2)
+        _wedge(zx, zy, spot, z.heading, infected.SIGHT_HALF, SIGHT, 2)
         _arc(zx, zy, infected.NOTICE_NEAR, -3.15, 3.15, NEAR, 2)
     for x, y, radius, age in game.dev.noises:                     # noises made: a ring each
         fade = 1 - age / NOISE_SHOW

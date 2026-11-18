@@ -20,10 +20,11 @@ NOISE_STEP = 70                 # px the hero's footsteps carry
 NOISE_ROLL = 140
 NOISE_SLASH = 230
 MEMORY = 8.0                    # s it keeps going to the last place it saw or heard the hero (was 3)
-SPOT_RATE = 2.2                 # chance per second of spotting a hero in full view, right in front
-SPOT_SURE = 54                  # px: this close it spots at once
-SPOT_IDLE = 0.6                 # an idle (unalert) infected spots less...
-SPOT_ALERT = 1.5                # ...one already searching spots more
+# Spotting (2026-11-18 "특정 거리에서 !가 뜨게, 순간 확률은 헷갈림"; was a chance every moment):
+# in its sight (the cone or NOTICE_NEAR, nothing in between) and this close, it spots the hero at
+# once ("!"). Farther, never - it only keeps one it has already spotted in sight up to SIGHT_RANGE.
+SPOT_DIST = 160                 # px while the hero walks, rolls or swings
+SPOT_DIST_QUIET = 90            # px while he stands still or sneaks (Ctrl)
 FRONT_SOUND = 0.6               # radians: a sound this close to where it faces needs no turn
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
@@ -65,6 +66,12 @@ CRAWL_REACH = ZOMBIE_REACH - 6  # px: close enough to bite at the ankles
 # hero it breaks into a run for a moment - faster than the hero walks - then settles to its pace.
 RUSH_TIME = 1.4                 # s of running after the "!"
 RUSH_SPEED = 1.8                # times its own pace (a normal one: 126 px/s, the hero walks 110)
+
+
+def spot_distance(hero):
+    """How close the hero must be, in an infected's sight, to be spotted: nearer when he is quiet."""
+    quiet = (hero.sneaking or not hero.moving) and hero.roll <= 0 and not hero.slash
+    return SPOT_DIST_QUIET if quiet else SPOT_DIST
 
 
 class Zombie:
@@ -163,6 +170,7 @@ class Zombie:
         return False
 
     def sees(self, hero):
+        """The hero is in its sight: within SIGHT_RANGE in its cone (or NOTICE_NEAR all round), nothing between."""
         dx, dy = hero.x - self.x, hero.y - self.y
         dist = hypot(dx, dy)
         if hero.dead or dist > SIGHT_RANGE:
@@ -231,10 +239,7 @@ class Zombie:
             if self.state in ("idle", "search") and dist < 300:          # the old rule
                 self.state = "chase"
         elif self.state in ("idle", "alert", "search") and self.sees(hero):
-            # In view but not yet spotted: a chance each moment (Zomboid's spot chance).
-            rate = SPOT_RATE * max(0.0, 1 - dist / SIGHT_RANGE) * hero.noticeability()
-            rate *= SPOT_IDLE if self.state == "idle" else SPOT_ALERT
-            if dist <= SPOT_SURE or random.random() < rate * dt:
+            if dist <= spot_distance(hero):               # close enough in its sight: "!"
                 self.state, self.seen_time = "chase", 0.0
                 self.target, self.memory = (hero.x, hero.y), MEMORY
         elif self.state in ("chase", "poised"):
