@@ -1,9 +1,11 @@
 """Day and night (2026-11-18 "우선 낮과 밤을 만들고 낮에는 더 잘 보이게끔"): a clock that runs on,
 and how dark it is outside the hero's view cone because of it.
 
-- By day the world outside the cone is only dimmed: the infected there can still be seen
-  (vision_cone.HIDE_FROM). At night it is as dark as before - only the cone and the small circle
-  around the body are lit. Shadows behind walls stay dark day and night (vision_cone keeps them).
+- What day and night change for SEEING is only how far the view cone reaches (2026-11-18 "낮과 밤에
+  따라 시야 길이만 달라지는 게 좋을 것 같습니다"): DAY_RANGE by day, NIGHT_RANGE at night. The
+  infected outside the cone or behind walls are hidden either way (vision_cone.visible).
+- What they change for the LOOK: how much the world outside the light is dimmed (FOG_DAY,
+  FOG_NIGHT) - streets and buildings stay readable both times.
 - Dusk and dawn blend the two over two hours; the night also gets a cold blue tint.
 - HOUR real seconds make one hour: a play in an area starts in the afternoon and night falls
   around the time the hero reaches the station.
@@ -12,8 +14,10 @@ and how dark it is outside the hero's view cone because of it.
 HOUR = 30.0                 # real s per hour of the day
 START = 14.0                # the hour a play starts at
 DAWN, DAY, DUSK, NIGHT = 5.0, 7.0, 18.0, 20.0   # light rises DAWN..DAY, falls DUSK..NIGHT
-FOG_DAY = 110               # darkness outside the cone by day (< vision_cone.HIDE_FROM: still seen; 50 showed too much)
-FOG_NIGHT = 228             # ...and at night (vision_cone.FOG)
+FOG_DAY = 60                # how dim the world is drawn outside the light by day...
+FOG_NIGHT = 150             # ...and at night (seeing the infected does not depend on these)
+DAY_RANGE = 520             # how far the view cone reaches by day...
+NIGHT_RANGE = 300           # ...and at night
 NIGHT_TINT = (8, 16, 40, 70)  # rgba laid over the world at full night
 
 
@@ -35,6 +39,10 @@ class Daylight:
         if DAWN <= h < DAY:
             return (h - DAWN) / (DAY - DAWN)
         return 0.0
+
+    @property
+    def reach(self):
+        return NIGHT_RANGE + (DAY_RANGE - NIGHT_RANGE) * self.light
 
     @property
     def fog(self):

@@ -677,7 +677,8 @@ class Game:
         real_dt *= self.dev.speed                          # dev panel: the whole game slower / faster
         if not (self.left or self.bag_open):
             self.daylight.update(real_dt)
-        self.vision.fog = self.daylight.fog
+        self.vision.fog = self.daylight.fog            # how dim the world looks
+        self.vision.reach = self.daylight.reach        # how far the hero sees: longer by day
         dev_tools.age_noises(self, real_dt)
         hero = self.hero
         self.ease_zoom(real_dt)

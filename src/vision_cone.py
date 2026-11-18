@@ -11,6 +11,13 @@ rectangles as `blockers`; behind them it is as dark as outside the cone, and bod
 hidden too. Each mesh spoke gets two extra corners where its ray leaves the first blocker it
 meets (the blocker itself stays lit, as a wall seen from the front), so the shadow starts exactly there and fades in over SHADOW_SOFT px.
 
+Seeing and drawing are two things (2026-11-18 "건물 같은 것들은 다 보이게 하고 좀비들만 시야 범위 밖에
+있는 거는 안 보이게", "낮과 밤에 따라 시야 길이만 달라지는 게 좋을 것 같습니다"): `visible()` - may
+a body be seen - always works with the full darkness FOG, so the infected show only inside the
+cone (and the ring round the body) and never behind walls, day or night. `draw()` only dims the
+world by `fog` (daylight.py: a little by day, more at night), behind walls too, so streets and
+buildings stay readable. What day and night change for seeing is the cone's length, `reach`.
+
 Works for any view that draws into a render target with pico2d's y-up coordinates. Positions
 given to it are on the ground; `origin` is where the eye is on screen.
 """
@@ -70,14 +77,15 @@ def ray_hit(x, y, ux, uy, blockers):
     return exit_at
 
 
-def alpha_at(dx, dy, look, scale=1.0, fog=FOG):
+def alpha_at(dx, dy, look, scale=1.0, fog=FOG, reach=None):
     """Darkness 0..fog at offset (dx, dy) from the eye when looking toward angle `look`;
-    `scale` < 1 narrows and shortens the cone (panic); `fog` is how dark it is outside the light
-    (lower by day, daylight.py)."""
+    `scale` < 1 narrows and shortens the cone (panic); `fog` is how dark it is outside the light;
+    `reach` how far the cone goes (longer by day, daylight.py; CONE_RANGE if not given)."""
+    reach = CONE_RANGE if reach is None else reach
     r = hypot(dx, dy)
     near = GLOW_DARK * _ramp((r - NEAR_CLEAR) / NEAR_SOFT) + (1 - GLOW_DARK) * _ramp((r - NEAR_GLOW) / GLOW_SOFT)
     off = abs((atan2(dy, dx) - look + pi) % (2 * pi) - pi)
-    cone = max(_ramp((off - CONE_HALF * scale) / CONE_SOFT), _ramp((r - CONE_RANGE * scale) / RANGE_SOFT))
+    cone = max(_ramp((off - CONE_HALF * scale) / CONE_SOFT), _ramp((r - reach * scale) / RANGE_SOFT))
     return fog * min(near, cone)
 
 
@@ -88,8 +96,8 @@ class VisionCone:
         # one every blocker is looked at
         self.nearby = nearby or (lambda l, b, r, t: self.blockers)
         self.scale = 1.0                 # < 1 while panicking: a narrower, shorter cone
-        self.fog = FOG                   # darkness outside the light: lower by day (daylight.py);
-                                         # behind walls it stays FOG
+        self.fog = FOG                   # how dark the world is DRAWN outside the light (daylight.py)
+        self.reach = CONE_RANGE          # how far the cone goes: longer by day (daylight.py)
         m = len(RADII) + 2 + 4           # + the shadow's start and end, + the glow's and the cone's edges
         self.spoke = m
         # spokes: STEPS even ones + up to MAX_EXTRA through blocker corners and the cone's sides, and
@@ -106,15 +114,18 @@ class VisionCone:
         for v in self.vertices:                    # the colour of the dark never changes, only its alpha
             v.color.r, v.color.g, v.color.b = 6, 8, 12
 
-    def darkness(self, eye, look, x, y):
+    def darkness(self, eye, look, x, y, drawn=False):
+        """How dark (x, y) is: for seeing (FOG outside the light and behind walls), or as `drawn`
+        (the world's dimness, self.fog)."""
+        fog = self.fog if drawn else FOG
         dx, dy = x - eye[0], y - eye[1]
         r = hypot(dx, dy)
-        dark = alpha_at(dx, dy, look, self.scale, self.fog)
+        dark = alpha_at(dx, dy, look, self.scale, fog, self.reach)
         if r > 0 and self.blockers:
             hit = ray_hit(eye[0], eye[1], dx / r, dy / r,
                           self.nearby(min(eye[0], x), min(eye[1], y), max(eye[0], x), max(eye[1], y)))
             if r > hit:
-                dark = max(dark, FOG * _ramp((r - hit) / SHADOW_SOFT))
+                dark = max(dark, fog * _ramp((r - hit) / SHADOW_SOFT))
         return dark
 
     def visible(self, eye, look, x, y):
@@ -129,7 +140,7 @@ class VisionCone:
         m = self.spoke
         # only what stands within the light's reach can cast a shadow that shows (a real-map area
         # has ~150 building rectangles: every ray against all of them was needless work)
-        reach = CONE_RANGE + RANGE_SOFT
+        reach = self.reach * self.scale + RANGE_SOFT
         near = [(l, b, r, t) for l, b, r, t in self.nearby(eye[0] - reach, eye[1] - reach, eye[0] + reach, eye[1] + reach)
                 if max(l - eye[0], 0, eye[0] - r) ** 2 + max(b - eye[1], 0, eye[1] - t) ** 2 <= reach * reach]
         # Rays through every corner of what is near, just either side of it (2026-11-18 "장애물 뒤
@@ -139,7 +150,6 @@ class VisionCone:
         # edge (the visibility-polygon way of 2D lights).
         ex, ey = eye
         side = CONE_HALF * self.scale
-        night = self.fog >= FOG - 1                    # outside the cone it is as dark as a shadow
         lit_ring = NEAR_GLOW + GLOW_SOFT
         extra = []
         near.sort(key=lambda bl: max(bl[0] - ex, 0, ex - bl[2]) ** 2 + max(bl[1] - ey, 0, ey - bl[3]) ** 2)
@@ -147,9 +157,9 @@ class VisionCone:
             close = max(l - ex, 0, ex - r) ** 2 + max(b - ey, 0, ey - t) ** 2 <= lit_ring * lit_ring
             for x, y in ((l, b), (r, b), (r, t), (l, t)):
                 a = atan2(y - ey, x - ex)
-                # at night a corner outside the cone changes nothing on screen (dark both sides),
-                # unless the blocker is inside the half-lit ring round the body
-                if night and not close and abs((a - look + pi) % (2 * pi) - pi) > side + CONE_SOFT + 0.05:
+                # outside the cone a shadow is drawn as dim as the rest, so a corner there changes
+                # nothing on screen - unless the blocker is inside the half-lit ring round the body
+                if not close and abs((a - look + pi) % (2 * pi) - pi) > side + CONE_SOFT + 0.05:
                     continue
                 extra += [a - CORNER_EPS, a + CORNER_EPS]
             if len(extra) >= MAX_EXTRA - 4:
@@ -159,7 +169,7 @@ class VisionCone:
         angles.append(angles[0] + 2 * pi)                  # close the ring
         # the same darkness as alpha_at, split: along one spoke the direction never changes, so the
         # cone's side term is worked out once per spoke and only the distance terms per point
-        fog, reach_c = self.fog, CONE_RANGE * self.scale
+        fog, reach_c = self.fog, self.reach * self.scale
         edges = (NEAR_GLOW, NEAR_GLOW + GLOW_SOFT, reach_c, reach_c + RANGE_SOFT)
         verts, flip = self.vertices, view_h - 1
         for a, angle in enumerate(angles):
@@ -176,7 +186,7 @@ class VisionCone:
                 near_dark = GLOW_DARK * _ramp((radius - NEAR_CLEAR) / NEAR_SOFT) + (1 - GLOW_DARK) * _ramp((radius - NEAR_GLOW) / GLOW_SOFT)
                 dark = fog * min(near_dark, max(side_dark, _ramp((radius - reach_c) / RANGE_SOFT)))
                 if radius > hit:
-                    dark = max(dark, FOG * _ramp((radius - hit) / SHADOW_SOFT))
+                    dark = max(dark, fog * _ramp((radius - hit) / SHADOW_SOFT))
                 v.color.a = round(dark)
         n = len(angles)
         sdl2.SDL_RenderGeometry(renderer, None, self.vertices, n * m, self.indices, (n - 1) * (m - 1) * 6)
