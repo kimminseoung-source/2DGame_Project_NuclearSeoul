@@ -29,10 +29,15 @@ CONE_HALF = 0.7            # radians either side of the look direction (~80 degr
 CONE_SOFT = 0.16           # radians over which the cone's sides fade into the dark
 # 2026-11-16 "앞을 볼 수 있는 시야가 살짝 더 커야 할 듯, 맵이 커지게 된다면": 250 -> 330, so the
 # cone's end reaches about the side of the screen at the default zoom.
-CONE_RANGE = 330           # px the cone reaches
+CONE_RANGE = 400           # px the cone reaches (2026-11-18 "앞 시야가 조금 더 길어도": was 330)
 RANGE_SOFT = 50
 NEAR_CLEAR = 40            # px around the body that is always lit (melee range and a little more)
 NEAR_SOFT = 24
+# 2026-11-18 "주변(빨간 부분)은 살짝 연하게 보여도 괜찮을 것 같다": a ring around the body, out to
+# NEAR_GLOW, is only partly dark - GLOW_DARK of the full darkness - so what is close is faintly seen.
+NEAR_GLOW = 120
+GLOW_SOFT = 30
+GLOW_DARK = 0.5
 STEPS = 96                 # mesh resolution around the eye
 RADII = (0, 15, 30, 40, 52, 64, 80, 120, 160, 200, 250, 290, 330, 355, 380, 900)
 FAR = RADII[-1]
@@ -68,7 +73,7 @@ def alpha_at(dx, dy, look, scale=1.0, fog=FOG):
     `scale` < 1 narrows and shortens the cone (panic); `fog` is how dark it is outside the light
     (lower by day, daylight.py)."""
     r = hypot(dx, dy)
-    near = _ramp((r - NEAR_CLEAR) / NEAR_SOFT)
+    near = GLOW_DARK * _ramp((r - NEAR_CLEAR) / NEAR_SOFT) + (1 - GLOW_DARK) * _ramp((r - NEAR_GLOW) / GLOW_SOFT)
     off = abs((atan2(dy, dx) - look + pi) % (2 * pi) - pi)
     cone = max(_ramp((off - CONE_HALF * scale) / CONE_SOFT), _ramp((r - CONE_RANGE * scale) / RANGE_SOFT))
     return fog * min(near, cone)
@@ -83,7 +88,7 @@ class VisionCone:
         self.scale = 1.0                 # < 1 while panicking: a narrower, shorter cone
         self.fog = FOG                   # darkness outside the light: lower by day (daylight.py);
                                          # behind walls it stays FOG
-        n, m = STEPS, len(RADII) + 2
+        n, m = STEPS, len(RADII) + 2 + 4     # + the shadow's start and end, + the glow's and the cone's edges
         self.spoke = m
         self.count = n * m
         self.vertices = (sdl2.SDL_Vertex * self.count)()
@@ -125,7 +130,8 @@ class VisionCone:
         for a, angle in enumerate(self.angles):
             ca, sa = cos(angle), sin(angle)
             hit = ray_hit(eye[0], eye[1], ca, sa, near) if near else FAR
-            radii = sorted(RADII + (min(hit, FAR - 1), min(hit + SHADOW_SOFT, FAR)))
+            edges = (NEAR_GLOW, NEAR_GLOW + GLOW_SOFT, CONE_RANGE * self.scale, CONE_RANGE * self.scale + RANGE_SOFT)
+            radii = sorted(RADII + (min(hit, FAR - 1), min(hit + SHADOW_SOFT, FAR)) + tuple(min(e, FAR) for e in edges))
             for k, radius in enumerate(radii):
                 v = self.vertices[a * m + k]
                 dx, dy = ca * radius, sa * radius

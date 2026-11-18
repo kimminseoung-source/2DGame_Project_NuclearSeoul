@@ -22,6 +22,8 @@ import pico2d
 import sdl2
 
 import area
+import daylight
+import vision_cone
 import condition
 import hero as hero_rules
 import infected
@@ -61,11 +63,12 @@ class Dev:
         self.speed = 1.0             # the whole game's time
         self.freeze = False          # the infected stand still
         self.no_spawn = False        # no new infected come in
-        self.row = 0
         self.ate_press = False       # a click went to the panel: its release is not a blow
         self.drag = None             # the slider row being dragged
         self.editing = None          # the slider row whose number is being typed
         self.text = ""
+        self.scroll = 0              # the first row shown (the panel scrolls)
+        self.row = 1                 # (row 0 is a heading)
 
 
 def _flip(attr):
@@ -150,36 +153,74 @@ def _restart(game, step):
     game.reset()
 
 
-# (label, value shown or None for an action, change(game, step)[, slider spec])
+# (label, value shown or None for an action, change(game, step)[, slider spec]); a 1-tuple is a
+# section heading (2026-11-18 "개발 설정창을 좀 다듬어 줘, 스크롤도")
 ROWS = (
+    ("보기",),
     ("공격 범위·히트박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
     ("시야 범위 (F5)", lambda g: _on(g.dev.sight), _flip("sight")),
     ("소리 범위 (F6)", lambda g: _on(g.dev.sounds), _flip("sounds")),
     ("AI 디렉터 (F7)", lambda g: _on(g.dev.director), _flip("director")),
-    ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
-    ("무적", lambda g: _on(g.dev.god), _flip("god")),
-    ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
-    ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),
-    ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
-    ("사실적 연출 (F3)", lambda g: _on(g.real), _real),
-    _slider("게임 속도", "clock", lambda g: g.dev.speed, lambda g, v: setattr(g.dev, "speed", v), 0.25, 2.0, 0.25,
-            lambda v: f"x{v:g}"),
+    ("시야와 빛",),
+    _slider("앞 시야 길이", "eye", *_module_value(vision_cone, "CONE_RANGE"), 150, 700, 10, lambda v: f"{v:g}"),
+    _slider("몸 주변 원", "eye", *_module_value(vision_cone, "NEAR_GLOW"), 40, 300, 10, lambda v: f"{v:g}"),
+    _slider("주변 어둡기", "eye", *_module_value(vision_cone, "GLOW_DARK", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
+    _slider("낮 어둡기", "clock", *_module_value(daylight, "FOG_DAY"), 0, 255, 5, lambda v: f"{v:g}"),
+    _slider("밤 어둡기", "clock", *_module_value(daylight, "FOG_NIGHT"), 100, 255, 5, lambda v: f"{v:g}"),
     _slider("시각", "clock", lambda g: g.daylight.hour, lambda g, v: setattr(g.daylight, "hour", v % 24), 0, 23.5, 0.5,
             lambda v: f"{int(v):02d}:{int(v % 1 * 60):02d}"),
+    ("주인공",),
+    ("무적", lambda g: _on(g.dev.god), _flip("god")),
+    ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
-    _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
-    _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
     _slider("출혈 확률", "drop", *_module_value(condition, "BLEED_CHANCE", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
     _slider("맞을 때 체력", "heart", *_module_value(condition, "BLOW_DAMAGE"), 0, 100, 1, lambda v: f"-{v:g}%"),
     ("체력 채우기·출혈 멈춤", None, _heal),
     ("붕대 +3", None, _give("bandage", 3)),
     ("통조림 +3", None, _give("can", 3)),
     ("탄약 채우기", None, _ammo),
+    ("피폭체",),
+    ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
+    ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),
+    ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
+    _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
+    _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
     ("피폭체 소환 (커서)", None, _spawn(False)),
     ("기어가는 피폭체 소환", None, _spawn(True)),
     ("피폭체 모두 없애기", None, _clear),
+    ("게임",),
+    _slider("게임 속도", "clock", lambda g: g.dev.speed, lambda g, v: setattr(g.dev, "speed", v), 0.25, 2.0, 0.25,
+            lambda v: f"x{v:g}"),
+    ("사실적 연출 (F3)", lambda g: _on(g.real), _real),
     ("다시 시작", None, _restart),
 )
+VISIBLE = 20                        # rows shown at once; the mouse wheel / arrows scroll the rest
+
+
+def heading(i):
+    return len(ROWS[i]) == 1
+
+
+def keep_in_view(dev):
+    """Scroll so the chosen row is on screen."""
+    top = dev.row - 1 if dev.row > 0 and heading(dev.row - 1) else dev.row      # its heading too
+    dev.scroll = max(min(dev.scroll, top), dev.row - VISIBLE + 1)
+    dev.scroll = max(0, min(dev.scroll, len(ROWS) - VISIBLE))
+
+
+def wheel(game, amount):
+    """The mouse wheel over the open panel scrolls it. True if it did (the game does not zoom then)."""
+    dev = game.dev
+    if not dev.open:
+        return False
+    x, y = sdl2.c_int(), sdl2.c_int()
+    sdl2.SDL_GetMouseState(x, y)
+    cx, cy = px.to_canvas(x.value, y.value)
+    l, t, r = PANEL
+    if not (l <= cx <= r and t <= cy <= t + 18 + VISIBLE * ROW_H):
+        return False
+    dev.scroll = max(0, min(len(ROWS) - VISIBLE, dev.scroll - amount * 2))
+    return True
 
 
 # ---------------------------------------------------------------------- input
@@ -207,7 +248,11 @@ def key(game, k):
         typing(game, k)
         return True
     if k in (sdl2.SDLK_UP, sdl2.SDLK_DOWN):
-        dev.row = (dev.row + (1 if k == sdl2.SDLK_DOWN else -1)) % len(ROWS)
+        step = 1 if k == sdl2.SDLK_DOWN else -1
+        dev.row = (dev.row + step) % len(ROWS)
+        while heading(dev.row):                        # headings are skipped
+            dev.row = (dev.row + step) % len(ROWS)
+        keep_in_view(dev)
     elif k in (sdl2.SDLK_LEFT, sdl2.SDLK_RIGHT, sdl2.SDLK_RETURN):
         ROWS[dev.row][2](game, -1 if k == sdl2.SDLK_LEFT else 1)
     else:
@@ -258,11 +303,14 @@ def drag(game, sx, sy):
     return True
 
 
-def row_at(sx, sy):
+def row_at(game, sx, sy):
     cx, cy = px.to_canvas(sx, sy)
     l, t, r = PANEL
-    i = int((cy - t - 16) // ROW_H)
-    return i if l <= cx <= r and 0 <= i < len(ROWS) and cy >= t + 16 else None
+    k = int((cy - t - 16) // ROW_H)
+    i = game.dev.scroll + k
+    if not (l <= cx <= r and 0 <= k < VISIBLE and 0 <= i < len(ROWS) and cy >= t + 16) or heading(i):
+        return None
+    return i
 
 
 def click(game, sx, sy, right):
@@ -272,9 +320,14 @@ def click(game, sx, sy, right):
         return False
     cx, cy = px.to_canvas(sx, sy)
     l, t, r = PANEL
-    if not (l <= cx <= r and t <= cy <= t + 18 + len(ROWS) * ROW_H):
+    if not (l <= cx <= r and t <= cy <= t + 18 + VISIBLE * ROW_H):
         return False
-    i = row_at(sx, sy)
+    if cx >= r - 5:                                    # the scroll bar: jump there
+        share = (cy - t - 16) / (VISIBLE * ROW_H)
+        dev.scroll = max(0, min(len(ROWS) - VISIBLE, round(share * len(ROWS) - VISIBLE / 2)))
+        dev.ate_press = True
+        return True
+    i = row_at(game, sx, sy)
     if dev.editing is not None and i != dev.editing:   # clicked elsewhere: typing is done
         typing(game, sdl2.SDLK_RETURN)
     if i is not None:
@@ -302,14 +355,28 @@ def draw_panel(game):
     if not dev.open:
         return
     l, t, r = PANEL
-    b = t + 18 + len(ROWS) * ROW_H
+    b = t + 18 + VISIBLE * ROW_H
     px.rect(l, t, r, b, PANEL_BG)
     px.frame(l, t, r, b, PANEL_EDGE)
     px.text(l + 6, t + 3, "개발 설정 (F4)", PANEL_EDGE, bold=True)
-    px.text(r - 6, t + 3, "끌기 · 숫자 입력 · ↑↓←→", GREY, anchor="r")
-    for i, row in enumerate(ROWS):
+    px.text(r - 8, t + 3, "휠 스크롤 · 끌기 · 숫자 입력", GREY, anchor="r")
+    # the scroll bar on the right edge: where the shown rows are in the whole list
+    bar_t, bar_b = t + 16, b - 2
+    px.rect(r - 4, bar_t, r - 2, bar_b, (40, 42, 46))
+    top = bar_t + round((bar_b - bar_t) * dev.scroll / len(ROWS))
+    bot = bar_t + round((bar_b - bar_t) * min(len(ROWS), dev.scroll + VISIBLE) / len(ROWS))
+    px.rect(r - 4, top, r - 2, bot, (150, 140, 110))
+    for k in range(VISIBLE):
+        i = dev.scroll + k
+        if i >= len(ROWS):
+            break
+        row = ROWS[i]
+        y = t + 17 + k * ROW_H
+        if heading(i):                                 # a section heading
+            px.text(l + 6, y, row[0], PANEL_EDGE, bold=True)
+            px.rect(l + 8 + px.width(row[0], True), y + 6, r - 8, y + 6, (70, 66, 52))
+            continue
         label, value = row[0], row[1]
-        y = t + 17 + i * ROW_H
         if i == dev.row:
             px.rect(l + 2, y - 1, r - 2, y + ROW_H - 2, CHOSEN)
         if len(row) > 3:

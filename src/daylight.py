@@ -12,7 +12,7 @@ and how dark it is outside the hero's view cone because of it.
 HOUR = 30.0                 # real s per hour of the day
 START = 14.0                # the hour a play starts at
 DAWN, DAY, DUSK, NIGHT = 5.0, 7.0, 18.0, 20.0   # light rises DAWN..DAY, falls DUSK..NIGHT
-FOG_DAY = 50                # darkness outside the cone by day (< vision_cone.HIDE_FROM: still seen)
+FOG_DAY = 110               # darkness outside the cone by day (< vision_cone.HIDE_FROM: still seen; 50 showed too much)
 FOG_NIGHT = 228             # ...and at night (vision_cone.FOG)
 NIGHT_TINT = (8, 16, 40, 70)  # rgba laid over the world at full night
 

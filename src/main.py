@@ -68,6 +68,8 @@ def main(window_x=None):
             elif game.bag_open and event.type in (sdl2.SDL_MOUSEMOTION, sdl2.SDL_MOUSEBUTTONDOWN,
                                                   sdl2.SDL_MOUSEBUTTONUP):
                 bag_mouse(game, event)               # the bag takes the mouse while it is open
+            elif event.type == sdl2.SDL_MOUSEWHEEL and event.y and dev_tools.wheel(game, event.y):
+                pass                                 # over the F4 panel: it scrolls
             elif event.type == sdl2.SDL_MOUSEWHEEL and event.y:
                 game.wheel(event.y)                  # zoom in / out
             elif event.type == sdl2.SDL_MOUSEMOTION:
