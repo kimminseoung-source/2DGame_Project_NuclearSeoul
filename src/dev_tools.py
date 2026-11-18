@@ -311,7 +311,8 @@ def draw_boxes(game, cx, cy):
 
 SIGHT, NEAR = (110, 150, 240), (150, 190, 255)
 NOISE = (240, 200, 90)
-NOISE_SHOW = 0.3                     # s a noise ring stays (was 0.8: piled up into a blob, 2026-11-18)
+NOISE_SHOW = 0.3                     # s a footstep ring stays after the steps stop
+LOUD_SHOW = 0.8                      # s a loud one (roll, swing, shot) stays: one moment, easy to miss at 0.3
 
 
 def heard(game, x, y, radius):
@@ -324,8 +325,12 @@ def heard(game, x, y, radius):
     game.dev.noises.append([x, y, radius, 0.0])
 
 
+def ring_time(radius):
+    return LOUD_SHOW if radius >= infected.NOISE_ROLL else NOISE_SHOW
+
+
 def age_noises(game, dt):
-    game.dev.noises = [n for n in game.dev.noises if n[3] + dt < NOISE_SHOW]
+    game.dev.noises = [n for n in game.dev.noises if n[3] + dt < ring_time(n[2])]
     for n in game.dev.noises:
         n[3] += dt
 
@@ -352,8 +357,10 @@ def draw_sounds(game, cx, cy):
     if not game.dev.sounds:
         return
     for x, y, radius, age in game.dev.noises:
-        fade = 1 - age / NOISE_SHOW
-        _arc(x - cx, y - cy, radius, -3.15, 3.15, tuple(round(c * (0.4 + 0.6 * fade)) for c in NOISE), 2)
+        fade = 1 - age / ring_time(radius)
+        colour = tuple(round(c * (0.5 + 0.5 * fade)) for c in NOISE)
+        for grow in (0, PIXEL):                                   # two canvas px thick, solid
+            _arc(x - cx, y - cy, radius + grow, -3.15, 3.15, colour, 1)
     pulled = game.pulled_entrances()
     for (x, y), _ in area.ENTRANCES:
         colour = NOISE if (x, y) in pulled else (110, 100, 70)
