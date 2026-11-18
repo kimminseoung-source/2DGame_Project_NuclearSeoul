@@ -22,6 +22,7 @@ import ui
 from area import CREDIT, EXIT_NAME
 from settings import DOT, EXPOSURE_ON, HEIGHT, HERO_HP, UI_SCALE, WIDTH
 import weapons
+import supplies as supply_rules
 from supplies import KINDS, item_name, item_text
 
 U = UI_SCALE
@@ -127,7 +128,7 @@ def draw_hud(game):
             kind, count = items[i]
             px.blit(f"bag/icon_{kind}.png", l + 5, t + 4)
             px.text(l + 24, t + 13, str(count), LIGHT, anchor="r")
-            key = {"bandage": "1", "pill": "2"}.get(kind)
+            key = supply_rules.QUICK_KEYS.get(kind)
             if key:
                 px.text(l + 1, t - 13, key, GREY_C)
     px.text(left + n * 30 + 2, 336, "Tab", GREY_C)

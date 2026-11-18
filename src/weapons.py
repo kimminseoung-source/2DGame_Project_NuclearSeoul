@@ -18,7 +18,9 @@ from settings import TEMPO
 
 # Body parts by height above the feet (world units; a person is 54 tall). Generous edges:
 # a blow that lands between two parts counts as the torso.
-PARTS = (("legs", 0, 18), ("torso", 18, 40), ("head", 40, 60))
+# Heights above the feet, fitted to the hunched infected sprite (2026-11-18, seen with F1: the head
+# box was 40-60, above the drawn head; the picture's head is ~35-47, its shoulders ~20).
+PARTS = (("legs", 0, 20), ("torso", 20, 35), ("head", 35, 48))
 PART_HALF_WIDTH = 13            # world units either side of the infected's middle
 PART_NAMES = {"head": "머리", "torso": "몸통", "legs": "다리", "ground": "밟기"}
 # Which styles reach a crawler on the ground (2026-11-16, crawlers and standing ones together):
@@ -119,6 +121,7 @@ WEAPONS = {
 # 54/32). The shown arc is the tip; a body whose middle is up to BODY_MARGIN past it is still hit
 # (half its width). A new weapon's reach comes from its sprite alone.
 HAND_REACH = {"stab": 14.0, "chop": 8.0, "swingh": 12.0}
+BODY_CONTACT = 20               # px: an infected this close is against the hero's body: any blow hits it (2026-11-16 판정)
 BODY_MARGIN = 10.0
 SPRITE_TO_WORLD = 54 / 32
 
@@ -190,7 +193,7 @@ QUICK_PRESS = 0.15              # s: a press shorter than this is a plain click 
 
 # Aiming along the path (not on the body): the height where the path passes the infected's
 # middle picks the part, with wider head and leg bands - a raised cursor reads as "the head".
-PATH_PARTS = (("legs", -99, 16), ("torso", 16, 33), ("head", 33, 99))
+PATH_PARTS = (("legs", -99, 18), ("torso", 18, 33), ("head", 33, 99))
 
 
 def path_part(z, up):

@@ -24,6 +24,7 @@ import infected
 import pixel_ui as px
 import weapons
 from settings import CHEST, DOT, HERO_HP, ZOMBIE_ARC
+from weapons import BODY_CONTACT
 
 SPEEDS = (0.25, 0.5, 1.0, 2.0)
 PANEL = (440, 34, 632)              # canvas px: left, top, right (the rows set the bottom)
@@ -273,8 +274,12 @@ def draw_boxes(game, cx, cy):
             for sgn in (1, -1):
                 _line(hx + nx * sgn, hy + CHEST + ny * sgn, ex + nx * sgn, ey + ny * sgn, (240, 220, 80), 2)
         else:
-            half = w["cells"] * weapons.CELL_WORLD / 2 / length                   # as wide as the hit (draw_aim)
-            _wedge(hx, hy + CHEST, length, ang, half, (240, 220, 80))
+            # exactly the melee hit (play.update): an infected whose chest point (white dot) is
+            # inside this wedge - reach + lunge + half a body, +-arc - or touching the hero
+            # (BODY_CONTACT ring) is hit; the part only counts on a full charge, else the torso
+            span = length + weapons.BODY_MARGIN
+            _wedge(hx, hy + CHEST, span, ang, w["arc"], (240, 220, 80))
+            _arc(hx, hy + CHEST, BODY_CONTACT, -3.15, 3.15, (240, 220, 80), 2)
     for z in game.zombies:
         if not z.alive:
             continue
@@ -286,6 +291,7 @@ def draw_boxes(game, cx, cy):
             hw = weapons.PART_HALF_WIDTH
             for part, low, high in weapons.PARTS:
                 _box(zx - hw, zy + low, zx + hw, zy + high, PART_COLOURS[part])
+        _box(zx - 1.5 * PIXEL, zy + CHEST - 1.5 * PIXEL, zx + 1.5 * PIXEL, zy + CHEST + 1.5 * PIXEL, (255, 255, 255))   # the point a swing must reach
         striking = z.state in ("windup", "strike")
         _wedge(zx, zy, z.reach + 8, z.heading, ZOMBIE_ARC,
                (255, 60, 50) if striking else (150, 60, 56), 1 if striking else 3)                     # its claw (bright when it comes)

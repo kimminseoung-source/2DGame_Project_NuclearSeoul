@@ -18,6 +18,7 @@ import bag_grid
 import bag_screen
 import dev_tools
 import weapons
+from weapons import BODY_CONTACT
 import hud
 import pixel_ui as px
 import stamina as stamina_rules
@@ -48,7 +49,6 @@ SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 SHOVE_REACH = 46             # px a shove reaches
-BODY_CONTACT = 20            # px: an infected this close is against the hero's body (2026-11-16 판정)
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
 
@@ -359,6 +359,14 @@ class Game:
             self.exposure = max(0.0, self.exposure - PILL_EFFECT)
             self.message = f"피폭 억제제를 먹었다 (피폭 -{PILL_EFFECT:.0f})"
             self.sounds.play("pickup", 0.6)
+        elif kind == "can" and self.hero.hp < HERO_HP:
+            self.bag[kind] -= 1
+            before = self.hero.hp
+            self.hero.hp = min(HERO_HP, self.hero.hp + supply_rules.CAN_HEAL)
+            self.message = f"통조림을 먹었다 체력 +{self.hero.hp - before:.0f}%"
+            self.sounds.play("pickup", 0.6)
+        elif kind == "can":
+            self.message = "체력이 가득하다"
         elif kind == "bandage":
             self.message = "다친 곳이 없다"
 
@@ -388,10 +396,8 @@ class Game:
             self.reset()
         elif key == sdl2.SDLK_e and not self.left and not self.hero.dead:
             self.interact()
-        elif key == sdl2.SDLK_1:
-            self.use("bandage")
-        elif key == sdl2.SDLK_2:
-            self.use("pill")
+        elif sdl2.SDLK_1 <= key <= sdl2.SDLK_9 and chr(key) in supply_rules.QUICK_KEYS.values():
+            self.use(next(k for k, v in supply_rules.QUICK_KEYS.items() if v == chr(key)))
         elif key == sdl2.SDLK_F3:
             self.toggle_real()
         elif key == sdl2.SDLK_F2:
