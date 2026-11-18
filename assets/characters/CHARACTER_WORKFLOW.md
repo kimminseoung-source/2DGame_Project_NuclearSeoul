@@ -36,6 +36,8 @@
 | `tools/blender/costume.py` | 의상 적용(부위 색칠·머리·뼈에 붙는 소품). 렌더 스크립트가 `--costume`으로 씀 | 올림 |
 | `tools/blender/render_character.py` | 캐릭터 이름만으로 전체 동작 시트를 같은 설정으로 렌더 | 올림 |
 | `tools/sprites/lineup.ps1` | 파티 나란히 보기: 게임 크기·검은 실루엣·확대 | 올림 |
+| `assets/characters/pixelorama/` | Pixelorama 손질용: 고칠 시트(`work/`), 확대 안내(`guide/`), 팔레트(`palette_busan.gpl`), 원본(`before/`), 전후(`compare/`). 순서는 그 안의 README | 올림 |
+| `tools/sprites/pixelorama_kit.py` | `kit`: 시트·안내·팔레트 준비 / `in`: 고친 시트 검사 후 게임에 넣고 전후 그림 | 올림 |
 
 ## 1. 지켜야 할 기준
 
