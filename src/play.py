@@ -1105,7 +1105,9 @@ class Game:
             if kind == "block" and obj[1] is not None:
                 (l, b, r, t), img, _ = obj                         # rendered wreck or furniture
                 w, h = img.w / DOT, img.h / DOT                    # its pixels are canvas px
-                img.draw((l + r) / 2 - cx, b - 3 + h / 2 - cy, w, h)
+                # its bottom on the rect's bottom (2026-11-18: was 3 lower, so a wreck seen from
+                # above sat off its own collision rect); tall furniture rises above its footprint
+                img.draw((l + r) / 2 - cx, b + h / 2 - cy, w, h)
             elif kind == "block":
                 l, b, r, t = obj[0]
                 pico2d.draw_rectangle(l - cx, b - cy, r - cx, t + 18 - cy, 44, 38, 36, filled=True)

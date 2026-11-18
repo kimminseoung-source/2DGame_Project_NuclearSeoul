@@ -111,7 +111,12 @@ def blocks_between(x1, y1, x2, y2, sight=False):
     return near_blocks(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2), sight)
 
 
-def blocked(x, y, pad=8):
+# Bodies are points at the feet; a wall keeps them this far off its sides (half a body's width)
+# and half that off its front and back (seen from above at a slant, depth reads shorter).
+BODY_PAD = 8
+
+
+def blocked(x, y, pad=BODY_PAD):
     return (not (pad <= x <= ROOM_W - pad and pad <= y <= ROOM_H - pad)
             or any(l - pad <= x <= r + pad and b - pad / 2 <= y <= t + pad / 2
                    for l, b, r, t in _buckets.get((int(x // BUCKET), int(y // BUCKET)), ())))

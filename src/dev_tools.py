@@ -242,11 +242,11 @@ def _wedge(x, y, radius, ang, half, colour, gap=1):
         _line(x, y, x + cos(a) * radius, y + sin(a) * radius, colour, gap)
 
 
-def _box(l, b, r, t, colour):
-    _line(l, b, r, b, colour)
-    _line(l, t, r, t, colour)
-    _line(l, b, l, t, colour)
-    _line(r, b, r, t, colour)
+def _box(l, b, r, t, colour, gap=1):
+    _line(l, b, r, b, colour, gap)
+    _line(l, t, r, t, colour, gap)
+    _line(l, b, l, t, colour, gap)
+    _line(r, b, r, t, colour, gap)
 
 
 PART_COLOURS = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210)}
@@ -257,8 +257,11 @@ def draw_boxes(game, cx, cy):
     walls bodies bump into, the hero's blow, each infected's body parts and its claw."""
     if not game.dev.boxes:
         return
+    pad = area.BODY_PAD
     for bl, bb, br, bt in area.near_blocks(cx, cy, cx + game.view_w, cy + game.view_h):
         _box(bl - cx, bb - cy, br - cx, bt - cy, (240, 150, 40))                  # walls, wrecks
+        # where a body's feet (the white +) stop: the rect grown by area.blocked's padding
+        _box(bl - pad - cx, bb - pad / 2 - cy, br + pad - cx, bt + pad / 2 - cy, (240, 150, 40), 3)
     h = game.hero
     hx, hy = h.x - cx, h.y - cy
     _line(hx - 6, hy, hx + 6, hy, (255, 255, 255))                                # where claws aim

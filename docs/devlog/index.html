@@ -107,6 +107,7 @@ a:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
   <section class="view log" id="view-dev" aria-labelledby="logtitle">
     <div class="section-title"><h2 id="logtitle">개발 일지</h2><small>무엇을 만들었나 · 최신이 위</small></div>
     <ol>
+      <li><span class="d">11.18</span><span>폐차 그림이 충돌 상자보다 3 아래 그려지던 것 고침, F1에 발이 멈추는 선(점선) 추가 → <a href="#padding">몸 두께 여유</a></span></li>
       <li><span class="d">11.18</span><span>피폭체 발견 거리를 140 하나로 고정, 살금 걷기는 발소리만 줄임 → <a href="#sight">시야 판정</a></span></li>
       <li><span class="d">11.18</span><span>역 울타리: 디펜스 전엔 피폭체가 못 들어옴 → <a href="#keepout">출입 금지 구역</a></span></li>
       <li><span class="d">11.18</span><span>역 디펜스: 군인 1·시민 2와 함께 60초 동안 기차 기다리기 → <a href="#target">표적 고르기</a></span></li>
@@ -210,6 +211,16 @@ stateDiagram-v2
         <h3>표적 고르기 (Target selection)</h3>
         <p class="what">AI가 누구를 노릴지 정한다. 가까운 것, 약한 것, 나를 때린 것 중 기준을 고른다.</p>
         <p class="ours"><b>우리 게임:</b> 가장 가까운 사람 · <code>play.prey_for</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="padding">
+      <div class="media"><img src="img/wreck_contact.png" alt="폐차의 충돌 상자(실선)와 발이 멈추는 선(점선), 아래·위·왼쪽에서 다가간 주인공의 발이 점선에 멈춘 모습" loading="lazy" width="1560" height="300"></div>
+      <div class="body">
+        <span class="kind">충돌</span>
+        <h3>몸 두께 여유 (Collision padding)</h3>
+        <p class="what">몸을 발밑 점 하나로 보고, 벽을 몸 두께만큼 <b>넓혀서</b> 검사한다. 원·캡슐 충돌보다 훨씬 단순하다.</p>
+        <p class="ours"><b>우리 게임:</b> 좌우 8, 앞뒤 4 · <code>area.BODY_PAD</code>, <code>blocked</code> · F1 점선</p>
       </div>
     </article>
 
@@ -321,7 +332,7 @@ stateDiagram-v2
   }
 
   function show() {
-    const study = location.hash === "#study" || ["#lerp", "#fsm", "#sight", "#sound", "#grid", "#bfs", "#keepout", "#target", "#debugdraw"].includes(location.hash);
+    const study = location.hash === "#study" || ["#lerp", "#fsm", "#sight", "#sound", "#grid", "#bfs", "#keepout", "#target", "#padding", "#debugdraw"].includes(location.hash);
     document.getElementById("view-dev").hidden = study;
     document.getElementById("view-study").hidden = !study;
     document.getElementById("tab-dev").setAttribute("aria-current", study ? "false" : "page");
