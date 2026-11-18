@@ -17,6 +17,7 @@ from pico2d import pico2d as canvas
 import bag_grid
 import bag_screen
 import dev_tools
+from director import Director
 import survivors
 import weapons
 from weapons import BODY_CONTACT
@@ -44,14 +45,10 @@ from vision_cone import CONE_HALF, VisionCone, ray_hit
 
 
 WAVE_TOTAL = 12              # infected in this area, the starting ones included
-MAX_ALIVE = 6                # at most this many up at once
-SPAWN_EVERY = (6.0, 9.0)     # s between arrivals
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 DEFENSE_TIME = 60.0          # s from the start of the station defense to the train (small first)
-DEFENSE_EVERY = (2.5, 4.0)   # s between arrivals while defending (outside: SPAWN_EVERY)
-DEFENSE_ALIVE = 9            # at most this many up at once while defending
 DEFENSE_WAYS = 3             # they come in by this many entrances nearest the station
 STATION_PAD = (120, 40, 80)   # the fenced station: this far left, right and up from the exit
 STATION_PEOPLE = (("soldier", -90, 10), ("civilian", -10, 40), ("civilian", 30, 30))   # kind, offset from the exit
@@ -141,7 +138,7 @@ class Game:
         self.message = ""                  # the keys are taught by marks under the hero (TEACH)
         self.cleared = False
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
-        self.spawn_in = random.uniform(*SPAWN_EVERY)
+        self.director = Director()   # when the infected come in: build up, peak, relax (director.py)
         self.clock = 0.0
         self.loud = None             # (x, y, time, radius) of the last loud noise
         self.was_slow = False
@@ -536,7 +533,7 @@ class Game:
             fresh = self.loud is None or self.clock - self.loud[2] > 0.5
             self.loud = (hx, hy, self.clock, radius)
             if fresh and self.pulled_entrances():         # ...only through entrances inside its ring
-                self.spawn_in = min(self.spawn_in, SPAWN_AFTER_NOISE)
+                self.director.noise_calls(SPAWN_AFTER_NOISE)
         for z in self.zombies:
             if not z.alive:
                 continue
@@ -557,7 +554,7 @@ class Game:
         self.station_open = True                          # the fence opens: they can get in now
         Zombie.keep_out = []
         self.to_spawn = max(self.to_spawn, 99)            # they keep coming until the train
-        self.spawn_in = 1.0
+        self.director.noise_calls(1.0)                    # the first comes at once
         self.message = f"기차 도착까지 {DEFENSE_TIME:.0f}초 · 버텨라"
         self.sounds.play("alert", 0.9)
         self.loud = (self.hero.x, self.hero.y, self.clock, 10 ** 6)   # the whole area hears the station
@@ -800,6 +797,7 @@ class Game:
                 self.effects.append(Blood(prey.x, prey.y + 16, atan2(prey.y - z.y, prey.x - z.x), 8))
                 if prey.take_blow():
                     self.message = f"{prey.name}이 쓰러졌다"
+                    self.director.person_fell()
                 event = None
             if z.alive and z.state in ("chase", "search", "poised"):   # they groan as they come
                 z.groan_in = getattr(z, "groan_in", random.uniform(0.5, 3.0)) - world_dt
@@ -821,6 +819,7 @@ class Game:
             if event == "hit" and not hero.invulnerable and not hero.dead and not self.dev.god:
                 self.sounds.play("hurt", 1.0)
                 hero.take_blow()                              # slowed, more with every blow
+                self.director.hero_hit()
                 _, damage = self.condition.wound()            # a fixed share, and maybe bleeding
                 hero.hp = max(0.0, hero.hp - damage)
                 self.hurt_flash = 0.25                        # the screen edge flashes red
@@ -874,11 +873,9 @@ class Game:
             if self.defense <= 0:
                 self.train_arrives()
         defending = self.defense is not None
-        if self.to_spawn > 0 and not hero.dead and not self.dev.no_spawn:
-            self.spawn_in -= world_dt
-            if self.spawn_in <= 0 and sum(z.alive for z in self.zombies) < (DEFENSE_ALIVE if defending else MAX_ALIVE):
+        if not hero.dead and self.director.update(world_dt, self):   # the director: is it time?
+            if self.to_spawn > 0 and not self.dev.no_spawn:
                 self.spawn()
-                self.spawn_in = random.uniform(*(DEFENSE_EVERY if defending else SPAWN_EVERY))
         if not self.cleared and not defending and self.to_spawn == 0 and all(not z.alive for z in self.zombies):
             self.cleared = True
             self.message = "구역 정리! R로 다시 해 보기"
@@ -1159,4 +1156,5 @@ class Game:
             hud.draw_summary(self)
         if self.hero.dead > 0.4:
             hud.draw_death(self)
+        dev_tools.draw_director(self)                      # F7
         dev_tools.draw_panel(self)                         # F4

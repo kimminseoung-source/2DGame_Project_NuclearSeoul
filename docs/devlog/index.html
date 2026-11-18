@@ -107,6 +107,7 @@ a:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
   <section class="view log" id="view-dev" aria-labelledby="logtitle">
     <div class="section-title"><h2 id="logtitle">개발 일지</h2><small>무엇을 만들었나 · 최신이 위</small></div>
     <ol>
+      <li><span class="d">11.18</span><span>AI 디렉터: 긴장도에 따라 피폭체가 쌓이고, 몰려오고, 쉰다. 디펜스는 쉬는 틈과 마지막 15초 대량 습격 → <a href="#director">AI 디렉터</a></span></li>
       <li><span class="d">11.18</span><span>F4 설정창 숫자를 슬라이더로: 끌기, 숫자 입력, 항목마다 아이콘</span></li>
       <li><span class="d">11.18</span><span>F6 소리 원: 큰 소리는 0.8초, 굵고 밝게</span></li>
       <li><span class="d">11.18</span><span>근접 박진감 실험: F4에 "빠르게"(주인공 동작 1.3배), "세게"(히트스톱·흔들림 2배, 하얀 번쩍임)</span></li>
@@ -214,6 +215,16 @@ stateDiagram-v2
         <h3>표적 고르기 (Target selection)</h3>
         <p class="what">AI가 누구를 노릴지 정한다. 가까운 것, 약한 것, 나를 때린 것 중 기준을 고른다.</p>
         <p class="ours"><b>우리 게임:</b> 가장 가까운 사람 · <code>play.prey_for</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="director">
+      <div class="media"><img src="img/director_f7.png" alt="F7 화면: 긴장도 그래프가 쌓기(노랑), 쉬기(초록), 다시 쌓기, 절정(빨강) 순으로 그려져 있다" loading="lazy" width="1280" height="720"></div>
+      <div class="body">
+        <span class="kind">AI · 흐름</span>
+        <h3>AI 디렉터 (긴장 곡선)</h3>
+        <p class="what">적을 일정하게 보내지 않고, 긴장을 <b>쌓고 → 터뜨리고 → 쉬게</b> 한다. 힘들어하면 덜 보낸다. Left 4 Dead에서 나온 기법.</p>
+        <p class="ours"><b>우리 게임:</b> 맞음·가까운 피폭체로 긴장도 계산 · <code>director.py</code> · F7</p>
       </div>
     </article>
 
@@ -335,7 +346,7 @@ stateDiagram-v2
   }
 
   function show() {
-    const study = location.hash === "#study" || ["#lerp", "#fsm", "#sight", "#sound", "#grid", "#bfs", "#keepout", "#target", "#padding", "#debugdraw"].includes(location.hash);
+    const study = location.hash === "#study" || ["#lerp", "#fsm", "#sight", "#sound", "#grid", "#bfs", "#keepout", "#target", "#director", "#padding", "#debugdraw"].includes(location.hash);
     document.getElementById("view-dev").hidden = study;
     document.getElementById("view-study").hidden = !study;
     document.getElementById("tab-dev").setAttribute("aria-current", study ? "false" : "page");

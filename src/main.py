@@ -3,7 +3,7 @@
     .venv\\Scripts\\python.exe src\\main.py
 
 WASD move, left button: hold to raise the weapon and aim (head / torso / legs under the cursor), let go to strike, Space roll, E pick up / leave, 1 bandage,
-Tab bag (inventory), mouse wheel zoom, R restart, F1 debug boxes, F2 infected senses on/off, F3 realistic look on/off, F4 dev settings, F5 infected sight, F6 noise rings and entrances, Esc quit.
+Tab bag (inventory), mouse wheel zoom, R restart, F1 debug boxes, F2 infected senses on/off, F3 realistic look on/off, F4 dev settings, F5 infected sight, F6 noise rings and entrances, F7 AI director, Esc quit.
 (Right button time crawl with exposure is switched off for now: settings.EXPOSURE_ON.)
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
 """

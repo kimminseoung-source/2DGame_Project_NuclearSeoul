@@ -5,6 +5,8 @@
 - F5: sight - each infected's cone out to where it spots the hero at once ("!").
 - F6: sound - every noise the hero makes as a ring as far as it carries ("?"), and the entrances
   a loud one calls new infected through (2026-11-18 "F5, F6 나눠 주세요, 디버그와 동일하게").
+- F7: the AI director (director.py) - its intensity over the last minute, coloured by state
+  (build / peak / relax), and when the next infected comes in.
 - F4: the dev settings panel (top right). Up/Down choose a row, Left/Right change it, Enter does it;
   or click a row (left = up / do, right = down). The game keeps running behind it.
   Number rows are sliders with an icon (2026-11-18 "윈도우 밝기처럼 조절", "숫자로도 가능하고"):
@@ -53,6 +55,7 @@ class Dev:
         self.boxes = False           # F1: debug boxes
         self.sight = False           # F5: the infected's sight
         self.sounds = False          # F6: the hero's noises and the entrances they call through
+        self.director = False        # F7: the AI director's intensity graph
         self.noises = []             # [x, y, radius, age] of noises the hero made (F6 rings)
         self.god = False             # blows do nothing, no bleeding
         self.speed = 1.0             # the whole game's time
@@ -153,6 +156,7 @@ ROWS = (
     ("공격 범위·히트박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
     ("시야 범위 (F5)", lambda g: _on(g.dev.sight), _flip("sight")),
     ("소리 범위 (F6)", lambda g: _on(g.dev.sounds), _flip("sounds")),
+    ("AI 디렉터 (F7)", lambda g: _on(g.dev.director), _flip("director")),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     ("실험: 세게 (타격감 2배)", lambda g: _on(g.dev.punchy), _flip("punchy")),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
@@ -190,6 +194,9 @@ def key(game, k):
         return True
     if k == sdl2.SDLK_F6:
         dev.sounds = not dev.sounds
+        return True
+    if k == sdl2.SDLK_F7:
+        dev.director = not dev.director
         return True
     if k == sdl2.SDLK_F4:
         dev.open = not dev.open
@@ -491,3 +498,31 @@ def draw_sounds(game, cx, cy):
         colour = NOISE if (x, y) in pulled else (110, 100, 70)
         _box(x - 10 - cx, y - 10 - cy, x + 10 - cx, y + 10 - cy, colour)
         _line(x - 10 - cx, y - 10 - cy, x + 10 - cx, y + 10 - cy, colour)
+
+
+STATE_NAMES = {"build": "쌓기", "peak": "절정", "relax": "쉬기"}
+STATE_COLOURS = {"build": (214, 176, 80), "peak": (226, 80, 64), "relax": (96, 186, 120)}
+
+
+def draw_director(game):
+    """F7, on the screen canvas: intensity over the last minute (one bar per 0.25 s, coloured by
+    the state then), the peak line, the state now and the next arrival."""
+    if not game.dev.director:
+        return
+    d = game.director
+    l, t, w, h = 200, 92, 240, 40                     # under the defense clock and the people count
+    px.rect(l - 4, t - 30, l + w + 4, t + h + 4, (14, 15, 17, 215))
+    px.frame(l - 4, t - 30, l + w + 4, t + h + 4, (70, 72, 76))
+    name = STATE_NAMES.get(d.state, d.state)
+    px.text(l, t - 29, f"AI 디렉터 · {name}", STATE_COLOURS.get(d.state, LIGHT), bold=True)
+    nxt = "없음" if d.spawn_in > 900 else f"{max(0.0, d.spawn_in):.1f}초"
+    px.text(l, t - 15, f"긴장 {d.intensity:.2f} · 다음 피폭체 {nxt} · 최대 {d.most}마리", GREY)
+    import director as rules
+    peak_y = t + h - round(rules.PEAK_AT * h)
+    px.rect(l, peak_y, l + w, peak_y, (90, 50, 46))                 # the peak line (outside)
+    hist = d.history[-w:]
+    for k, (value, state) in enumerate(hist):
+        x = l + w - len(hist) + k
+        top = t + h - max(1, round(value * h))
+        px.rect(x, top, x, t + h, STATE_COLOURS.get(state, LIGHT))
+
