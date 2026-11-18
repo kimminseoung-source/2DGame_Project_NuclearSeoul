@@ -883,7 +883,7 @@ class Game:
         return marks
 
     def draw_teach(self, cx, cy):
-        if self.left or self.hero.dead or self.near_exit():      # the exit's [E] goes there
+        if self.left or self.hero.dead or self.near_exit() or self.bag_open:   # the exit's [E] / the bag covers it
             return
         left = self.marks_now() + [text for action, text in self.TEACH if action not in self.used]
         for i, text in enumerate(left[:2]):

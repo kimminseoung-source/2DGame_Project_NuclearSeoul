@@ -281,6 +281,9 @@ def draw_things(game, side, placed, pick):
         px.rect(l + 2, t + 2, rr - 2, bb - 2, fill_chosen if p == pick else fill)
         px.frame(l + 2, t + 2, rr - 2, bb - 2, edge)
         draw_item(kind, l, t, w, h, turned=side == "bag" and ref[3])
+        count = ref[4] if side == "bag" else 1
+        if count > 1:                                                   # a stack: how many
+            px.text(rr - 4, bb - 15, f"{count}", LIGHT, bold=True, anchor="r")
         if p == pick:
             heavy = side == "near" and not fits(game, kind)          # it would not fit: red corners
             corners(l, t, rr, bb, BLOOD if heavy else ROAD)
@@ -306,6 +309,11 @@ def draw_item(kind, l, t, w, h, turned=False):
     px.blit(name, l + (w * CELL - img.w * scale) // 2, t + (h * CELL - img.h * scale) // 2, scale)
 
 
+# The hand slot in the body column (a weapon dropped here is taken in hand) and the "정리" button.
+HAND_RECT = (14, 180, 150, 214)
+TIDY_RECT = (0, 0, 0, 0)                 # set where the bag is drawn (draw_inventory)
+
+
 def draw_ghost(game):
     """While a thing is carried over the bag's sheet: where it would land - its cells green when it
     fits there, red when it does not (2026-11-18 "커서로 정리할 수 있게")."""
@@ -313,7 +321,7 @@ def draw_ghost(game):
     if game.bag_drag is None or target is None:
         return
     kind = game.bag_drag[1][0]
-    c, r, turned, ok = target
+    c, r, turned, ok, into = target
     w, h = bag_grid.shape(kind, turned)
     gx, gy = SHEET_GRID
     l, t = gx + c * CELL, gy + r * CELL
@@ -348,12 +356,17 @@ def draw_body_column(game):
         px.text(l + 62, y + 14, state, BLOOD if wound["bleed"] > 0 else GREY_C)
     if not wounds:
         px.text(l + 62, t + 40, "다친 곳 없음", GREY_C)
+    # the hand slot: a weapon dragged here from the bag is taken in hand (2026-11-18 bag step 2)
+    hl, ht, hr, hb = HAND_RECT
+    carrying = game.bag_drag is not None and game.bag_drag[0] == "bag" and weapons.key_of(game.bag_drag[1][0])
+    over = carrying and hl <= game.bag_mouse[0] <= hr and ht <= game.bag_mouse[1] <= hb
+    px.frame(hl, ht, hr, hb, (96, 168, 92) if over else ROAD if carrying else (70, 72, 76))
     px.text(l, t + 146, "손", GREY_C)
     held = game.hero.weapon                                   # the weapon in hand (Q: the next one)
     img = px.image(f"../weapons/{held['sprite']}.png")
     px.blit(f"../weapons/{held['sprite']}.png", l + 18, t + 150 - img.h)
     px.text(l + 40, t + 146, held["name"], LIGHT)
-    px.text(l + 40, t + 160, "Q 바꾸기", GREY_C)
+    px.text(l + 40, t + 160, "끌어다 놓기 · Q", GREY_C)
 
 
 def draw_room_bar(x, y, used, total):
@@ -379,6 +392,14 @@ def draw_inventory(game):
     px.blit("bag/icon_backpack.png", sl, st - 30)
     px.text(sl + 20, st - 27, "배낭", LIGHT, bold=True)
     px.text(sr, st - 27, f"{used} / {total}칸", LIGHT, anchor="r")
+    global TIDY_RECT                                                    # the "정리" button
+    bw = px.width("정리") + 12
+    TIDY_RECT = (sr - px.width(f"{used} / {total}칸") - bw - 10, st - 30, sr - px.width(f"{used} / {total}칸") - 10, st - 13)
+    tl, tt, tr, tb = TIDY_RECT
+    hover = tl <= game.bag_mouse[0] <= tr and tt <= game.bag_mouse[1] <= tb
+    px.rect(tl, tt, tr, tb, (64, 66, 58) if hover else (44, 46, 42))
+    px.frame(tl, tt, tr, tb, ROAD if hover else GREY_C)
+    px.text((tl + tr) // 2, tt + 2, "정리", LIGHT, anchor="m")
     px.blit("bag/sheet.png", sl, st)
     draw_things(game, "bag", layout["bag"], pick if game.bag_side == "bag" else None)
     draw_ghost(game)
@@ -407,7 +428,7 @@ def draw_inventory(game):
     use_word = "줍기" if game.bag_side == "near" else "들기" if pick and weapons.key_of(pick[0]) else "쓰기"
     rows = ((("Enter", use_word), ("X", "내려놓기"),
              ("F", "같은 것 줍기"), ("Shift+F", "모두 줍기")),
-            (("WASD", "고르기"), ("끌어 놓기", "옮기기"), ("R", "돌리기"), ("Tab", "닫기")))
+            (("끌어 놓기", "옮기기·합치기"), ("두 번 클릭", "쓰기"), ("R", "돌리기"), ("T", "정리"), ("Tab", "닫기")))
     for row, keys in enumerate(rows):
         kx = 150
         for key, label in keys:
@@ -419,6 +440,29 @@ def draw_inventory(game):
         gc, gr = game.bag_grab
         mx, my = game.bag_mouse
         draw_item(kind, round(mx) - gc * CELL - CELL // 2, round(my) - gr * CELL - CELL // 2, w, h, turned)
+    else:
+        draw_tooltip(game, layout)
+
+
+def draw_tooltip(game, layout):
+    """The thing under the mouse: its name, what it does, and how many (2026-11-18 bag step 2)."""
+    spot = cell_at(*game.bag_mouse)
+    if spot is None:
+        return
+    thing = bag_grid.at(layout[spot[0]], *spot[1:])
+    if thing is None:
+        return
+    kind = thing[0]
+    count = thing[1][4] if spot[0] == "bag" else 1
+    name = item_name(kind) + (f" ×{count}" if count > 1 else "")
+    line = item_text(kind)
+    w = max(px.width(name, True), px.width(line)) + 14
+    mx, my = round(game.bag_mouse[0]) + 12, round(game.bag_mouse[1]) + 14
+    mx, my = min(mx, px.CW - w - 4), min(my, px.CH - 40)
+    px.rect(mx, my, mx + w, my + 34, (24, 24, 26))
+    px.frame(mx, my, mx + w, my + 34, ROAD)
+    px.text(mx + 7, my + 3, name, ROAD, bold=True)
+    px.text(mx + 7, my + 18, line, LIGHT)
 
 
 def draw_death(game):
