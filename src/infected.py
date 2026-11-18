@@ -219,6 +219,7 @@ class Zombie:
 
     def update(self, dt, hero, game):
         self.time += dt
+        self.flash = max(0.0, getattr(self, "flash", 0.0) - dt)
         self.spotted = max(0.0, self.spotted - dt)
         self.heard = max(0.0, self.heard - dt)
         self.rush = max(0.0, self.rush - dt)
@@ -303,6 +304,13 @@ class Zombie:
     blink_corpse = True      # the corpse blinks; off in the realistic look (bodies stay)
 
     def draw(self, cx, cy):
+        self.look.flash = getattr(self, "flash", 0.0) * 8      # 0.12 s of flash -> fully white at first
+        try:
+            self.draw_body(cx, cy)
+        finally:
+            self.look.flash = 0.0
+
+    def draw_body(self, cx, cy):
         x, y = self.x - cx, self.y - cy
         if self.state == "dead":
             if not self.blink_corpse or self.timer < 1.2 or int(self.timer * 12) % 2 == 0:

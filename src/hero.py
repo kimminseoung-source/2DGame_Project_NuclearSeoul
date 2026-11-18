@@ -135,20 +135,26 @@ class Hero:
         self.grabbed = 0.0           # rolling tears free
         return True
 
+    # Experiment (2026-11-18 "근접 전투가 답답하다"): the hero's own actions - swing, its rest,
+    # shove, pick-up, raising the weapon - run this many times faster. 1.3 undoes settings.TEMPO
+    # for the hero only; walking and the infected stay as they are. Set by the F4 panel.
+    action_speed = 1.0
+
     def update(self, dt, keys, aim_x):
+        adt = dt * self.action_speed               # the hero's action clock
         self.time += dt
         self.hurt = max(0.0, self.hurt - dt)
         self.reeling = max(0.0, self.reeling - dt)
-        self.slash_cooldown = max(0.0, self.slash_cooldown - dt)
+        self.slash_cooldown = max(0.0, self.slash_cooldown - adt)
         self.roll_cooldown = max(0.0, self.roll_cooldown - dt)
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
-        self.shove_cooldown = max(0.0, self.shove_cooldown - dt)
+        self.shove_cooldown = max(0.0, self.shove_cooldown - adt)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
         if self.ready is not None:
             if not self.free:                          # hit, grabbed, rolling: the stance is lost
                 self.ready = None
             else:
-                self.ready += dt
+                self.ready += adt
                 self.stamina.value = max(0.0, self.stamina.value - weapons.READY_DRAIN * dt)
                 self.stamina.rest_in = breath.DELAY
         self.stamina.update(dt, self.moving)
@@ -164,10 +170,10 @@ class Hero:
         if self.reeling > 0:                   # knocked back a step by the blow
             return
         if self.pickup > 0:                    # crouched for a moment, picking something up
-            self.pickup -= dt
+            self.pickup -= adt
             return
         if self.shove > 0:                     # both hands out, pushing
-            self.shove -= dt
+            self.shove -= adt
             if self.shove <= 0:
                 self.shove_cooldown = SHOVE_COOLDOWN
             return
@@ -177,7 +183,7 @@ class Hero:
             if self.roll <= 0:
                 self.roll_cooldown = ROLL_COOLDOWN
         elif self.slash:
-            self.slash["time"] += dt
+            self.slash["time"] += adt
             move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)
             self.lunge = (self.lunge[0] * 0.82, self.lunge[1] * 0.82)
             if self.slash["time"] >= self.slash["whole"]:

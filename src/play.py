@@ -191,12 +191,22 @@ class Game:
             self.cam = [self.hero.x - self.view_w / 2, self.hero.y - self.view_h / 2]
             self.clamp_camera()
 
+    def jolt(self, stop, shake, z=None):
+        """The feel of the hero's blow landing: the world stops a moment (hitstop), the view shakes,
+        the struck infected flashes. The experiment "세게" (F4) doubles it all (2026-11-18 "때려도
+        시원하지 않다")."""
+        k = 2.0 if self.dev.punchy else 1.0
+        self.hitstop = max(self.hitstop, stop * k)
+        self.shake = max(self.shake, shake * k)
+        if z is not None and self.dev.punchy:
+            z.flash = 0.12
+
     def wound_fx(self, z, zx, zy, sx, sy):
         """A slash that does not drop the infected: a little blood or a spark, a short hitstop."""
         ang = atan2(zy - sy, zx - sx)
-        self.sounds.play("slash_hit", 0.7)
-        self.effects.append(Blood(zx, zy - 6, ang, 8) if self.real else Spark(zx, zy + 4))
-        self.hitstop = max(self.hitstop, 0.04)
+        self.sounds.play("slash_hit", 1.0 if self.dev.punchy else 0.7)
+        self.effects.append(Blood(zx, zy - 6, ang, 14 if self.dev.punchy else 8) if self.real else Spark(zx, zy + 4))
+        self.jolt(0.04, 0.03 if self.dev.punchy else 0.0, z)
 
     def right_click(self, sx, sy):
         """Shove: infected right in front reel (or fall) and any attack they wind up is broken off."""
@@ -743,17 +753,17 @@ class Game:
                     damage = weapons.roll_damage(weapon, part)
                     part = "torso" if part == "ground" else part
                     was_crawling = z.prone
-                    if not z.hurt(hero.x, hero.y, damage, part, weapon["push"], weapon.get("stagger", False)):
+                    push = weapon["push"] * (2.0 if self.dev.punchy else 1.0)
+                    if not z.hurt(hero.x, hero.y, damage, part, push, weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         if z.prone and not was_crawling:              # legs cut: it drops - a heavier jolt
-                            self.hitstop, self.shake = max(self.hitstop, 0.06), max(self.shake, 0.06)
+                            self.jolt(0.06, 0.06, z)
                         continue
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
                     if part == "head":                           # a head blow that ends it: felt
                         self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
-                        self.hitstop = max(self.hitstop, 0.1)
-                        self.shake = max(self.shake, 0.08)
+                        self.jolt(0.1, 0.08, z)
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     if self.real:
@@ -764,10 +774,10 @@ class Game:
                             self.stains.append((z.x + cos(ang) * d + random.uniform(-6, 6),
                                                 z.y + sin(ang) * d * 0.5 + random.uniform(-4, 3),
                                                 random.randint(3, 6)))
-                        self.hitstop, self.shake = max(self.hitstop, 0.035), 0.05
+                        self.jolt(0.035, 0.05, z)
                     else:
                         self.effects.append(Spark(zx, zy + 4, big=True))
-                        self.hitstop, self.shake = max(self.hitstop, 0.07), 0.12
+                        self.jolt(0.07, 0.12, z)
 
         if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
             if hero.slash and hero.slash["time"] <= real_dt:
@@ -927,8 +937,10 @@ class Game:
         sdl2.SDL_RenderSetScale(canvas.renderer, DOT, DOT)  # world units -> canvas px
         canvas.canvas_height = self.view_h
         ui.world_labels = [] if DOT_LOOK else None
-        shake = random.uniform(-2, 2) if self.shake > 0 else 0
-        cx, cy = cam[0] + shake, cam[1]
+        if self.shake > 0 and self.dev.punchy:            # experiment "세게": a wider shake, both ways
+            cx, cy = cam[0] + random.uniform(-5, 5), cam[1] + random.uniform(-4, 4)
+        else:
+            cx, cy = cam[0] + (random.uniform(-2, 2) if self.shake > 0 else 0), cam[1]
         if self.ground_img is not None:                    # the rendered street
             self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy, ROOM_W, ROOM_H)
         else:

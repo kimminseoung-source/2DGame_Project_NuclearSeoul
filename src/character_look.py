@@ -150,6 +150,12 @@ class SheetLook:
         )
         if tint is not None:
             sdl2.SDL_SetTextureColorMod(image.texture, 255, 255, 255)
+        if getattr(self, "flash", 0) > 0:                # struck: the same frame again, added on top (white)
+            sdl2.SDL_SetTextureBlendMode(image.texture, sdl2.SDL_BLENDMODE_ADD)
+            image.opacify(min(1.0, self.flash))
+            image.clip_composite_draw(frame * self.CELL_W, 0, self.CELL_W, self.CELL_H, 0, flip, x, y, self.draw_w, self.draw_h)
+            image.opacify(1.0)
+            sdl2.SDL_SetTextureBlendMode(image.texture, sdl2.SDL_BLENDMODE_BLEND)
         if alpha < 1:
             image.opacify(1.0)
         if held is not None:

@@ -44,6 +44,7 @@ class Dev:
         self.speed = 1.0             # the whole game's time
         self.freeze = False          # the infected stand still
         self.no_spawn = False        # no new infected come in
+        self.punchy = False          # experiment "세게": stronger hitstop, shake, push, a white flash
         self.row = 0
         self.ate_press = False       # a click went to the panel: its release is not a blow
 
@@ -67,6 +68,11 @@ def _number(module, name, step, low, high):
     def change(game, s):
         setattr(module, name, round(max(low, min(high, getattr(module, name) + step * s)), 2))
     return change
+
+
+def _fast(game, step):
+    """Experiment "빠르게": the hero's actions at 1.3x (undoes TEMPO for the hero only)."""
+    hero_rules.Hero.action_speed = 1.0 if hero_rules.Hero.action_speed > 1.0 else 1.3
 
 
 def _senses(game, step):
@@ -118,6 +124,8 @@ ROWS = (
     ("공격 범위·히트박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
     ("시야 범위 (F5)", lambda g: _on(g.dev.sight), _flip("sight")),
     ("소리 범위 (F6)", lambda g: _on(g.dev.sounds), _flip("sounds")),
+    ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
+    ("실험: 세게 (타격감 2배)", lambda g: _on(g.dev.punchy), _flip("punchy")),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("게임 속도", lambda g: f"x{g.dev.speed:g}", _speed),
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
