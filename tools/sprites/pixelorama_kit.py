@@ -115,8 +115,90 @@ def bring_in(names):
         print(f"{name}: in the game | half-see-through pixels made solid: {soft} | colours off the palette: {off}")
 
 
+def best_shift(base, frame, reach=4):
+    """How far `frame` sits from `base` (both one cell, RGBA): the (dx, dy) that makes the most of
+    their solid pixels overlap - the body bobbing a pixel or two while it breathes or steps."""
+    a = base.getchannel("A").load()
+    b = frame.getchannel("A").load()
+    w, h = base.size
+    solid = [(x, y) for y in range(h) for x in range(w) if a[x, y]]
+    best, score = (0, 0), -1
+    for dy in range(-reach, reach + 1):
+        for dx in range(-reach, reach + 1):
+            s = sum(1 for x, y in solid if 0 <= x + dx < w and 0 <= y + dy < h and b[x + dx, y + dy])
+            if s > score:
+                best, score = (dx, dy), s
+    return best
+
+
+LOCAL = 4           # changed pixels in the same 4 x 4 block share one measured move
+WINDOW = 5          # px around a changed spot compared to find where it went
+REACH = 3           # px a spot may have moved between frames
+
+
+def local_shift(base, frame, x, y):
+    """Where the neighbourhood of (x, y) in `base` went in `frame` (both pixel access objects):
+    the (dx, dy) whose window matches best, colour and see-through alike; no move wins ties."""
+    best, score = (0, 0), None
+    for dy in range(-REACH, REACH + 1):
+        for dx in range(-REACH, REACH + 1):
+            miss = 0
+            for wy in range(y - WINDOW, y + WINDOW + 1):
+                for wx in range(x - WINDOW, x + WINDOW + 1):
+                    if not (0 <= wx < CELL_W and 0 <= wy < CELL_H):
+                        continue
+                    a = base[wx, wy]
+                    tx, ty = wx + dx, wy + dy
+                    b = frame[tx, ty] if 0 <= tx < CELL_W and 0 <= ty < CELL_H else (0, 0, 0, 0)
+                    if (a[3] > 0) != (b[3] > 0) or (a[3] and a[:3] != b[:3]):
+                        miss += 1
+            key = (miss, abs(dx) + abs(dy))
+            if score is None or key < score:
+                best, score = (dx, dy), key
+    return best
+
+
+def spread(names):
+    """Key frame (2026-11-18 "내가 작업하면 4개가 다 일정하지 않은데"): only frame 1 is drawn by
+    hand; every pixel changed there is copied onto the other frames, moved by how far each frame's
+    body has moved from frame 1. Run after editing frame 1 of work/<character>/<pose>.png."""
+    for name in names:
+        char, pose = name.split("/")
+        work = KIT / "work" / char / f"{pose}.png"
+        original = Image.open(CHARS / char / f"{pose}.png").convert("RGBA")
+        edited = Image.open(work).convert("RGBA")
+        if edited.size != original.size:
+            print(f"{name}: size {edited.size} is not {original.size}")
+            continue
+        frames = original.width // CELL_W
+        cell = lambda im, n: im.crop((n * CELL_W, 0, (n + 1) * CELL_W, CELL_H))
+        base_old, base_new = cell(original, 0), cell(edited, 0)
+        po, pn = base_old.load(), base_new.load()
+        changes = [(x, y, pn[x, y]) for y in range(CELL_H) for x in range(CELL_W) if po[x, y] != pn[x, y]]
+        out = edited.copy()
+        for n in range(1, frames):
+            frame = cell(original, n)
+            fp = frame.load()
+            moves = {}
+            for x, y, colour in changes:
+                # the move is measured around the changed spot, not the whole body: the feet stay
+                # put while the head bobs (whole-body matching said "no move" for a lifted head)
+                block = (x // LOCAL, y // LOCAL)
+                if block not in moves:
+                    moves[block] = local_shift(po, fp, x, y)
+                dx, dy = moves[block]
+                tx, ty = x + dx, y + dy
+                if 0 <= tx < CELL_W and 0 <= ty < CELL_H:
+                    fp[tx, ty] = colour
+            out.paste(frame, (n * CELL_W, 0))
+            seen = sorted(set(moves.values()))
+            print(f"{name} frame {n + 1}: {len(changes)} pixels copied, moves used {seen}")
+        out.save(work)
+        guide(work, KIT / "guide" / f"{char}_{pose}_spread.png", f"{char}/{pose} · 1번을 나머지에 옮긴 결과")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or sys.argv[1] not in ("kit", "in"):
+    if len(sys.argv) < 3 or sys.argv[1] not in ("kit", "in", "spread"):
         print(__doc__)
         sys.exit(1)
-    (kit if sys.argv[1] == "kit" else bring_in)(sys.argv[2:])
+    {"kit": kit, "in": bring_in, "spread": spread}[sys.argv[1]](sys.argv[2:])
