@@ -106,11 +106,17 @@ def draw_hud(game):
         fold_mark(r - 10, t + 2, right=True)
     else:
         px.blit("note.png", 6, 7)
-        goal = f"{EXIT_NAME}로"
+        defending = game.defense is not None
+        goal = "기차가 올 때까지 버티기" if defending else f"{EXIT_NAME}로"
         px.text(20, 15, goal, INK_C, bold=True, outline=False)
         px.rect(20, 29, 20 + px.width(goal, True), 29, BLOOD)             # a pen underline
-        px.text(20, 32, "붕대·통조림 있으면 챙기기", PENCIL, outline=False)
+        px.text(20, 32, "군인·시민을 지키기" if defending else "E로 기차 기다리기", PENCIL, outline=False)
         fold_mark(162, 12, right=False)
+    if game.defense is not None:                   # the station: time left until the train
+        left = max(0, int(game.defense + 0.99))
+        people = sum(1 for s in game.people if s.alive)
+        px.text(320, 10, f"기차 도착까지 {left}초", ORANGE if left > 10 else (236, 214, 150), bold=True, anchor="m", scale=2)
+        px.text(320, 40, f"군인·시민 {people}/{len(game.people)}", LIGHT, anchor="m")
     if EXPOSURE_ON:
         px.text(180, 15, f"피폭 {game.exposure:.0f}%", LIGHT)
     draw_status(game)
@@ -480,10 +486,11 @@ def draw_summary(game):
     l, b = WIDTH / 2 - w / 2, HEIGHT / 2 - h / 2
     panel(l, b, l + w, b + h, 235)
     carried = " · ".join(f"{KINDS[k][0]} {n}" for k, n in bag_items(game)) or "없음"
-    lines = [(f"{EXIT_NAME}로 빠져나왔다", (236, 214, 150), 17),
+    people = sum(1 for s in game.people if s.alive)
+    lines = [(f"기차를 탔다 · 함께 탄 사람 {people}/{len(game.people)}", (236, 214, 150), 17),
              (f"챙긴 물자: {carried}", TEXT, 14),
              (f"쓰러뜨린 피폭체 {game.kills}" + (f" · 피폭 {game.exposure:.0f}%" if EXPOSURE_ON else ""), TEXT, 14),
-             ("다음 구역(지하철)은 3단계에서 · R 다시", DIM, 13)]
+             ("다음 구역은 아직 · R 다시", DIM, 13)]
     for i, (line, colour, px) in enumerate(lines):
         ui.text_center(WIDTH / 2, b + h - size(34) - i * size(36), line, colour, size(px))
     if CREDIT:                                      # a real-map area: the map data's licence asks for it

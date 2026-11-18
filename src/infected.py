@@ -275,7 +275,7 @@ class Zombie:
             elif dist <= self.reach:
                 # From outside the hero's sight the warning is short (Zomboid: from the side
                 # and behind they are far more dangerous).
-                blind = game.senses and not game.hero_sees(self)
+                blind = game.senses and hero is game.hero and not game.hero_sees(self)
                 self.windup = BLIND_WINDUP if blind else ZOMBIE_WINDUP
                 self.state, self.timer = "windup", self.windup
                 self.heading = atan2(dy, dx)

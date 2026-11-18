@@ -17,6 +17,7 @@ from pico2d import pico2d as canvas
 import bag_grid
 import bag_screen
 import dev_tools
+import survivors
 import weapons
 from weapons import BODY_CONTACT
 import hud
@@ -48,6 +49,11 @@ SPAWN_EVERY = (6.0, 9.0)     # s between arrivals
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
+DEFENSE_TIME = 60.0          # s from the start of the station defense to the train (small first)
+DEFENSE_EVERY = (2.5, 4.0)   # s between arrivals while defending (outside: SPAWN_EVERY)
+DEFENSE_ALIVE = 9            # at most this many up at once while defending
+DEFENSE_WAYS = 3             # they come in by this many entrances nearest the station
+STATION_PEOPLE = (("soldier", -90, 10), ("civilian", -10, 40), ("civilian", 30, 30))   # kind, offset from the exit
 SHOVE_REACH = 46             # px a shove reaches
 MUFFLED_OFFSET = 55          # px a sound heard through a wreck is misplaced by (Zomboid: +-2 tiles)
 
@@ -112,6 +118,12 @@ class Game:
                                crawler=s[2] == "crawler" if len(s) > 2 else random.random() < infected.CRAWLER_SHARE)
                         for s in ZOMBIE_STARTS]
         self.effects = []
+        # the station (2026-11-18 "역에서 기차가 도착할 때까지 디펜스", "군인, 민간인들이 있다"): people
+        # wait by the exit; E there starts the defense, the train comes after DEFENSE_TIME
+        ex, ey = (EXIT[0] + EXIT[2]) / 2, EXIT[3] + 30
+        self.people = [survivors.place(kind, (ex + dx, ey + dy)) for kind, dx, dy in STATION_PEOPLE]
+        self.defense = None          # s left until the train, while the defense runs
+        self.station = None
         # the camera starts on the hero (a real-map area is big: from the corner it slid across it)
         self.cam = [self.hero.x - getattr(self, "view_w", 0) / 2, self.hero.y - getattr(self, "view_h", 0) / 2]
         if hasattr(self, "view_w"):
@@ -421,11 +433,8 @@ class Game:
 
     def interact(self):
         """E: leave through the exit, or pick up the nearest supply (rummaging is heard)."""
-        if self.near_exit():
-            self.left = True
-            self.slow = False
-            self.message = "구역을 빠져나왔다 · R 다시"
-            self.sounds.play("exit", 0.8)
+        if self.near_exit() and self.defense is None:
+            self.start_defense()
             return
         near_weapon = self.nearest_weapon()
         if near_weapon is not None and self.hero.free:
@@ -503,14 +512,15 @@ class Game:
         off = abs((atan2(zombie.y - self.hero.y, zombie.x - self.hero.x) - self.look + pi) % (2 * pi) - pi)
         return off <= CONE_HALF
 
-    def make_noise(self, radius):
-        dev_tools.heard(self, self.hero.x, self.hero.y, radius)    # F6 rings
-        if radius >= NOISE_ROLL:                          # loud: pulls the next arrivals here...
+    def make_noise(self, radius, at=None):
+        """A noise of `radius` px at `at` (default: the hero) - heard by the infected inside it."""
+        hx, hy = at or (self.hero.x, self.hero.y)
+        dev_tools.heard(self, hx, hy, radius)              # F6 rings
+        if radius >= NOISE_ROLL and self.defense is None:  # loud: pulls the next arrivals here...
             fresh = self.loud is None or self.clock - self.loud[2] > 0.5
-            self.loud = (self.hero.x, self.hero.y, self.clock, radius)
+            self.loud = (hx, hy, self.clock, radius)
             if fresh and self.pulled_entrances():         # ...only through entrances inside its ring
                 self.spawn_in = min(self.spawn_in, SPAWN_AFTER_NOISE)
-        hx, hy = self.hero.x, self.hero.y
         for z in self.zombies:
             if not z.alive:
                 continue
@@ -524,6 +534,53 @@ class Game:
             else:
                 z.hear(hx, hy, radius)
 
+    def start_defense(self):
+        """At the station: hold out with the people there until the train comes."""
+        self.defense = DEFENSE_TIME
+        self.station = (self.hero.x, self.hero.y)         # where the infected are drawn to
+        self.to_spawn = max(self.to_spawn, 99)            # they keep coming until the train
+        self.spawn_in = 1.0
+        self.message = f"기차 도착까지 {DEFENSE_TIME:.0f}초 · 버텨라"
+        self.sounds.play("alert", 0.9)
+        self.loud = (self.hero.x, self.hero.y, self.clock, 10 ** 6)   # the whole area hears the station
+
+    def train_arrives(self):
+        self.defense = None
+        self.left = True
+        self.slow = False
+        alive = sum(1 for s in self.people if s.alive)
+        self.message = f"기차가 왔다 · 함께 탄 사람 {alive}/{len(self.people)} · R 다시"
+        self.sounds.play("exit", 0.8)
+
+    def prey_for(self, z):
+        """What an infected goes for: the nearest living body - the hero or one of the people
+        (2026-11-18). One already on the hero keeps on him while he is in its sight."""
+        hero = self.hero
+        if z.state in ("chase", "poised", "windup", "strike", "recover") and getattr(z, "prey", hero) is hero:
+            return hero
+        bodies = [hero] + [s for s in self.people if s.alive]
+        return min(bodies, key=lambda b: (b.x - z.x) ** 2 + (b.y - z.y) ** 2)
+
+    def update_people(self, dt):
+        for s in self.people:
+            happened = s.update(dt, self)
+            if not happened:
+                continue
+            if happened[0] == "rise":                      # a fallen one gets up as an infected
+                z = Zombie(self.zombie_look, s.x, s.y)
+                z.state, z.seen_time = "chase", infected.SEEN_BEFORE_STRIKE
+                self.zombies.append(z)
+                self.message = f"쓰러진 {s.name}이 일어났다"
+            else:                                          # a soldier's shot
+                _, z, hit = happened
+                self.effects.append(Tracer(s.x, s.y + CHEST, z.x, z.y + CHEST))
+                self.sounds.play("shot", 0.6, at=(s.x, s.y))
+                self.make_noise(s.gun["noise"], at=(s.x, s.y))
+                if hit and z.alive:
+                    if z.hurt(s.x, s.y, survivors.damage_of(s.gun), "torso"):
+                        z.kill(z.x - s.x, z.y - s.y)
+                        self.kills_by_people = getattr(self, "kills_by_people", 0) + 1
+
     def pulled_entrances(self):
         """Entrances a recent loud noise reaches (2026-11-18 "디버그와 동일하게": the noise ring on
         F6 is exactly where it calls new infected from; was the whole map). Far enough from the hero."""
@@ -531,6 +588,11 @@ class Game:
             return []
         x, y, _, radius = self.loud
         hero = self.hero
+        if self.defense is not None:                       # the station calls them in by the nearest ways
+            self.loud = (x, y, self.clock, radius)
+            ways = sorted((pos for pos, _ in ENTRANCES if hypot(pos[0] - hero.x, pos[1] - hero.y) >= SPAWN_MIN_DIST),
+                          key=lambda pos: hypot(pos[0] - x, pos[1] - y))
+            return ways[:DEFENSE_WAYS]
         return [pos for pos, _ in ENTRANCES if hypot(pos[0] - x, pos[1] - y) <= radius
                 and hypot(pos[0] - hero.x, pos[1] - hero.y) >= SPAWN_MIN_DIST]
 
@@ -689,7 +751,17 @@ class Game:
             if self.dev.freeze:                            # dev panel: they stand still
                 break
             state, steps = z.state, int(z.walk)
-            event = z.update(world_dt, hero, self)
+            if self.defense is not None and z.state in ("idle", "search"):   # the station calls them all in
+                z.state, z.target, z.memory = "search", self.station, infected.MEMORY
+            prey = self.prey_for(z)
+            z.prey = prey
+            event = z.update(world_dt, prey, self)
+            if event == "hit" and prey is not hero:            # one of the people is clawed
+                self.sounds.play("hurt", 0.6, at=(prey.x, prey.y))
+                self.effects.append(Blood(prey.x, prey.y + 16, atan2(prey.y - z.y, prey.x - z.x), 8))
+                if prey.take_blow():
+                    self.message = f"{prey.name}이 쓰러졌다"
+                event = None
             if z.alive and z.state in ("chase", "search", "poised"):   # they groan as they come
                 z.groan_in = getattr(z, "groan_in", random.uniform(0.5, 3.0)) - world_dt
                 if z.groan_in <= 0:
@@ -757,12 +829,18 @@ class Game:
         if self.siren_in <= 0:                             # a siren far away now and then
             self.sounds.play("ai_siren_far", 0.25)
             self.siren_in = random.uniform(30, 50)
+        self.update_people(world_dt)
+        if self.defense is not None and not hero.dead:
+            self.defense -= world_dt
+            if self.defense <= 0:
+                self.train_arrives()
+        defending = self.defense is not None
         if self.to_spawn > 0 and not hero.dead and not self.dev.no_spawn:
             self.spawn_in -= world_dt
-            if self.spawn_in <= 0 and sum(z.alive for z in self.zombies) < MAX_ALIVE:
+            if self.spawn_in <= 0 and sum(z.alive for z in self.zombies) < (DEFENSE_ALIVE if defending else MAX_ALIVE):
                 self.spawn()
-                self.spawn_in = random.uniform(*SPAWN_EVERY)
-        if not self.cleared and self.to_spawn == 0 and all(not z.alive for z in self.zombies):
+                self.spawn_in = random.uniform(*(DEFENSE_EVERY if defending else SPAWN_EVERY))
+        if not self.cleared and not defending and self.to_spawn == 0 and all(not z.alive for z in self.zombies):
             self.cleared = True
             self.message = "구역 정리! R로 다시 해 보기"
         # the camera may go HUD_PAD past the top edge so nothing up there hides under the HUD bar
@@ -979,10 +1057,14 @@ class Game:
         # sort everything on the ground by depth: lower on screen = nearer = drawn later
         things = list(self.standing)
         things += [(z.y, "z", z) for z in self.zombies]
+        things += [(s.y, "s", s) for s in self.people]
         things.append((self.hero.y, "hero", self.hero))
         eye = (self.hero.x, self.hero.y)                  # on the ground
         inside = area.building_at(*eye)
         for _, kind, obj in sorted(things, key=lambda t: -t[0]):
+            if kind == "s":
+                obj.draw(self.hero_look, cx, cy)
+                continue
             if kind == "z" and not self.vision.visible(eye, self.look, obj.x, obj.y):
                 continue                                   # out of sight: not drawn at all
             if kind == "z" and area.BUILDINGS and area.building_at(obj.x, obj.y) not in (None, inside):

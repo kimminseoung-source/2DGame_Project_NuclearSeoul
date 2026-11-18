@@ -29,6 +29,7 @@ from math import atan2, cos, sin
 from pathlib import Path
 
 import pico2d
+import sdl2
 
 from nav import PX_PER_M_X
 
@@ -126,9 +127,10 @@ class SheetLook:
     def trail_from(self, pose):
         return self.meta.get(pose, {}).get("trail_from", 1)
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None):
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None, tint=None):
         """`held`: a weapon image (lying along +x, grip 2 px from its left end, middle row) drawn
-        in the hand on the hand's line of this frame (blade.json), so any weapon fits any sheet."""
+        in the hand on the hand's line of this frame (blade.json), so any weapon fits any sheet.
+        `tint`: (r, g, b) multiplied into the sprite (survivors borrow the hero's sheets)."""
         fixed = None
         if pose not in self.sheets:
             pose, fixed = FALLBACK.get(pose, ("idle", None))
@@ -140,10 +142,14 @@ class SheetLook:
         flip = "" if facing > 0 else "h"
         if alpha < 1:
             image.opacify(alpha)
+        if tint is not None:
+            sdl2.SDL_SetTextureColorMod(image.texture, *tint)
         image.clip_composite_draw(
             frame * self.CELL_W, 0, self.CELL_W, self.CELL_H, 0, flip,
             x, y, self.draw_w, self.draw_h,
         )
+        if tint is not None:
+            sdl2.SDL_SetTextureColorMod(image.texture, 255, 255, 255)
         if alpha < 1:
             image.opacify(1.0)
         if held is not None:
