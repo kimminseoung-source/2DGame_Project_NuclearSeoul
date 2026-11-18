@@ -299,11 +299,16 @@ def draw_boxes(game, cx, cy):
 
 SIGHT, NEAR = (110, 150, 240), (150, 190, 255)
 NOISE = (240, 200, 90)
-NOISE_SHOW = 0.8                     # s a noise ring stays
+NOISE_SHOW = 0.3                     # s a noise ring stays (was 0.8: piled up into a blob, 2026-11-18)
 
 
 def heard(game, x, y, radius):
-    """play.make_noise calls this: remember the noise for the F6 rings."""
+    """play.make_noise calls this: remember the noise for the F6 rings. Footsteps are made every
+    frame, so a noise of the same size replaces the last one instead of piling up."""
+    for n in game.dev.noises:
+        if n[2] == radius:
+            n[:] = [x, y, radius, 0.0]
+            return
     game.dev.noises.append([x, y, radius, 0.0])
 
 
