@@ -304,7 +304,7 @@ class Zombie:
     blink_corpse = True      # the corpse blinks; off in the realistic look (bodies stay)
 
     def draw(self, cx, cy):
-        self.look.flash = getattr(self, "flash", 0.0) * 8      # 0.12 s of flash -> fully white at first
+        self.look.flash = 1.0 if getattr(self, "flash", 0.0) > 0 else 0.0   # struck: white for 2 frames
         try:
             self.draw_body(cx, cy)
         finally:

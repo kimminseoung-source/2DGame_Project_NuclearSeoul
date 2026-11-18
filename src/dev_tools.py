@@ -61,7 +61,6 @@ class Dev:
         self.speed = 1.0             # the whole game's time
         self.freeze = False          # the infected stand still
         self.no_spawn = False        # no new infected come in
-        self.punchy = False          # experiment "세게": stronger hitstop, shake, push, a white flash
         self.row = 0
         self.ate_press = False       # a click went to the panel: its release is not a blow
         self.drag = None             # the slider row being dragged
@@ -158,7 +157,6 @@ ROWS = (
     ("소리 범위 (F6)", lambda g: _on(g.dev.sounds), _flip("sounds")),
     ("AI 디렉터 (F7)", lambda g: _on(g.dev.director), _flip("director")),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
-    ("실험: 세게 (타격감 2배)", lambda g: _on(g.dev.punchy), _flip("punchy")),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
     ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),

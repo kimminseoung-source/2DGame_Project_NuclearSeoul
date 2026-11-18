@@ -48,6 +48,9 @@ WAVE_TOTAL = 12              # infected in this area, the starting ones included
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
+# weight: (hitstop s, shake canvas px, shake s) - 2 frames / 9 frames of stop (play.jolt)
+JOLTS = {"light": (0.035, 1.0, 0.10), "heavy": (0.15, 4.0, 0.25)}
+FLASH_TIME = 0.035           # s a struck infected shows white (2 frames)
 DEFENSE_TIME = 60.0          # s from the start of the station defense to the train (small first)
 DEFENSE_WAYS = 3             # they come in by this many entrances nearest the station
 STATION_PAD = (120, 40, 80)   # the fenced station: this far left, right and up from the exit
@@ -132,6 +135,7 @@ class Game:
         if hasattr(self, "view_w"):
             self.clamp_camera()
         self.hitstop = self.shake = 0.0
+        self.shake_amp, self.shake_len = 0.0, 1.0
         self.slow = False
         self.slow_blend = 0.0
         self.exposure = 0.0
@@ -188,22 +192,26 @@ class Game:
             self.cam = [self.hero.x - self.view_w / 2, self.hero.y - self.view_h / 2]
             self.clamp_camera()
 
-    def jolt(self, stop, shake, z=None):
-        """The feel of the hero's blow landing: the world stops a moment (hitstop), the view shakes,
-        the struck infected flashes. The experiment "세게" (F4) doubles it all (2026-11-18 "때려도
-        시원하지 않다")."""
-        k = 2.0 if self.dev.punchy else 1.0
-        self.hitstop = max(self.hitstop, stop * k)
-        self.shake = max(self.shake, shake * k)
-        if z is not None and self.dev.punchy:
-            z.flash = 0.12
+    def jolt(self, weight, z=None):
+        """How a blow lands, in two weights (2026-11-18 "때려도 시원하지 않다", game-feel research:
+        shaking on every hit numbs it, so only the blows that matter shake hard):
+        - "light": a hit that does not drop it - 2 frames stop, a 1 px tremble for 0.1 s
+        - "heavy": a finishing blow, the head, the legs cut, a countered claw, the hero hit -
+          9 frames stop, a 4 px shake both ways for 0.25 s
+        The struck infected flashes white for 2 frames either way."""
+        stop, amp, length = JOLTS[weight]
+        self.hitstop = max(self.hitstop, stop)
+        if amp >= self.shake_amp or self.shake <= 0:
+            self.shake, self.shake_amp, self.shake_len = length, amp, length
+        if z is not None:
+            z.flash = FLASH_TIME
 
     def wound_fx(self, z, zx, zy, sx, sy):
         """A slash that does not drop the infected: a little blood or a spark, a short hitstop."""
         ang = atan2(zy - sy, zx - sx)
-        self.sounds.play("slash_hit", 1.0 if self.dev.punchy else 0.7)
-        self.effects.append(Blood(zx, zy - 6, ang, 14 if self.dev.punchy else 8) if self.real else Spark(zx, zy + 4))
-        self.jolt(0.04, 0.03 if self.dev.punchy else 0.0, z)
+        self.sounds.play("slash_hit", 0.8)
+        self.effects.append(Blood(zx, zy - 6, ang, 10) if self.real else Spark(zx, zy + 4))
+        self.jolt("light", z)
 
     def right_click(self, sx, sy):
         """Shove: infected right in front reel (or fall) and any attack they wind up is broken off."""
@@ -221,7 +229,7 @@ class Game:
                 countered = z.shoved(hero.x, hero.y, weak=hero.shove_weak)
                 self.sounds.play("slash_hit", 0.6 if countered else 0.35, at=(z.x, z.y))
                 if countered:                                  # timed to its swing: a heavier jolt
-                    self.hitstop, self.shake = max(self.hitstop, 0.08), 0.1
+                    self.jolt("heavy", z)
                     self.effects.append(Spark(z.x, z.y + 40, big=True))      # a flash where it was hit
         if hero.shove_weak:
             hero.stamina.tired_flash = 0.6                     # out of breath: the stamina bar flashes red
@@ -514,7 +522,7 @@ class Game:
                     struck, at = z, t
         self.effects.append(Tracer(ox + ux * 16, oy + uy * 16, ox + ux * at, oy + uy * at))
         self.sounds.play("shot", 1.0)
-        self.hitstop, self.shake = max(self.hitstop, 0.03), max(self.shake, 0.12)
+        self.jolt("light")                               # the gun kicks
         if self.senses:
             self.make_noise(shot["noise"])
         return struck
@@ -717,7 +725,7 @@ class Game:
             if shot:
                 pass                                         # the bullet's line is its trail
             elif hero.slash["stomp"]:                    # the foot comes down on it
-                self.hitstop, self.shake = max(self.hitstop, 0.05), 0.08
+                self.jolt("light")
             else:
                 ox0, oy0 = hero.slash["from"]                  # the trail runs on the shown arc
                 self.effects.append(Streak(ox0, oy0, hero.slash["angle"], weapons.attack_range(hero.slash["weapon"]),
@@ -750,17 +758,17 @@ class Game:
                     damage = weapons.roll_damage(weapon, part)
                     part = "torso" if part == "ground" else part
                     was_crawling = z.prone
-                    push = weapon["push"] * (2.0 if self.dev.punchy else 1.0)
+                    push = weapon["push"]
                     if not z.hurt(hero.x, hero.y, damage, part, push, weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         if z.prone and not was_crawling:              # legs cut: it drops - a heavier jolt
-                            self.jolt(0.06, 0.06, z)
+                            self.jolt("heavy", z)
                         continue
                     z.kill(zx - sx, zy - sy)
                     self.kills += 1
                     if part == "head":                           # a head blow that ends it: felt
                         self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
-                        self.jolt(0.1, 0.08, z)
+                        self.jolt("heavy", z)
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     if self.real:
@@ -771,10 +779,10 @@ class Game:
                             self.stains.append((z.x + cos(ang) * d + random.uniform(-6, 6),
                                                 z.y + sin(ang) * d * 0.5 + random.uniform(-4, 3),
                                                 random.randint(3, 6)))
-                        self.jolt(0.035, 0.05, z)
+                        self.jolt("heavy", z)
                     else:
                         self.effects.append(Spark(zx, zy + 4, big=True))
-                        self.jolt(0.07, 0.12, z)
+                        self.jolt("heavy", z)
 
         if self.senses and not hero.dead:          # the hero's noise: steps, rolls, slashes
             if hero.slash and hero.slash["time"] <= real_dt:
@@ -832,10 +840,10 @@ class Game:
                     self.sounds.play("grab", 1.0)
                 if self.real:
                     self.effects.append(Blood(hero.x, hero.y + 16, atan2(hero.y - z.y, hero.x - z.x), 10))
-                    self.hitstop, self.shake = 0.06, 0.12
+                    self.jolt("heavy")
                 else:
                     self.effects.append(Spark(hero.x, hero.y + 26))
-                    self.hitstop, self.shake = 0.1, 0.2
+                    self.jolt("heavy")
                 if hero.hp <= 0:
                     hero.dead = 0.001
                     self.deaths += 1
@@ -934,10 +942,11 @@ class Game:
         sdl2.SDL_RenderSetScale(canvas.renderer, DOT, DOT)  # world units -> canvas px
         canvas.canvas_height = self.view_h
         ui.world_labels = [] if DOT_LOOK else None
-        if self.shake > 0 and self.dev.punchy:            # experiment "세게": a wider shake, both ways
-            cx, cy = cam[0] + random.uniform(-5, 5), cam[1] + random.uniform(-4, 4)
+        if self.shake > 0:                                 # both ways, fading out (jolt)
+            amp = self.shake_amp / DOT * (self.shake / self.shake_len)   # canvas px -> world units
+            cx, cy = cam[0] + random.uniform(-amp, amp), cam[1] + random.uniform(-amp, amp)
         else:
-            cx, cy = cam[0] + (random.uniform(-2, 2) if self.shake > 0 else 0), cam[1]
+            cx, cy = cam[0], cam[1]
         if self.ground_img is not None:                    # the rendered street
             self.ground_img.draw(ROOM_W / 2 - cx, ROOM_H / 2 - cy, ROOM_W, ROOM_H)
         else:
