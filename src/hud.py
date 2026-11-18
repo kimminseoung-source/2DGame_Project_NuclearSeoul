@@ -112,6 +112,8 @@ def draw_hud(game):
         px.rect(20, 29, 20 + px.width(goal, True), 29, BLOOD)             # a pen underline
         px.text(20, 32, "군인·시민을 지키기" if defending else "E로 기차 기다리기", PENCIL, outline=False)
         fold_mark(162, 12, right=False)
+    day = game.daylight                             # the hour, under the goal note
+    px.text(22, 50 if not game.note_folded else 30, f"{day.clock} {day.name}", LIGHT if day.light > 0.5 else (150, 170, 220))
     if game.defense is not None:                   # the station: time left until the train
         left = max(0, int(game.defense + 0.99))
         people = sum(1 for s in game.people if s.alive)

@@ -18,6 +18,8 @@ import bag_grid
 import bag_screen
 import dev_tools
 from director import Director
+from daylight import Daylight
+import daylight as daylight_rules
 import survivors
 import weapons
 from weapons import BODY_CONTACT
@@ -143,6 +145,7 @@ class Game:
         self.cleared = False
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
         self.director = Director()   # when the infected come in: build up, peak, relax (director.py)
+        self.daylight = Daylight()   # the hour: by day the dark outside the cone is lighter (daylight.py)
         self.clock = 0.0
         self.loud = None             # (x, y, time, radius) of the last loud noise
         self.was_slow = False
@@ -672,6 +675,9 @@ class Game:
 
     def update(self, real_dt, keys):
         real_dt *= self.dev.speed                          # dev panel: the whole game slower / faster
+        if not (self.left or self.bag_open):
+            self.daylight.update(real_dt)
+        self.vision.fog = self.daylight.fog
         dev_tools.age_noises(self, real_dt)
         hero = self.hero
         self.ease_zoom(real_dt)
@@ -1140,6 +1146,10 @@ class Game:
                          self.view_w, self.view_h)
         if self.real:                                      # a muted, colder tone over everything
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 26, 30, 34, 70, filled=True)
+        night = 1.0 - self.daylight.light                  # night: a cold blue over the world
+        if night > 0:
+            r, g, b, a = daylight_rules.NIGHT_TINT
+            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, r, g, b, round(a * night), filled=True)
         el, eb, er, _ = EXIT                               # the green exit sign (in front) stays lit in the dark
         ex, ey = (el + er) / 2 - cx, eb - 12 - cy
         pico2d.draw_rectangle(ex - 34, ey - 7, ex + 34, ey + 9, 30, 120, 70, filled=True)

@@ -63,14 +63,15 @@ def ray_hit(x, y, ux, uy, blockers):
     return exit_at
 
 
-def alpha_at(dx, dy, look, scale=1.0):
-    """Darkness 0..FOG at offset (dx, dy) from the eye when looking toward angle `look`;
-    `scale` < 1 narrows and shortens the cone (panic)."""
+def alpha_at(dx, dy, look, scale=1.0, fog=FOG):
+    """Darkness 0..fog at offset (dx, dy) from the eye when looking toward angle `look`;
+    `scale` < 1 narrows and shortens the cone (panic); `fog` is how dark it is outside the light
+    (lower by day, daylight.py)."""
     r = hypot(dx, dy)
     near = _ramp((r - NEAR_CLEAR) / NEAR_SOFT)
     off = abs((atan2(dy, dx) - look + pi) % (2 * pi) - pi)
     cone = max(_ramp((off - CONE_HALF * scale) / CONE_SOFT), _ramp((r - CONE_RANGE * scale) / RANGE_SOFT))
-    return FOG * min(near, cone)
+    return fog * min(near, cone)
 
 
 class VisionCone:
@@ -80,6 +81,8 @@ class VisionCone:
         # one every blocker is looked at
         self.nearby = nearby or (lambda l, b, r, t: self.blockers)
         self.scale = 1.0                 # < 1 while panicking: a narrower, shorter cone
+        self.fog = FOG                   # darkness outside the light: lower by day (daylight.py);
+                                         # behind walls it stays FOG
         n, m = STEPS, len(RADII) + 2
         self.spoke = m
         self.count = n * m
@@ -96,7 +99,7 @@ class VisionCone:
     def darkness(self, eye, look, x, y):
         dx, dy = x - eye[0], y - eye[1]
         r = hypot(dx, dy)
-        dark = alpha_at(dx, dy, look, self.scale)
+        dark = alpha_at(dx, dy, look, self.scale, self.fog)
         if r > 0 and self.blockers:
             hit = ray_hit(eye[0], eye[1], dx / r, dy / r,
                           self.nearby(min(eye[0], x), min(eye[1], y), max(eye[0], x), max(eye[1], y)))
@@ -129,7 +132,7 @@ class VisionCone:
                 v.position.x = ox + dx
                 v.position.y = view_h - 1 - (oy + dy)
                 v.color.r, v.color.g, v.color.b = 6, 8, 12
-                dark = alpha_at(dx, dy, look, self.scale)
+                dark = alpha_at(dx, dy, look, self.scale, self.fog)
                 if radius > hit:
                     dark = max(dark, FOG * _ramp((radius - hit) / SHADOW_SOFT))
                 v.color.a = round(dark)

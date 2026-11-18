@@ -164,6 +164,8 @@ ROWS = (
     ("사실적 연출 (F3)", lambda g: _on(g.real), _real),
     _slider("게임 속도", "clock", lambda g: g.dev.speed, lambda g, v: setattr(g.dev, "speed", v), 0.25, 2.0, 0.25,
             lambda v: f"x{v:g}"),
+    _slider("시각", "clock", lambda g: g.daylight.hour, lambda g, v: setattr(g.daylight, "hour", v % 24), 0, 23.5, 0.5,
+            lambda v: f"{int(v):02d}:{int(v % 1 * 60):02d}"),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
     _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
     _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
