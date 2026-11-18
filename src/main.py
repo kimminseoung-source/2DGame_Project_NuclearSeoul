@@ -3,7 +3,7 @@
     .venv\\Scripts\\python.exe src\\main.py
 
 WASD move, left button: hold to raise the weapon and aim (head / torso / legs under the cursor), let go to strike, Space roll, E pick up / leave, 1 bandage,
-Tab bag (inventory), mouse wheel zoom, R restart, F2 infected senses on/off, F3 realistic look on/off, Esc quit.
+Tab bag (inventory), mouse wheel zoom, R restart, F1 debug boxes, F2 infected senses on/off, F3 realistic look on/off, F4 dev settings, Esc quit.
 (Right button time crawl with exposure is switched off for now: settings.EXPOSURE_ON.)
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
 """
@@ -15,6 +15,7 @@ import sdl2
 from pico2d import pico2d as canvas
 
 import bag_screen
+import dev_tools
 import ui
 from play import Game
 from settings import EXPOSURE_ON, HEIGHT, WIDTH
@@ -55,6 +56,11 @@ def main(window_x=None):
                     running = False
             elif event.type == sdl2.SDL_KEYDOWN:
                 game.key_down(event.key, keys)
+            elif event.type == sdl2.SDL_MOUSEBUTTONDOWN and dev_tools.click(
+                    game, event.x, event.y, event.button == sdl2.SDL_BUTTON_RIGHT):
+                pass                                     # the F4 dev panel took the click
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP and game.dev.ate_press:
+                game.dev.ate_press = False               # ...and its release
             elif game.bag_open and event.type in (sdl2.SDL_MOUSEMOTION, sdl2.SDL_MOUSEBUTTONDOWN,
                                                   sdl2.SDL_MOUSEBUTTONUP):
                 bag_mouse(game, event)               # the bag takes the mouse while it is open

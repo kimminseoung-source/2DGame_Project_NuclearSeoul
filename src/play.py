@@ -16,6 +16,7 @@ from pico2d import pico2d as canvas
 
 import bag_grid
 import bag_screen
+import dev_tools
 import weapons
 import hud
 import pixel_ui as px
@@ -68,6 +69,7 @@ class Game:
         self.note_click = False             # this left press was on the note: no blow on release
         self.senses = True                  # F2: infected senses on/off (compare)
         self.real = True                    # F3: realistic look on/off (compare)
+        self.dev = dev_tools.Dev()          # F1 debug boxes, F4 dev settings (kept across restarts)
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
         infected.Zombie.blink_corpse = not self.real
         self.zoom = ZOOM_DEFAULT            # mouse wheel zoom (kept across restarts)
@@ -361,6 +363,8 @@ class Game:
             self.message = "다친 곳이 없다"
 
     def key_down(self, key, keys):
+        if dev_tools.key(self, key):                       # F1 boxes, F4 dev panel (and its keys)
+            return
         if self.bag_open:                                  # the bag takes the keys while it is open
             shift = keys[sdl2.SDL_SCANCODE_LSHIFT] or keys[sdl2.SDL_SCANCODE_RSHIFT]
             bag_screen.key(self, key, bool(shift))
@@ -389,15 +393,21 @@ class Game:
         elif key == sdl2.SDLK_2:
             self.use("pill")
         elif key == sdl2.SDLK_F3:
-            self.real = not self.real
-            infected.Zombie.blink_corpse = not self.real
-            self.message = "사실적 연출 켬: 피, 시체, 어두운 색" if self.real \
-                else "사실적 연출 끔: 예전 연출(반달 궤적, 불꽃)"
+            self.toggle_real()
         elif key == sdl2.SDLK_F2:
-            self.senses = not self.senses
-            self.reset()
-            self.message = ("피폭체 감각 켬: 보고 듣고 찾음, 시야 밖 공격은 예고가 짧음" if self.senses
-                            else "피폭체 감각 끔: 예전 규칙(300px 안이면 무조건 쫓아옴)")
+            self.toggle_senses()
+
+    def toggle_real(self):
+        self.real = not self.real
+        infected.Zombie.blink_corpse = not self.real
+        self.message = "사실적 연출 켬: 피, 시체, 어두운 색" if self.real \
+            else "사실적 연출 끔: 예전 연출(반달 궤적, 불꽃)"
+
+    def toggle_senses(self):
+        self.senses = not self.senses
+        self.reset()
+        self.message = ("피폭체 감각 켬: 보고 듣고 찾음, 시야 밖 공격은 예고가 짧음" if self.senses
+                        else "피폭체 감각 끔: 예전 규칙(300px 안이면 무조건 쫓아옴)")
 
     def near_exit(self):
         l, b, r, t = EXIT
@@ -528,6 +538,7 @@ class Game:
         return True
 
     def update(self, real_dt, keys):
+        real_dt *= self.dev.speed                          # dev panel: the whole game slower / faster
         hero = self.hero
         self.ease_zoom(real_dt)
         if self.left or self.bag_open:                     # summary or bag open: the world waits
@@ -647,6 +658,8 @@ class Game:
             elif hero.moving:
                 self.make_noise(NOISE_STEP * (0.4 if hero.sneaking else 1.0))   # sneaking is quiet
         for z in self.zombies:
+            if self.dev.freeze:                            # dev panel: they stand still
+                break
             state, steps = z.state, int(z.walk)
             event = z.update(world_dt, hero, self)
             if z.alive and z.state in ("chase", "search", "poised"):   # they groan as they come
@@ -666,7 +679,7 @@ class Game:
                     self.sounds.play("alert", 0.8, at=(z.x, z.y))
             elif z.alive and int(z.walk) != steps:
                 self.sounds.play("infected_step", 0.35, at=(z.x, z.y))
-            if event == "hit" and not hero.invulnerable and not hero.dead:
+            if event == "hit" and not hero.invulnerable and not hero.dead and not self.dev.god:
                 self.sounds.play("hurt", 1.0)
                 hero.take_blow()                              # slowed, more with every blow
                 _, damage = self.condition.wound()            # a fixed share, and maybe bleeding
@@ -691,7 +704,7 @@ class Game:
                     self.death_cause = "피폭체에게 당했다"
                     self.death_time = self.clock
         bled = self.condition.update(real_dt, hero, self.zombies)
-        if bled and not hero.dead:                             # bleeding drains health until bandaged
+        if bled and not hero.dead and not self.dev.god:                             # bleeding drains health until bandaged
             hero.hp = max(0.0, hero.hp - bled)
             if hero.hp <= 0:
                 self.death_cause, self.death_time = "피를 너무 많이 흘렸다", self.clock
@@ -716,7 +729,7 @@ class Game:
         if self.siren_in <= 0:                             # a siren far away now and then
             self.sounds.play("ai_siren_far", 0.25)
             self.siren_in = random.uniform(30, 50)
-        if self.to_spawn > 0 and not hero.dead:
+        if self.to_spawn > 0 and not hero.dead and not self.dev.no_spawn:
             self.spawn_in -= world_dt
             if self.spawn_in <= 0 and sum(z.alive for z in self.zombies) < MAX_ALIVE:
                 self.spawn()
@@ -973,6 +986,7 @@ class Game:
         if self.near_exit() and not self.left:
             ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "[E]", (220, 255, 225), 12)
         self.draw_teach(cx, cy)
+        dev_tools.draw_boxes(self, cx, cy)                  # F1
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
 
@@ -988,3 +1002,4 @@ class Game:
             hud.draw_summary(self)
         if self.hero.dead > 0.4:
             hud.draw_death(self)
+        dev_tools.draw_panel(self)                         # F4
