@@ -109,7 +109,7 @@ WEAPONS = {
         "damage": (12, 15),         # ends a plain infected (health 8-12) in one; armour will not
         "stamina": 0.0, "push": 140,
         "stagger": True,
-        "shot": {"range": 420.0, "noise": 900, "width": 12.0, "rounds": 6},
+        "shot": {"range": 420.0, "noise": 400, "width": 12.0, "rounds": 6},
         "good": "멀리서 한 방", "bad": "소리가 모두를 부름·탄 적음",
     },
 }

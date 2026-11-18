@@ -125,7 +125,7 @@ class Game:
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
         self.spawn_in = random.uniform(*SPAWN_EVERY)
         self.clock = 0.0
-        self.loud = None             # (x, y, time) of the last slash or roll
+        self.loud = None             # (x, y, time, radius) of the last loud noise
         self.was_slow = False
         self.hero_steps = 0
         self.siren_in = random.uniform(15, 30)
@@ -498,11 +498,12 @@ class Game:
         return off <= CONE_HALF
 
     def make_noise(self, radius):
-        dev_tools.heard(self, self.hero.x, self.hero.y, radius)    # F5 rings
-        if radius >= NOISE_ROLL:                          # loud: pulls the next arrivals here
-            if self.loud is None or self.clock - self.loud[2] > 0.5:
+        dev_tools.heard(self, self.hero.x, self.hero.y, radius)    # F6 rings
+        if radius >= NOISE_ROLL:                          # loud: pulls the next arrivals here...
+            fresh = self.loud is None or self.clock - self.loud[2] > 0.5
+            self.loud = (self.hero.x, self.hero.y, self.clock, radius)
+            if fresh and self.pulled_entrances():         # ...only through entrances inside its ring
                 self.spawn_in = min(self.spawn_in, SPAWN_AFTER_NOISE)
-            self.loud = (self.hero.x, self.hero.y, self.clock)
         hx, hy = self.hero.x, self.hero.y
         for z in self.zombies:
             if not z.alive:
@@ -517,9 +518,26 @@ class Game:
             else:
                 z.hear(hx, hy, radius)
 
-    def spawn(self):
-        """One more infected through an entrance the hero is not looking at, far enough away."""
+    def pulled_entrances(self):
+        """Entrances a recent loud noise reaches (2026-11-18 "디버그와 동일하게": the noise ring on
+        F6 is exactly where it calls new infected from; was the whole map). Far enough from the hero."""
+        if not self.senses or self.loud is None or self.clock - self.loud[2] > NOISE_PULL:
+            return []
+        x, y, _, radius = self.loud
         hero = self.hero
+        return [pos for pos, _ in ENTRANCES if hypot(pos[0] - x, pos[1] - y) <= radius
+                and hypot(pos[0] - hero.x, pos[1] - hero.y) >= SPAWN_MIN_DIST]
+
+    def spawn(self):
+        """One more infected: through an entrance a recent loud noise reaches, heading for it; or else
+        through one the hero is not looking at, far enough away."""
+        hero = self.hero
+        pulled = self.pulled_entrances()
+        if pulled:
+            x, y = random.choice(pulled)
+            z = Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
+            z.state, z.target, z.memory = "search", (self.loud[0], self.loud[1]), 8.0
+            return self.arrive(z)
         far = [pos for pos, _ in ENTRANCES if hypot(pos[0] - hero.x, pos[1] - hero.y) >= SPAWN_MIN_DIST]
         unseen = [pos for pos in far if abs((atan2(pos[1] - hero.y, pos[0] - hero.x) - self.look + pi)
                                             % (2 * pi) - pi) > CONE_HALF]
@@ -528,11 +546,13 @@ class Game:
             return False
         x, y = random.choice(choices)
         z = Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
-        if self.senses:
-            recent = self.loud is not None and self.clock - self.loud[2] <= NOISE_PULL
-            target = (self.loud[0], self.loud[1]) if recent else (random.uniform(200, ROOM_W - 200),
-                                                                  random.uniform(150, ROOM_H - 150))
-            z.state, z.target, z.memory = "search", target, 8.0
+        if self.senses:                                    # wanders in somewhere
+            z.state, z.target, z.memory = "search", (random.uniform(200, ROOM_W - 200),
+                                                     random.uniform(150, ROOM_H - 150)), 8.0
+        return self.arrive(z)
+
+    def arrive(self, z):
+        x, y = z.x, z.y
         self.zombies.append(z)
         self.to_spawn -= 1
         self.sounds.play("alert", 0.7, at=(x, y))          # heard coming in, maybe unseen
@@ -988,7 +1008,8 @@ class Game:
         if self.near_exit() and not self.left:
             ui.world_text_center(self.hero.x - cx, self.hero.y - cy + 74, "[E]", (220, 255, 225), 12)
         self.draw_teach(cx, cy)
-        dev_tools.draw_senses(self, cx, cy)                 # F5
+        dev_tools.draw_sight(self, cx, cy)                  # F5
+        dev_tools.draw_sounds(self, cx, cy)                 # F6
         dev_tools.draw_boxes(self, cx, cy)                  # F1
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
