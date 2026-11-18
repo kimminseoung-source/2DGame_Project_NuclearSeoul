@@ -7,6 +7,8 @@
   a loud one calls new infected through (2026-11-18 "F5, F6 나눠 주세요, 디버그와 동일하게").
 - F4: the dev settings panel (top right). Up/Down choose a row, Left/Right change it, Enter does it;
   or click a row (left = up / do, right = down). The game keeps running behind it.
+  Number rows are sliders with an icon (2026-11-18 "윈도우 밝기처럼 조절", "숫자로도 가능하고"):
+  drag or click the bar, or click the number box and type a value (Enter sets it, Esc cancels).
 
 Every setting is a row in ROWS, so a new one is one line. Values that live in other modules
 (speeds, bleeding) are changed there, so the game uses them at once; R keeps them.
@@ -26,11 +28,23 @@ import weapons
 from settings import CHEST, DOT, HERO_HP, ZOMBIE_ARC
 from weapons import BODY_CONTACT
 
-SPEEDS = (0.25, 0.5, 1.0, 2.0)
-PANEL = (440, 34, 632)              # canvas px: left, top, right (the rows set the bottom)
-ROW_H = 13
-PANEL_EDGE, PANEL_BG = (196, 170, 92), (18, 18, 20, 225)
+PANEL = (368, 30, 632)              # canvas px: left, top, right (the rows set the bottom)
+ROW_H = 14
+PANEL_EDGE, PANEL_BG = (196, 170, 92), (18, 18, 20, 230)
 CHOSEN, LIGHT, GREY = (60, 58, 50, 255), (222, 216, 198), (140, 138, 130)
+TRACK = (PANEL[0] + 122, PANEL[2] - 48)    # a slider's bar, canvas x
+BOX = (PANEL[2] - 42, PANEL[2] - 4)        # a slider's number box, canvas x
+FILL, KNOB = (78, 140, 220), (232, 236, 240)
+
+# 7 x 7 pixel icons for the slider rows ('#' = a pixel)
+ICONS = {
+    "clock": (" ##### ", "#  #  #", "#  #  #", "#  ## #", "#     #", "#     #", " ##### "),
+    "run":   ("   ##  ", "   ##  ", " ####  ", "#  # # ", "  ##   ", " #  #  ", "#    # "),
+    "zed":   (" ##### ", "#######", "# # # #", "#######", " # # # ", " ##### ", "  # #  "),
+    "eye":   ("       ", "  ###  ", " #   # ", "#  #  #", " #   # ", "  ###  ", "       "),
+    "drop":  ("   #   ", "  ###  ", "  ###  ", " ##### ", " ##### ", " ##### ", "  ###  "),
+    "heart": (" ## ## ", "#######", "#######", "#######", " ##### ", "  ###  ", "   #   "),
+}
 
 
 class Dev:
@@ -47,6 +61,9 @@ class Dev:
         self.punchy = False          # experiment "세게": stronger hitstop, shake, push, a white flash
         self.row = 0
         self.ate_press = False       # a click went to the panel: its release is not a blow
+        self.drag = None             # the slider row being dragged
+        self.editing = None          # the slider row whose number is being typed
+        self.text = ""
 
 
 def _flip(attr):
@@ -59,15 +76,27 @@ def _on(value):
     return "켬" if value else "끔"
 
 
-def _speed(game, step):
-    i = SPEEDS.index(game.dev.speed) if game.dev.speed in SPEEDS else 2
-    game.dev.speed = SPEEDS[max(0, min(len(SPEEDS) - 1, i + step))]
+def _slider(label, icon, get, put, low, high, step, show):
+    """A number row: (label, shown value, change by a step, the slider's spec)."""
+    spec = {"icon": icon, "get": get, "put": put, "low": low, "high": high, "step": step}
 
-
-def _number(module, name, step, low, high):
     def change(game, s):
-        setattr(module, name, round(max(low, min(high, getattr(module, name) + step * s)), 2))
-    return change
+        set_value(game, spec, get(game) + step * s)
+    return (label, lambda g: show(get(g)), change, spec)
+
+
+def set_value(game, spec, v, snap=True):
+    """Keep inside the range (snapped to the step when dragged or stepped; a typed number stays
+    as typed) and put it where the game reads it."""
+    low, high, step = spec["low"], spec["high"], spec["step"]
+    if snap:
+        v = low + round((v - low) / step) * step
+    spec["put"](game, round(max(low, min(high, v)), 4))
+
+
+def _module_value(module, name, scale=1.0):
+    return (lambda g: getattr(module, name) * scale,
+            lambda g, v: setattr(module, name, v / scale))
 
 
 def _fast(game, step):
@@ -119,7 +148,7 @@ def _restart(game, step):
     game.reset()
 
 
-# (label, value shown or None for an action, change(game, step))
+# (label, value shown or None for an action, change(game, step)[, slider spec])
 ROWS = (
     ("공격 범위·히트박스 (F1)", lambda g: _on(g.dev.boxes), _flip("boxes")),
     ("시야 범위 (F5)", lambda g: _on(g.dev.sight), _flip("sight")),
@@ -127,16 +156,17 @@ ROWS = (
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     ("실험: 세게 (타격감 2배)", lambda g: _on(g.dev.punchy), _flip("punchy")),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
-    ("게임 속도", lambda g: f"x{g.dev.speed:g}", _speed),
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
     ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),
     ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
     ("사실적 연출 (F3)", lambda g: _on(g.real), _real),
-    ("주인공 속도", lambda g: f"{hero_rules.RUN_SPEED:g}", _number(hero_rules, "RUN_SPEED", 10, 30, 300)),
-    ("피폭체 속도", lambda g: f"{infected.ZOMBIE_SPEED:g}", _number(infected, "ZOMBIE_SPEED", 10, 0, 300)),
-    ("피폭체 발견 거리", lambda g: f"{infected.SPOT_DIST:g}", _number(infected, "SPOT_DIST", 10, 30, 400)),
-    ("출혈 확률", lambda g: f"{condition.BLEED_CHANCE * 100:.0f}%", _number(condition, "BLEED_CHANCE", 0.1, 0, 1)),
-    ("맞을 때 체력", lambda g: f"-{condition.BLOW_DAMAGE:g}%", _number(condition, "BLOW_DAMAGE", 1, 0, 100)),
+    _slider("게임 속도", "clock", lambda g: g.dev.speed, lambda g, v: setattr(g.dev, "speed", v), 0.25, 2.0, 0.25,
+            lambda v: f"x{v:g}"),
+    _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
+    _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
+    _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
+    _slider("출혈 확률", "drop", *_module_value(condition, "BLEED_CHANCE", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
+    _slider("맞을 때 체력", "heart", *_module_value(condition, "BLOW_DAMAGE"), 0, 100, 1, lambda v: f"-{v:g}%"),
     ("체력 채우기·출혈 멈춤", None, _heal),
     ("붕대 +3", None, _give("bandage", 3)),
     ("통조림 +3", None, _give("can", 3)),
@@ -166,12 +196,58 @@ def key(game, k):
         return True
     if not dev.open:
         return False
+    if dev.editing is not None:                        # typing a number: every key goes here
+        typing(game, k)
+        return True
     if k in (sdl2.SDLK_UP, sdl2.SDLK_DOWN):
         dev.row = (dev.row + (1 if k == sdl2.SDLK_DOWN else -1)) % len(ROWS)
     elif k in (sdl2.SDLK_LEFT, sdl2.SDLK_RIGHT, sdl2.SDLK_RETURN):
         ROWS[dev.row][2](game, -1 if k == sdl2.SDLK_LEFT else 1)
     else:
         return False
+    return True
+
+
+DIGITS = {**{sdl2.SDLK_0 + n: str(n) for n in range(10)}, sdl2.SDLK_KP_0: "0",
+          **{sdl2.SDLK_KP_1 + n: str(n + 1) for n in range(9)},
+          sdl2.SDLK_PERIOD: ".", sdl2.SDLK_KP_PERIOD: ".", sdl2.SDLK_MINUS: "-", sdl2.SDLK_KP_MINUS: "-"}
+
+
+def typing(game, k):
+    dev = game.dev
+    if k in DIGITS and len(dev.text) < 7:
+        dev.text += DIGITS[k]
+    elif k == sdl2.SDLK_BACKSPACE:
+        dev.text = dev.text[:-1]
+    elif k in (sdl2.SDLK_RETURN, sdl2.SDLK_KP_ENTER):
+        try:
+            set_value(game, ROWS[dev.editing][3], float(dev.text), snap=False)
+        except ValueError:
+            pass                                       # nothing typed (or only "-"): keep the value
+        dev.editing, dev.text = None, ""
+    elif k == sdl2.SDLK_ESCAPE:
+        dev.editing, dev.text = None, ""
+
+
+def cancel_typing(game):
+    """Esc while typing a number cancels it (main.py asks before Esc closes anything)."""
+    if game.dev.open and game.dev.editing is not None:
+        typing(game, sdl2.SDLK_ESCAPE)
+        return True
+    return False
+
+
+def slide_to(game, i, cx):
+    spec = ROWS[i][3]
+    share = (cx - TRACK[0]) / (TRACK[1] - TRACK[0])
+    set_value(game, spec, spec["low"] + max(0.0, min(1.0, share)) * (spec["high"] - spec["low"]))
+
+
+def drag(game, sx, sy):
+    """Mouse moves: while a slider is held it follows. True if it did."""
+    if game.dev.drag is None:
+        return False
+    slide_to(game, game.dev.drag, px.to_canvas(sx, sy)[0])
     return True
 
 
@@ -192,11 +268,25 @@ def click(game, sx, sy, right):
     if not (l <= cx <= r and t <= cy <= t + 18 + len(ROWS) * ROW_H):
         return False
     i = row_at(sx, sy)
+    if dev.editing is not None and i != dev.editing:   # clicked elsewhere: typing is done
+        typing(game, sdl2.SDLK_RETURN)
     if i is not None:
         dev.row = i
-        ROWS[i][2](game, -1 if right else 1)
+        if len(ROWS[i]) > 3 and not right:              # a slider: the bar, or the number box
+            if TRACK[0] - 4 <= cx <= TRACK[1] + 4:
+                dev.drag = i
+                slide_to(game, i, cx)
+            elif BOX[0] <= cx <= BOX[1]:
+                dev.editing, dev.text = i, ""
+        else:
+            ROWS[i][2](game, -1 if right else 1)
     dev.ate_press = True
     return True
+
+
+def release(game):
+    game.dev.ate_press = False
+    game.dev.drag = None
 
 
 # ---------------------------------------------------------------------- drawing
@@ -209,15 +299,50 @@ def draw_panel(game):
     px.rect(l, t, r, b, PANEL_BG)
     px.frame(l, t, r, b, PANEL_EDGE)
     px.text(l + 6, t + 3, "개발 설정 (F4)", PANEL_EDGE, bold=True)
-    px.text(r - 6, t + 3, "↑↓ ←→ Enter", GREY, anchor="r")
-    for i, (label, value, _) in enumerate(ROWS):
+    px.text(r - 6, t + 3, "끌기 · 숫자 입력 · ↑↓←→", GREY, anchor="r")
+    for i, row in enumerate(ROWS):
+        label, value = row[0], row[1]
         y = t + 17 + i * ROW_H
         if i == dev.row:
             px.rect(l + 2, y - 1, r - 2, y + ROW_H - 2, CHOSEN)
+        if len(row) > 3:
+            draw_slider(game, i, row, y)
+            continue
         px.text(l + 6, y, label, LIGHT if value else (196, 196, 170))
         if value:
             v = value(game)
             px.text(r - 6, y, v, (120, 200, 120) if v == "켬" else GREY if v == "끔" else PANEL_EDGE, anchor="r")
+
+
+def draw_icon(name, x, y, colour):
+    for j, line in enumerate(ICONS[name]):
+        for k, ch in enumerate(line):
+            if ch == "#":
+                px.rect(x + k, y + j, x + k, y + j, colour)
+
+
+def draw_slider(game, i, row, y):
+    """[icon] label  ====o-----  [ 140 ]"""
+    label, value, _, spec = row
+    l = PANEL[0]
+    draw_icon(spec["icon"], l + 6, y + 2, LIGHT)
+    px.text(l + 17, y, label, LIGHT)
+    tl, tr = TRACK
+    share = (spec["get"](game) - spec["low"]) / (spec["high"] - spec["low"])
+    kx = round(tl + max(0.0, min(1.0, share)) * (tr - tl))
+    mid = y + 6
+    px.rect(tl, mid, tr, mid + 1, (96, 98, 102))                  # the bar
+    px.rect(tl, mid, kx, mid + 1, FILL)                           # filled up to the knob
+    px.rect(kx - 2, mid - 3, kx + 2, mid + 4, (20, 22, 26))      # the knob, round-ish
+    px.rect(kx - 1, mid - 3, kx + 1, mid + 4, KNOB)
+    px.rect(kx - 2, mid - 2, kx + 2, mid + 3, KNOB)
+    px.rect(kx - 1, mid - 1, kx + 1, mid + 2, FILL)
+    bl, br = BOX
+    editing = game.dev.editing == i
+    px.rect(bl, y, br, y + 11, (44, 46, 50) if editing else (28, 30, 34))
+    px.frame(bl, y, br, y + 11, FILL if editing else (70, 72, 76))
+    shown = game.dev.text + ("_" if int(game.clock * 3) % 2 == 0 else " ") if editing else value(game)
+    px.text(br - 3, y, shown, LIGHT if editing else PANEL_EDGE, anchor="r")
 
 
 # The world canvas has DOT canvas px per world unit (< 1), so a 1-unit line falls between pixels and

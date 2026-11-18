@@ -50,7 +50,9 @@ def main(window_x=None):
             if event.type == sdl2.SDL_QUIT:
                 running = False
             elif event.type == sdl2.SDL_KEYDOWN and event.key == sdl2.SDLK_ESCAPE:
-                if game.bag_open:
+                if dev_tools.cancel_typing(game):
+                    pass                                 # Esc only cancels a number being typed
+                elif game.bag_open:
                     game.bag_open = False          # Esc closes the bag first
                 else:
                     running = False
@@ -60,7 +62,9 @@ def main(window_x=None):
                     game, event.x, event.y, event.button == sdl2.SDL_BUTTON_RIGHT):
                 pass                                     # the F4 dev panel took the click
             elif event.type == sdl2.SDL_MOUSEBUTTONUP and game.dev.ate_press:
-                game.dev.ate_press = False               # ...and its release
+                dev_tools.release(game)                  # ...and its release (a slider is let go)
+            elif event.type == sdl2.SDL_MOUSEMOTION and dev_tools.drag(game, event.x, event.y):
+                pass                                     # a slider being dragged
             elif game.bag_open and event.type in (sdl2.SDL_MOUSEMOTION, sdl2.SDL_MOUSEBUTTONDOWN,
                                                   sdl2.SDL_MOUSEBUTTONUP):
                 bag_mouse(game, event)               # the bag takes the mouse while it is open
