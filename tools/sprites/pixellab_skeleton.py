@@ -22,6 +22,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -43,6 +44,9 @@ def secret():
         value = subprocess.run(["powershell", "-NoProfile", "-Command",
                                 "[Environment]::GetEnvironmentVariable('PIXELLAB_SECRET','User')"],
                                capture_output=True, text=True).stdout.strip()
+    keyfile = Path.home() / "busan_ai" / "pixellab_secret.txt"   # or the user saves it in this file
+    if not value and keyfile.exists():
+        value = keyfile.read_text(encoding="utf-8").strip()
     if not value:
         raise SystemExit("PIXELLAB_SECRET is not set (the user sets it; this script never asks for it)")
     return value
@@ -61,21 +65,29 @@ def b64(img):
     return {"type": "base64", "base64": base64.b64encode(buf.getvalue()).decode()}
 
 
-def keypoints(rig, idle, pose, ox, oy):
-    """One frame's keypoints on the CANVAS: each joint = its place on the standing picture moved by
-    how far the Blender joint moved from the idle pose (scaled from metres to picture px)."""
-    J = rig["joints"]
-    height_m = abs(idle["head_top"][1] - idle["ankle_r"][1]) or 1
-    height_px = abs(J["head_top"][1] - J["ankle_r"][1]) or 1
-    k = height_px / height_m
+# PixelLab label -> the Blender joint whose movement it follows (face points follow the head)
+FOLLOW = {"NECK": "neck", "RIGHT SHOULDER": "shoulder_r", "RIGHT ELBOW": "elbow_r", "RIGHT ARM": "wrist_r",
+          "LEFT SHOULDER": "shoulder_l", "LEFT ELBOW": "elbow_l", "LEFT ARM": "wrist_l",
+          "RIGHT HIP": "hip_r", "RIGHT KNEE": "knee_r", "RIGHT LEG": "ankle_r",
+          "LEFT HIP": "hip_l", "LEFT KNEE": "knee_l", "LEFT LEG": "ankle_l",
+          "NOSE": "head_top", "RIGHT EYE": "head_top", "LEFT EYE": "head_top",
+          "RIGHT EAR": "head_top", "LEFT EAR": "head_top"}
+
+
+ARMS = {"RIGHT ELBOW", "RIGHT ARM", "LEFT ELBOW", "LEFT ARM"}
+
+
+def keypoints(base, idle, pose, k, arm_boost=1.0):
+    """One frame: PixelLab's own skeleton of the standing picture (estimate-skeleton, 0..1 of the
+    canvas, with depth), each point moved by how far its Blender joint moved from the idle pose.
+    k = canvas fraction per Blender metre."""
     out = []
-    for joint, label in LABELS.items():
-        x = J[joint][0] + (pose[joint][0] - idle[joint][0]) * k + ox
-        y = J[joint][1] + (pose[joint][1] - idle[joint][1]) * k + oy
-        out.append({"x": round(x, 1), "y": round(y, 1), "label": label, "z_index": 0})
-    head = [J["head_top"][0] + (pose["head_top"][0] - idle["head_top"][0]) * k + ox,
-            (J["head_top"][1] + J["neck"][1]) / 2 + (pose["head_top"][1] - idle["head_top"][1]) * k + oy]
-    out.append({"x": round(head[0] + 2, 1), "y": round(head[1], 1), "label": "NOSE", "z_index": 0})
+    for p in base:
+        j = FOLLOW.get(p["label"])
+        boost = arm_boost if p["label"] in ARMS else 1.0          # pose to read at 36 px: bigger arm moves
+        dx, dy = ((pose[j][0] - idle[j][0]) * k * boost, (pose[j][1] - idle[j][1]) * k * boost) if j else (0.0, 0.0)
+        out.append({"x": round(min(1, max(0, p["x"] + dx)), 4), "y": round(min(1, max(0, p["y"] + dy)), 4),
+                    "label": p["label"], "z_index": int(round(p.get("z_index", 0)))})
     return out
 
 
@@ -88,6 +100,9 @@ def main():
     ap.add_argument("--frames", type=int, nargs=3, default=[0, 2, 4])
     ap.add_argument("--out", default="assets/characters/pixellab_downloads/hero_workjacket_40/Skeleton")
     ap.add_argument("--dry", action="store_true", help="only write the keypoints and a picture of them")
+    ap.add_argument("--guidance", type=float, default=6.0)
+    ap.add_argument("--arm-boost", type=float, default=1.0, help="exaggerate arm moves (small sprites read better)")
+    ap.add_argument("--tag", default="", help="suffix for the output names, to keep earlier tries")
     a = ap.parse_args()
     if a.what == "balance":
         print("balance:", call("GET", "/balance"))
@@ -100,9 +115,15 @@ def main():
     ref = Image.new("RGBA", (CANVAS, CANVAS))
     ref.alpha_composite(still, (ox, oy))
     idle = poses["idle"][0]
-    frames = [keypoints(rig, idle, poses[a.action][i], ox, oy) for i in a.frames]
     out = ROOT / a.out / a.action / a.direction
     out.mkdir(parents=True, exist_ok=True)
+    est = char / "rig" / f"pixellab_skeleton_{a.direction}.json"      # PixelLab's skeleton of the still (0.1 use, once)
+    if not est.exists():
+        est.write_text(json.dumps(call("POST", "/estimate-skeleton", {"image": b64(ref)})["keypoints"]), encoding="utf-8")
+    base = json.loads(est.read_text(encoding="utf-8"))
+    J = rig["joints"]
+    k = abs(J["head_top"][1] - J["ankle_r"][1]) / (abs(idle["head_top"][1] - idle["ankle_r"][1]) or 1) / CANVAS
+    frames = [keypoints(base, idle, poses[a.action][i], k, a.arm_boost) for i in a.frames]
     (out / "keypoints.json").write_text(json.dumps(frames, indent=1), encoding="utf-8")
     if a.dry:
         from PIL import ImageDraw
@@ -111,19 +132,26 @@ def main():
             sheet.alpha_composite(ref.resize((CANVAS * 6, CANVAS * 6), Image.NEAREST), (f * CANVAS * 6, 0))
             d = ImageDraw.Draw(sheet)
             for p in kps:
-                x, y = f * CANVAS * 6 + p["x"] * 6, p["y"] * 6
+                x, y = f * CANVAS * 6 + p["x"] * CANVAS * 6, p["y"] * CANVAS * 6
                 d.ellipse((x - 5, y - 5, x + 5, y + 5), fill=(255, 80, 80))
         sheet.save(out / "keypoints_preview.png")
         print("dry run ->", out / "keypoints_preview.png")
         return
-    money = call("GET", "/balance")
-    if not money or float(money.get("usd", 0)) <= 0:
-        raise SystemExit(f"no free balance ({money}); stopping (no paid use)")
+    # The account's free monthly generations are used first; dollars only after them, and the
+    # account has no dollars or card, so nothing can be charged. If PixelLab refuses (no free use
+    # left), stop and say so (2026-11-19 "그냥 실행하고 무료 끝났다고 하면 그만두면 되잖아").
+    # "Freeze 1 -> generate 2": the first frame is the standing picture as it is (black mask = keep),
+    # the other two are drawn in the poses (white mask = draw).
+    black, white = Image.new("RGB", ref.size, (0, 0, 0)), Image.new("RGB", ref.size, (255, 255, 255))
     body = {"image_size": {"width": CANVAS, "height": CANVAS}, "view": "high top-down", "direction": a.direction,
-            "reference_image": b64(ref), "skeleton_keypoints": frames, "guidance_scale": 4.0}
-    res = call("POST", "/animate-with-skeleton", body)
+            "reference_image": b64(ref), "skeleton_keypoints": frames, "guidance_scale": a.guidance,
+            "inpainting_images": [b64(ref), None, None], "mask_images": [b64(black), b64(white), b64(white)]}
+    try:
+        res = call("POST", "/animate-with-skeleton", body)
+    except urllib.error.HTTPError as e:
+        raise SystemExit(f"PixelLab refused ({e.code}): {e.read().decode(errors='replace')[:300]} - stopped, nothing paid")
     for i, img in enumerate(res.get("images", [])):
-        Image.open(io.BytesIO(base64.b64decode(img["base64"]))).save(out / f"{a.frames[min(i, 2)]}_{i}.png")
+        Image.open(io.BytesIO(base64.b64decode(img["base64"]))).save(out / f"{a.frames[min(i, 2)]}_{i}{a.tag}.png")
     print("usage:", res.get("usage"), "->", out)
 
 

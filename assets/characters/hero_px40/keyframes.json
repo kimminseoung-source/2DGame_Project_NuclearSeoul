@@ -2,24 +2,24 @@
  "note": "Key-pose attacks (docs/planning/MOTION_RULES.md): per weapon style and direction, the wind-up and hit pictures (<anim>/<dir>/<frame>.png; \"dir\" borrows another direction's picture), the hand in each (picture px) and where the weapon points there (degrees, y up). Attacks have 4 diagonal directions (2026-11-19 \"4방향을 유지\"); a straight aim borrows the nearest one. Picks are first tries to look at in the game: north-east/north-west hits face front (PixelLab turned the body), north-west's wind-up borrows north-east's.",
  "chop": {
   "south-east": {
-   "anim": "tool_chop",
+   "anim": "pl_chop",
    "windup": {
     "frame": 2,
     "hand": [
-     26.4,
-     14.7
+     37.0,
+     7.5
     ],
-    "weapon": 100
+    "weapon": 95
    },
    "hit": {
     "frame": 4,
     "hand": [
-     37.6,
-     35.5
+     37.0,
+     26.0
     ],
     "weapon": -45
    },
-   "made_by": "tools/animator, Blender Chop seen from the south-east (poses_south-east.json), two hands, tidy, relative to idle"
+   "made_by": "PixelLab animate-with-skeleton (API, free generations) from Blender chop joints seen from the south-east; colours snapped to the standing picture"
   },
   "south-west": {
    "anim": "strike",
@@ -99,6 +99,26 @@
     ],
     "weapon": -40
    }
+  },
+  "chop south-east (site, Blender south-east poses)": {
+   "anim": "tool_chop",
+   "windup": {
+    "frame": 2,
+    "hand": [
+     26.4,
+     14.7
+    ],
+    "weapon": 100
+   },
+   "hit": {
+    "frame": 4,
+    "hand": [
+     37.6,
+     35.5
+    ],
+    "weapon": -45
+   },
+   "made_by": "tools/animator, Blender Chop seen from the south-east (poses_south-east.json), two hands, tidy, relative to idle"
   }
  }
 }

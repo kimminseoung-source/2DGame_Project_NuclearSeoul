@@ -224,7 +224,7 @@ class DirLook:
         self.named = {}                                # (animation, direction, frame name) -> picture
         for pose, by_dir in self.anims.items():
             for d, paths in by_dir.items():
-                order = sorted(paths, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
+                order = sorted(paths, key=lambda p: (0, int(p.stem), "") if p.stem.isdigit() else (1, 0, p.stem))
                 by_dir[d] = [self._load(p, Image) for p in order]
                 self.named.update({(pose, d, p.stem): pic for p, pic in zip(order, by_dir[d])})
         hands = Path(folder) / "hands.json"
