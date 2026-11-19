@@ -52,6 +52,9 @@ canvas { image-rendering:pixelated; background:repeating-conic-gradient(#2a2c31 
   <div class="chk"><input type="checkbox" id="mirror"><span>동작 좌우 반전 (왼쪽을 보는 방향)</span></div>
   <div class="chk"><input type="checkbox" id="swap"><span>오른팔·왼팔 바꾸기</span></div>
   <div class="chk"><input type="checkbox" id="frontRight" checked><span>앞에 그릴 팔 = 오른팔</span></div>
+  <div class="chk"><input type="checkbox" id="twoHand" checked><span>양손으로 잡기 (왼손이 손잡이 아래)</span></div>
+  <label>두 손 사이 (px)</label><input type="number" id="gripGap" value="3" min="1" max="8" style="width:70px">
+  <div class="chk"><input type="checkbox" id="tidy" checked><span>깨진 곳 정리 (구멍·튄 점·외곽선)</span></div>
   <label>회전 품질</label>
   <select id="quality"><option value="8">도트 보존 회전 (RotSprite식, 8배)</option><option value="1">단순 회전</option></select>
   <hr style="border-color:var(--line);margin:14px 0">
@@ -296,18 +299,56 @@ function frameFrom(p0, p) { // forward kinematics from the hips (like tools/spri
     const a2 = da(b + "_" + s, c + "_" + s, b + "_" + s, c + "_" + s);
     const end = add(mid, rot(sub(J[c + "_" + s], J[b + "_" + s]), a2));
     return {draw: () => { drawPart(img, id(up), J[a + "_" + s], start, a1); drawPart(img, id(lo), J[b + "_" + s], mid, a2); }, end}; };
+  // Two-bone IK: the arm from `start` reaches `target` (elbow bent to the lower side).
+  const ikLimb = (s, start, target) => { const sh = J["shoulder_" + s], el = J["elbow_" + s], wr = J["wrist_" + s];
+    const a = Math.hypot(...sub(el, sh)), b = Math.hypot(...sub(wr, el));
+    let d = Math.hypot(...sub(target, start)); d = Math.max(Math.abs(a - b) + .01, Math.min(a + b - .01, d));
+    const base = ang(start, target), bend = Math.acos(Math.max(-1, Math.min(1, (a * a + d * d - b * b) / (2 * a * d))));
+    const elbows = [base + bend, base - bend].map(t => add(start, [Math.cos(t) * a, Math.sin(t) * a]));
+    const elbow = elbows[0][1] >= elbows[1][1] ? elbows[0] : elbows[1];
+    const a1 = ang(start, elbow) - ang(sh, el);
+    const end = add(elbow, rot(sub(wr, el), ang(elbow, target) - ang(el, wr)));
+    const a2 = ang(elbow, target) - ang(el, wr);
+    return {draw: () => { drawPart(img, id(`arm_${s}_up`), sh, start, a1); drawPart(img, id(`arm_${s}_lo`), el, elbow, a2); }, end}; };
   const front = $("frontRight").checked ? "r" : "l", back = front === "r" ? "l" : "r";
   const legStart = s => add(hip, sub(J["hip_" + s], J.hip));
   const L = {arm: {}, leg: {}};
   for (const s of ["r", "l"]) { L.arm[s] = limb(s, `arm_${s}_up`, `arm_${s}_lo`, "shoulder", "elbow", "wrist", at("shoulder_" + s));
     L.leg[s] = limb(s, `leg_${s}_up`, `leg_${s}_lo`, "hip", "knee", "ankle", legStart(s)); }
+  if ($("twoHand").checked) {                                      // both hands on the handle: the left
+    const bd = p.bat_dir ? [p.bat_dir[0], p.bat_dir[1]] : [0, -1];  // one just below the right, toward the pommel
+    const n = Math.hypot(...bd) || 1, grip = +$("gripGap").value;
+    L.arm.l = ikLimb("l", at("shoulder_l"), add(L.arm.r.end, [-bd[0] / n * grip, -bd[1] / n * grip]));
+  }
   L.arm[back].draw(); L.leg[back].draw();
   drawPart(img, id("torso"), J.hip, hip, aT); L.leg[front].draw();
   const neck = at("neck"); drawPart(img, id("head"), J.neck, neck, da("neck", "head_top", "neck", "head_top"));
   L.arm[front].draw();
+  if ($("tidy").checked) tidy(img);
   const hand = L.arm["r"].end;                                   // the weapon hand: the right one
   let wdir = null; if (p.bat_dir) wdir = Math.atan2(-p.bat_dir[1], p.bat_dir[0]) * 180 / Math.PI;
   return {img, hand: [Math.round(hand[0] * 10) / 10, Math.round(hand[1] * 10) / 10], weapon: wdir == null ? null : Math.round(wdir)}; }
+// Clean-up after the pieces are put together (2026-11-19 "살짝 깨져서 보이는데"): fill one-pixel
+// holes, drop lone pixels, and close the outline where a turned piece left an inner colour bare.
+function outlineColour() { const n = new Map(), d = new Uint32Array(pix.data.buffer);
+  for (const v of d) { if (!(v >>> 24)) continue; const r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255;
+    if (r + g + b < 120) n.set(v, (n.get(v) || 0) + 1); }
+  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0xff141014; }
+function tidy(img) { const d = new Uint32Array(img.data.buffer), N = OUT, on = i => (d[i] >>> 24) > 0, OUTL = outlineColour();
+  const nb4 = (x, y) => [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].filter(([a, b]) => a >= 0 && b >= 0 && a < N && b < N);
+  for (let pass = 0; pass < 2; pass++) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {   // holes
+    const i = y * N + x; if (on(i)) continue; const ns = nb4(x, y).map(([a, b]) => b * N + a).filter(on);
+    if (ns.length >= 3) { const c = new Map(); ns.forEach(j => c.set(d[j], (c.get(d[j]) || 0) + 1));
+      d[i] = [...c.entries()].sort((a, b) => b[1] - a[1])[0][0]; } }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const i = y * N + x; if (!on(i)) continue;   // lone pixels
+    let k = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const xx = x + a, yy = y + b;
+      if ((a || b) && xx >= 0 && yy >= 0 && xx < N && yy < N && on(yy * N + xx)) k++; }
+    if (k <= 1) d[i] = 0; }
+  const add = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const i = y * N + x; if (on(i)) continue;   // outline
+    if (nb4(x, y).some(([a, b]) => { const j = b * N + a; return on(j) && d[j] !== OUTL && ((d[j] & 255) + ((d[j] >> 8) & 255) + ((d[j] >> 16) & 255)) > 150; }))
+      add.push(i); }
+  for (const i of add) d[i] = OUTL; }
 function makeFrames() {
   const need = Object.values(BONES).flat().filter(j => !joints[j]);
   if (need.length) { log("관절이 빠졌다: " + [...new Set(need)].join(", ")); return; }
