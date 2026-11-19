@@ -32,6 +32,8 @@ import area
 from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_H, ROOM_W, SUPPLIES,
                   WEAPONS_LYING, ZOMBIE_STARTS)
 from character_look import DirLook, SheetLook
+
+HERO_PX = "hero_px40"     # PixelLab hero folder: hero_px (32 canvas, 29 px tall) or hero_px40 (40 canvas, 36 px)
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
@@ -68,8 +70,8 @@ HUD_PAD = 40                 # world px the HUD bar covers at the top of the scr
 class Game:
     def __init__(self):
         self.hero_look = SheetLook(ROOT / f"assets/characters/hero{LOOK_SUFFIX}")
-        if DOT_LOOK and (ROOT / "assets/characters/hero_px").exists():    # 8-direction PixelLab hero (2026-11-19)
-            self.hero_look = DirLook(ROOT / "assets/characters/hero_px", self.hero_look)
+        if DOT_LOOK and (ROOT / f"assets/characters/{HERO_PX}").exists():    # 8-direction PixelLab hero (2026-11-19)
+            self.hero_look = DirLook(ROOT / f"assets/characters/{HERO_PX}", self.hero_look)
         self.zombie_look = SheetLook(ROOT / f"assets/characters/infected{LOOK_SUFFIX}")
         self.aim = (None, None)
         self.deaths = 0
