@@ -55,6 +55,7 @@ canvas { image-rendering:pixelated; background:repeating-conic-gradient(#2a2c31 
   <div class="chk"><input type="checkbox" id="twoHand" checked><span>양손으로 잡기 (왼손이 손잡이 아래)</span></div>
   <label>두 손 사이 (px)</label><input type="number" id="gripGap" value="3" min="1" max="8" style="width:70px">
   <div class="chk"><input type="checkbox" id="tidy" checked><span>깨진 곳 정리 (구멍·튄 점·외곽선)</span></div>
+  <div class="chk"><input type="checkbox" id="relative" checked><span>서 있기에서 움직인 만큼만 (그림의 기본 자세 유지)</span></div>
   <label>회전 품질</label>
   <select id="quality"><option value="8">도트 보존 회전 (RotSprite식, 8배)</option><option value="1">단순 회전</option></select>
   <hr style="border-color:var(--line);margin:14px 0">
@@ -291,7 +292,9 @@ function frameFrom(p0, p) { // forward kinematics from the hips (like tools/spri
   const restH = Math.hypot(...sub(p0.head_top, p0.ankle_r || p0.hip)) || 1, sprH = Math.hypot(...sub(J.head_top, J.ankle_r)) || 1;
   const k = sprH / restH;                                         // Blender metres -> picture px
   const hip = add(off(J.hip), [(p.hip[0] - p0.hip[0]) * k, (p.hip[1] - p0.hip[1]) * k]);
-  const da = (a, b, c, d) => ang(p[c], p[d]) - ang(J[a], J[b]);
+  // How far each bone turned from the idle pose, added to the picture as drawn: the first idle
+  // frame gives back the picture exactly, whatever angle the 3D body stands at.
+  const da = (a, b, c, d) => ($("relative").checked ? ang(p[c], p[d]) - ang(p0[c], p0[d]) : ang(p[c], p[d]) - ang(J[a], J[b]));
   const aT = da("hip", "neck", "hip", "neck"), at = name => add(hip, rot(sub(J[name], J.hip), aT));
   const img = new ImageData(OUT, OUT), id = k2 => PARTS.findIndex(q => q[0] === k2);
   const limb = (s, up, lo, a, b, c, start) => { const a1 = da(a + "_" + s, b + "_" + s, a + "_" + s, b + "_" + s);

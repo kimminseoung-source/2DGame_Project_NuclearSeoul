@@ -6,20 +6,20 @@
    "windup": {
     "frame": 2,
     "hand": [
-     26.3,
-     19.7
+     26.4,
+     14.7
     ],
-    "weapon": 115
+    "weapon": 100
    },
    "hit": {
     "frame": 4,
     "hand": [
-     38.8,
-     34.6
+     37.6,
+     35.5
     ],
-    "weapon": -40
+    "weapon": -45
    },
-   "made_by": "tools/animator (Blender chop)"
+   "made_by": "tools/animator, Blender Chop seen from the south-east (poses_south-east.json), two hands, tidy, relative to idle"
   },
   "south-west": {
    "anim": "strike",

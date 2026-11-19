@@ -42,6 +42,9 @@ def main():
     p.add_argument("--map", nargs="*", required=True)
     p.add_argument("--frames-for", nargs="*", default=[])
     p.add_argument("--tilt", type=float, default=20.0)
+    p.add_argument("--turn", type=float, default=90.0,
+                   help="degrees to turn the body: 90 faces right (side sheets), 45 faces the camera's right-front "
+                        "(the south-east of 8-direction art, tools/animator 2026-11-19)")
     p.add_argument("--out", required=True)
     a = p.parse_args(argv)
     rs.clear_scene()
@@ -51,7 +54,7 @@ def main():
     for obj in bpy.data.objects:
         if obj.parent is None and obj.type in ("ARMATURE", "MESH", "EMPTY"):
             obj.rotation_mode = "XYZ"
-            obj.rotation_euler[2] += math.radians(90)
+            obj.rotation_euler[2] += math.radians(a.turn)
     rs.pin_root(arm)
     scene = bpy.context.scene
     rs.setup_camera(scene, a.tilt)
