@@ -1,0 +1,36 @@
+{
+  "group_id": "6417b970-f69f-469f-9188-9cdf81bae365",
+  "states": [
+    {
+      "character": {
+        "id": "c9712e7e-b07f-4026-af0a-42faf712aec8",
+        "name": "Idle",
+        "prompt": "Use the attached image as the style and character reference: same young Korean man,\nsame face, hair, body build, pose, and the same dark detailed pixel-art style and background.\nChange only these things:\n1. Outfit: an ordinary civilian, not a soldier. Black bomber jacket with orange lining,\n   sleeves pushed up to the elbows, plain white t-shirt, dark jeans, worn white sneakers,\n   one small crossbody bag strap. Remove the harness, chest straps, belt pouches,\n   thigh pouch, cargo pants and combat boots.\n2. Both arms are fully human (no mutation) in this version.\n3. Keep the glowing nodes and lines on the body parts (arms, chest, knees), but make\n   every node and line one color: violet.",
+        "size": {
+          "width": 32,
+          "height": 32
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-11-19T03:30:16.212554+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-11-19T03:35:35.598098"
+}

@@ -1,0 +1,36 @@
+{
+  "group_id": "6417b970-f69f-469f-9188-9cdf81bae365",
+  "states": [
+    {
+      "character": {
+        "id": "c287c1a0-4c96-4230-b784-fd44d2a3dee8",
+        "name": "high-top-down",
+        "prompt": "Use the attached image as the style and character reference: same young Korean man,\nsame face, hair, body build, pose, and the same dark detailed pixel-art style and background.\nChange only these things:\n1. Outfit: an ordinary civilian, not a soldier. Black bomber jacket with orange lining,\n   sleeves pushed up to the elbows, plain white t-shirt, dark jeans, worn white sneakers,\n   one small crossbody bag strap. Remove the harness, chest straps, belt pouches,\n   thigh pouch, cargo pants and combat boots.\n2. Both arms are fully human (no mutation) in this version.\n3. Keep the glowing nodes and lines on the body parts (arms, chest, knees), but make\n   every node and line one color: violet.",
+        "size": {
+          "width": 32,
+          "height": 32
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-11-19T03:42:53.641785+00:00"
+      },
+      "folder": "high-top-down",
+      "frames": {
+        "rotations": {
+          "south": "high-top-down/rotations/south.png",
+          "south-east": "high-top-down/rotations/south-east.png",
+          "east": "high-top-down/rotations/east.png",
+          "north-east": "high-top-down/rotations/north-east.png",
+          "north": "high-top-down/rotations/north.png",
+          "north-west": "high-top-down/rotations/north-west.png",
+          "west": "high-top-down/rotations/west.png",
+          "south-west": "high-top-down/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-11-19T03:46:25.337669"
+}

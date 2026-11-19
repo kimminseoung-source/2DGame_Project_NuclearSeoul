@@ -139,6 +139,7 @@ class Hero:
     # shove, pick-up, raising the weapon - run this many times faster. 1.3 undoes settings.TEMPO
     # for the hero only; walking and the infected stay as they are. Set by the F4 panel.
     action_speed = 1.0
+    angle = None                    # where the hero looks (world radians), set by play for 8-direction art
 
     def update(self, dt, keys, aim_x):
         adt = dt * self.action_speed               # the hero's action clock
@@ -229,6 +230,8 @@ class Hero:
                                held=self.held())
         elif self.moving:
             pose = "sneak" if self.sneaking else "run"
-            self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance, held=self.held())
+            self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance, held=self.held(),
+                           angle=self.angle)
         else:
-            self.look.draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing, held=self.held())
+            self.look.draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing, held=self.held(),
+                           angle=self.angle)

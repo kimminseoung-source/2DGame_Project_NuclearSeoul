@@ -1,0 +1,36 @@
+{
+  "group_id": "488f0910-0e8d-4a11-8d9a-ce65222fc4ef",
+  "states": [
+    {
+      "character": {
+        "id": "f96e2ed4-c9b2-4c2b-9a76-7f3442b4eee0",
+        "name": "Idle",
+        "prompt": "A young Korean male survivor in his mid-20s, facing directly forward,\nfull-body neutral standing pose, arms relaxed at his sides.\n\nShort black hair with a slightly side-swept fringe.\nStylized adult proportions, moderately small head, lean build.\nWearing an open ochre-brown canvas work jacket with sleeves rolled\nup to the elbows, bare forearms, a cream T-shirt,\nslate-blue trousers and brown work boots.\n\nClean low-resolution pixel art designed for a 32x32 game sprite.\nSimple readable shapes, bold connected pixel clusters,\ncrisp dark outlines, limited muted colors,\ntwo-tone shading, minimal clothing details.\nClearly separated arms and legs.\nPreserve a grounded but slightly stylized indie-game appearance.\n\nOne character only, centered, transparent background.\nNo weapon, no bag, no mutation, no accessories.",
+        "size": {
+          "width": 32,
+          "height": 32
+        },
+        "template_id": "custom",
+        "directions": 8,
+        "view": "high top-down",
+        "created_at": "2026-11-19T04:05:10.305616+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-11-19T04:08:06.430315"
+}

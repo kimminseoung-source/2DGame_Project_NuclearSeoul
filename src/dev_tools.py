@@ -22,6 +22,7 @@ import pico2d
 import sdl2
 
 import area
+import character_look
 import daylight
 import vision_cone
 import condition
@@ -109,6 +110,11 @@ def _fast(game, step):
     hero_rules.Hero.action_speed = 1.0 if hero_rules.Hero.action_speed > 1.0 else 1.3
 
 
+def _new_look(game, step):
+    """The 8-direction PixelLab hero on/off, to compare with the old side sheets."""
+    character_look.DirLook.on = not character_look.DirLook.on
+
+
 def _senses(game, step):
     game.toggle_senses()
 
@@ -172,6 +178,7 @@ ROWS = (
             lambda v: f"{int(v):02d}:{int(v % 1 * 60):02d}"),
     ("주인공",),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
+    ("새 주인공 그림 (8방향)", lambda g: _on(character_look.DirLook.on), _new_look),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
     _slider("출혈 확률", "drop", *_module_value(condition, "BLEED_CHANCE", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),

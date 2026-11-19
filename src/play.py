@@ -31,7 +31,7 @@ from hero import PICKUP_TIME
 import area
 from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_H, ROOM_W, SUPPLIES,
                   WEAPONS_LYING, ZOMBIE_STARTS)
-from character_look import SheetLook
+from character_look import DirLook, SheetLook
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
@@ -68,6 +68,8 @@ HUD_PAD = 40                 # world px the HUD bar covers at the top of the scr
 class Game:
     def __init__(self):
         self.hero_look = SheetLook(ROOT / f"assets/characters/hero{LOOK_SUFFIX}")
+        if DOT_LOOK and (ROOT / "assets/characters/hero_px").exists():    # 8-direction PixelLab hero (2026-11-19)
+            self.hero_look = DirLook(ROOT / "assets/characters/hero_px", self.hero_look)
         self.zombie_look = SheetLook(ROOT / f"assets/characters/infected{LOOK_SUFFIX}")
         self.aim = (None, None)
         self.deaths = 0
@@ -723,6 +725,7 @@ class Game:
             self.look = atan2(ay - hero.y, ax - hero.x)    # from the feet, like the light it turns
         else:
             self.look = 0.0 if hero.facing > 0 else pi
+        hero.angle = self.look
 
         if hero.slash and not hero.slash["hit"] and hero.slash["time"] >= hero.slash["hit_at"]:
             hero.slash["hit"] = True

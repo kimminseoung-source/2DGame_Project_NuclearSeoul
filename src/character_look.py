@@ -25,7 +25,7 @@ LegacyLook wraps the first hand-drawn hero sheets so the old art keeps working.
 """
 
 import json
-from math import atan2, cos, sin
+from math import atan2, cos, pi, sin
 from pathlib import Path
 
 import pico2d
@@ -127,8 +127,10 @@ class SheetLook:
     def trail_from(self, pose):
         return self.meta.get(pose, {}).get("trail_from", 1)
 
-    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None, tint=None):
-        """`held`: a weapon image (lying along +x, grip 2 px from its left end, middle row) drawn
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None, tint=None,
+             angle=None):
+        """`angle` is for 8-direction looks (DirLook); side sheets only turn left or right.
+        `held`: a weapon image (lying along +x, grip 2 px from its left end, middle row) drawn
         in the hand on the hand's line of this frame (blade.json), so any weapon fits any sheet.
         `tint`: (r, g, b) multiplied into the sprite (survivors borrow the hero's sheets)."""
         fixed = None
@@ -173,6 +175,79 @@ class SheetLook:
 
     def portrait_clip(self):
         return (self.sheets["idle"], *self.PORTRAIT)
+
+
+DIRS = ("east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east")
+MOVING = ("walk", "run", "sneak")
+
+
+class DirLook:
+    """An 8-direction character from a PixelLab export (2026-11-19, high top-down 32 px):
+    <folder>/**/rotations/<dir>.png stills and <folder>/**/<animation>/<dir>/*.png frames.
+    Standing and walking poses are drawn facing `angle` (world radians, 0 = east, y up); any
+    pose it lacks (swing, hurt, down, ...) is drawn by `base`, the older side sheets, so a
+    character can move to the new art one animation at a time. No left/right mirroring: the
+    hero's right arm becomes a blade, so all 8 directions are real pictures."""
+
+    on = True                       # F4 "새 주인공 그림": off shows the old sheets for comparison
+    FRAME_TIME = 0.1                # seconds per walking frame (until a stride is measured)
+
+    def __init__(self, folder, base):
+        from PIL import Image                          # only to find where the feet are
+        self.base = base
+        self.k = base.k                                # same pixel size as the rest of the world
+        self.stills, self.anims = {}, {}
+        for path in Path(folder).rglob("*.png"):
+            d, parent = path.stem, path.parent
+            if parent.name == "rotations" and d in DIRS:
+                self.stills[d] = self._load(path, Image)
+            elif parent.name in DIRS:
+                pose = "walk" if "walk" in parent.parent.name.lower() else parent.parent.name.lower()
+                self.anims.setdefault(pose, {}).setdefault(parent.name, []).append(path)
+        for pose, by_dir in self.anims.items():
+            for d, paths in by_dir.items():
+                by_dir[d] = [self._load(p, Image) for p in sorted(paths)]
+
+    @staticmethod
+    def _load(path, Image):
+        alpha = Image.open(path).convert("RGBA").getchannel("A")
+        box = alpha.getbbox() or (0, 0, alpha.width, alpha.height)
+        return pico2d.load_image(str(path)), alpha.height - box[3]      # image, empty rows under the feet
+
+    def __getattr__(self, name):                      # has, blade_lines, impact_of, ... come from the old sheets
+        return getattr(self.base, name)
+
+    def picture(self, pose, time, angle):
+        if not self.on or angle is None or not self.stills:
+            return None
+        d = DIRS[round(angle / (pi / 4)) % 8]
+        if pose in MOVING:
+            frames = self.anims.get("walk", {}).get(d)
+            if frames:
+                return frames[int(time / self.FRAME_TIME) % len(frames)]
+            return self.stills.get(d)                 # no walk yet: the standing picture glides
+        if pose in ("idle", "sneak_idle"):
+            return self.stills.get(d)
+        return None
+
+    def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None, tint=None,
+             angle=None):
+        pic = self.picture(pose, time, angle)
+        if pic is None:
+            self.base.flash = getattr(self, "flash", 0)
+            self.base.draw(pose, time, x, feet_y, facing, contact, distance, alpha, held, tint)
+            return
+        image, under = pic
+        w, h = image.w / self.k, image.h / self.k
+        if alpha < 1:
+            image.opacify(alpha)
+        if tint is not None:
+            sdl2.SDL_SetTextureColorMod(image.texture, *tint)
+        image.draw(x, feet_y - under / self.k + h / 2, w, h)
+        if tint is not None:
+            sdl2.SDL_SetTextureColorMod(image.texture, 255, 255, 255)
+        if alpha < 1:
+            image.opacify(1.0)
 
 
 class LegacyLook:
