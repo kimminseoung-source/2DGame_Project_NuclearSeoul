@@ -306,3 +306,10 @@
 | 2026-11-14 | 방독면 떠돌이 "진짜 별로임" → 후보 6개(글) → 사용자 "나로 할까"(주인공 디자인을 사용자가 직접) | 사용자가 그린 디자인을 3번 방법(옆모습 3D 동작 + 도트 덧칠)으로 모든 동작에 입히기로 제안. 밑그림용 옆모습 자세 안내 `templates/side_pose_guide.png`(96×64 칸 8개: 서 있기 1, 달리기 4, 베기 3, `--tilt 0`)와 4배 확대본을 만듦. |
 | 2026-11-16 | 사용자 "밀치는 동작이 어깨로 미는 게 아니라 양손을 이용해서 푸시하는 게 더 잘 보일 것 같음" | 동작 팩 1의 `Push_Loop@0-20`(양손으로 밀기)을 `push` 시트 4칸으로 추가(`render_character.py` PASSES). 다른 시트를 다시 그리지 않으려고 부위·빛 패스와 관절만 따로 뽑아 2D 옷 그리기로 `push.png`만 만들었다(`blade.json`에는 push만 추가됨). 몸을 크게 기울여 미는 자세라 칼끝이 위로 서는 점이 남음 |
 | 2026-11-16 | 사용자 "양손으로 미는 동작이 벽을 미는 것 같다, 밀쳐내는 동작으로", "쓰러지면 기어서도 오는 요소" | 후보 8개(Push_Loop, Shield_OneShot, Punch_Cross·Jab, Shield_Dash, Swim_Fwd_Loop, LayToIdle, Crouch_Fwd)를 나란히 렌더해 비교. 주인공 `push=Punch_Cross@0-14+Push_Loop*0.45`(4칸), 피폭체 `crawl=Swim_Fwd_Loop`(8칸, 옆에서 본 자유형 팔젓기가 바닥을 끌며 기는 모습으로 읽힘). 나머지 시트는 픽셀 단위로 그대로임을 확인. 미리보기 `previews/shove_crawl_v1.png`, 게임 화면 `previews/shove_crawl_ingame.png` |
+
+## 8. PixelLab 캐릭터 → 게임 (2026-11-19)
+
+1. PixelLab에서 high top-down, 40 캔버스, 8방향, **빈손**(no weapon)으로 만든다. 동작은 Template motion(Skeleton v3)으로 방향마다.
+2. 받은 파일은 `assets/characters/pixellab_downloads/<이름>/`에 모으고(`Idle/rotations/<방향>.png`, `<동작>/<방향>/<번호>.png`), 게임 폴더(예: `hero_px40/`)로 복사한다.
+3. `python tools/sprites/find_hands.py assets/characters/hero_px40` → `hands.json`(무기 손 위치). `docs/planning/hands_check.png`로 확인, 틀린 프레임은 `hands_fix.json`.
+4. 게임은 `character_look.DirLook`으로 읽는다(마우스 방향 8방향, 무기는 손에 붙여 그림). 없는 동작은 예전 시트로 그린다.

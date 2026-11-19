@@ -168,29 +168,46 @@ class SheetLook:
         if not lines or frame >= len(lines) or lines[frame] is None:
             return
         (gx, gy), (tx, ty) = lines[frame]
-        ang = atan2(ty - gy, tx - gx)
-        w, h = held.w / self.k, held.h / self.k                 # its pixels are canvas pixels
-        off = (held.w / 2 - 2) / self.k                         # image centre from the grip
-        held.composite_draw(ang, "v" if cos(ang) < 0 else "", gx + cos(ang) * off, gy + sin(ang) * off, w, h)
+        draw_weapon(held, gx, gy, atan2(ty - gy, tx - gx), self.k)
 
     def portrait_clip(self):
         return (self.sheets["idle"], *self.PORTRAIT)
 
 
+def draw_weapon(held, gx, gy, ang, k):
+    """A weapon picture (lying along +x, grip 2 px from its left end, middle row) with its grip at
+    (gx, gy), pointing at `ang` (radians, y up). Its pixels are canvas pixels (k per world unit).
+    Kept upright: turned past straight up or down it is flipped instead of shown upside down."""
+    off = (held.w / 2 - 2) / k                                  # image centre from the grip
+    held.composite_draw(ang, "v" if cos(ang) < 0 else "", gx + cos(ang) * off, gy + sin(ang) * off,
+                        held.w / k, held.h / k)
+
+
 DIRS = ("east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east")
 MOVING = ("walk", "run", "sneak")
+BEHIND = {"north", "north-east", "north-west"}         # facing away: the weapon is behind the body
+LEFT_HAND = {"south", "south-east", "south-west"}      # the weapon hand is on the picture's left
 
 
 class DirLook:
-    """An 8-direction character from a PixelLab export (2026-11-19, high top-down 32 px):
+    """An 8-direction character from a PixelLab export (2026-11-19, high top-down):
     <folder>/**/rotations/<dir>.png stills and <folder>/**/<animation>/<dir>/*.png frames.
     Standing and walking poses are drawn facing `angle` (world radians, 0 = east, y up); any
-    pose it lacks (swing, hurt, down, ...) is drawn by `base`, the older side sheets, so a
-    character can move to the new art one animation at a time. No left/right mirroring: the
-    hero's right arm becomes a blade, so all 8 directions are real pictures."""
+    pose it lacks (hurt, down, ...) is drawn by `base`, the older side sheets, so a character
+    can move to the new art one animation at a time. No left/right mirroring: the hero's right
+    arm becomes a blade, so all 8 directions are real pictures.
+
+    Weapons are layered (paper doll): the body is empty-handed and the held weapon picture is
+    stuck to the hand point of each frame (<folder>/hands.json, tools/sprites/find_hands.py),
+    so one body serves every weapon. Until the body has its own swing frames, a blow keeps the
+    standing picture and turns the weapon about the hand: a chop sweeps SWING_ARC either side of
+    the aim, reaching its end at the hit; a stab thrusts THRUST px along the aim and back."""
 
     on = True                       # F4 "새 주인공 그림": off shows the old sheets for comparison
     FRAME_TIME = 0.1                # seconds per walking frame (until a stride is measured)
+    SWING_ARC = 1.05                # radians either side of the aim a chop sweeps (60 degrees)
+    THRUST = 6                      # picture px a stab pushes the weapon forward
+    HANG_OUT = 0.3                  # radians a carried weapon leans out from straight down
 
     def __init__(self, folder, base):
         from PIL import Image                          # only to find where the feet are
@@ -206,7 +223,10 @@ class DirLook:
                 self.anims.setdefault(pose, {}).setdefault(parent.name, []).append(path)
         for pose, by_dir in self.anims.items():
             for d, paths in by_dir.items():
-                by_dir[d] = [self._load(p, Image) for p in sorted(paths)]
+                order = sorted(paths, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
+                by_dir[d] = [self._load(p, Image) for p in order]
+        hands = Path(folder) / "hands.json"
+        self.hands = json.loads(hands.read_text(encoding="utf-8")) if hands.exists() else {}
 
     @staticmethod
     def _load(path, Image):
@@ -217,37 +237,86 @@ class DirLook:
     def __getattr__(self, name):                      # has, blade_lines, impact_of, ... come from the old sheets
         return getattr(self.base, name)
 
-    def picture(self, pose, time, angle):
+    def picture(self, pose, time, angle, contact=None):
+        """(image, rows under the feet, hands key, direction, frame), or None for the old sheets."""
         if not self.on or angle is None or not self.stills:
             return None
         d = DIRS[round(angle / (pi / 4)) % 8]
         if pose in MOVING:
             frames = self.anims.get("walk", {}).get(d)
             if frames:
-                return frames[int(time / self.FRAME_TIME) % len(frames)]
-            return self.stills.get(d)                 # no walk yet: the standing picture glides
-        if pose in ("idle", "sneak_idle"):
-            return self.stills.get(d)
+                i = int(time / self.FRAME_TIME) % len(frames)
+                return (*frames[i], "walk", d, i)
+        standing = pose in MOVING or pose in ("idle", "sneak_idle")
+        if (standing or (contact is not None and self.hands)) and d in self.stills:
+            return (*self.stills[d], "idle", d, 0)     # no walk yet: the standing picture glides
         return None
+
+    def hand(self, key, d, i):
+        points = self.hands.get(key, {}).get(d)
+        return points[min(i, len(points) - 1)] if points else None
+
+    def hang(self, d):
+        """A carried weapon points down, leaning a little out to the side its hand is on."""
+        if d == "east":
+            out = 1
+        elif d == "west":
+            out = -1
+        else:
+            out = -1 if d in LEFT_HAND else 1
+        return -pi / 2 + out * self.HANG_OUT
+
+    def weapon_angle(self, pose, time, contact, angle, d):
+        """Where the weapon points (radians, y up) and how far it is pushed along it (picture px)."""
+        rest = self.hang(d)
+        if contact is None or pose not in ("chop", "stab"):
+            return rest, 0.0
+        if pose == "stab":
+            if time < contact:
+                reach = time / contact
+            else:
+                reach = max(0.0, 1 - (time - contact) / max(1e-6, 1 - contact))
+            return angle, self.THRUST * reach
+        if time < contact:                               # sweep across the aim, ending at the hit
+            return angle + self.SWING_ARC - 2 * self.SWING_ARC * (time / contact), 0.0
+        after = (time - contact) / max(1e-6, 1 - contact)
+        end = angle - self.SWING_ARC
+        back = (rest - end + pi) % (2 * pi) - pi         # the short way back to hanging
+        return end + back * min(1.0, after * 1.5), 0.0
 
     def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None, tint=None,
              angle=None):
-        pic = self.picture(pose, time, angle)
+        pic = self.picture(pose, time, angle, contact)
         if pic is None:
             self.base.flash = getattr(self, "flash", 0)
             self.base.draw(pose, time, x, feet_y, facing, contact, distance, alpha, held, tint)
             return
-        image, under = pic
+        image, under, key, d, i = pic
         w, h = image.w / self.k, image.h / self.k
+        cy = feet_y - under / self.k + h / 2
+        point = self.hand(key, d, i)
+        weapon, hand = None, None
+        if point is not None:
+            gx = x + (point[0] + 0.5 - image.w / 2) / self.k
+            gy = cy + (image.h / 2 - point[1] - 0.5) / self.k
+            hand = (gx, gy)
+            if held is not None:
+                ang, push = self.weapon_angle(pose, time, contact, angle, d)
+                weapon = (gx + cos(ang) * push / self.k, gy + sin(ang) * push / self.k, ang)
+        if weapon and d in BEHIND:
+            draw_weapon(held, *weapon, self.k)
         if alpha < 1:
             image.opacify(alpha)
         if tint is not None:
             sdl2.SDL_SetTextureColorMod(image.texture, *tint)
-        image.draw(x, feet_y - under / self.k + h / 2, w, h)
+        image.draw(x, cy, w, h)
         if tint is not None:
             sdl2.SDL_SetTextureColorMod(image.texture, 255, 255, 255)
         if alpha < 1:
             image.opacify(1.0)
+        if weapon and d not in BEHIND:
+            draw_weapon(held, *weapon, self.k)
+        return hand
 
 
 class LegacyLook:

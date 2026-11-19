@@ -481,6 +481,9 @@ def draw_boxes(game, cx, cy):
     hx, hy = h.x - cx, h.y - cy
     _line(hx - 6, hy, hx + 6, hy, (255, 255, 255))                                # where claws aim
     _line(hx, hy - 6, hx, hy + 6, (255, 255, 255))
+    hand = h.hand                             # where the weapon is held
+    if hand:
+        _box(hand[0] - 1.5, hand[1] - 1.5, hand[0] + 1.5, hand[1] + 1.5, (255, 70, 70))
     w = h.weapon
     length = weapons.attack_range(w)
     if game.aim[0] is not None:                                                   # the blow toward the cursor

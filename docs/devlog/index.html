@@ -119,6 +119,9 @@ a:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
   <section class="view log" id="view-dev" aria-labelledby="logtitle">
     <div class="section-title"><h2 id="logtitle">개발 일지</h2><small>무엇을 만들었나 · 최신이 위</small></div>
     <ol>
+      <li><span class="d">11.19</span><span>무기를 손에 붙여 그리기: 몸은 빈손 한 벌, 무기는 그림 한 장씩. 손 위치는 피부색으로 자동으로 찾고, 휘두르기는 무기를 손을 축으로 돌림 → <a href="#paperdoll">레이어 그리기</a></span></li>
+      <li><span class="d">11.19</span><span>새 주인공(PixelLab, 갈색 작업 재킷, 키 36px) 8방향 서 있기와 남쪽 걷기, 마우스 방향으로 돎</span></li>
+      <li><span class="d">11.19</span><span>2차 기획 점검: 근접 중심 + 총은 비상용, 변이는 부위별·영구, 첫 변이는 칼날 팔, Q로 칼날 ↔ 왼손 총</span></li>
       <li><span class="d">11.18</span><span>보이는 것과 그려지는 것 나눔: 거리·건물은 늘 보이고 피폭체는 시야 안에서만, 시야 길이는 낮 520·밤 300 → <a href="#visibility">우리 게임의 시야</a></span></li>
       <li><span class="d">11.18</span><span>장애물 뒤 그림자: 가슴 높이에서 그리던 어둠을 발에서, 장애물 모서리마다 빛줄기 추가, 차 밑 밝은 칸 제거. 그림과 계산의 차이 1.54% → 0.18% → <a href="#visibility">가시성 다각형</a></span></li>
       <li><span class="d">11.18</span><span>몸 주변을 살짝 밝게, 앞 시야 400, 낮은 덜 보이게. F4 설정창을 묶음 제목·스크롤로 정리하고 시야·빛 슬라이더 추가</span></li>
@@ -288,6 +291,16 @@ stateDiagram-v2
         <h3>몸 두께 여유 (Collision padding)</h3>
         <p class="what">몸을 발밑 점 하나로 보고, 벽을 몸 두께만큼 <b>넓혀서</b> 검사한다. 원·캡슐 충돌보다 훨씬 단순하다.</p>
         <p class="ours"><b>우리 게임:</b> 좌우 8, 앞뒤 4 · <code>area.BODY_PAD</code>, <code>blocked</code> · F1 점선</p>
+      </div>
+    </article>
+
+    <article class="card" id="paperdoll">
+      <div class="media"><img src="img/paper_doll_ingame.png" alt="같은 빈손 주인공이 8방향으로 쇠파이프·도끼·식칼·권총을 손에 들고, 아래 줄은 휘두르기와 걷기" loading="lazy" width="1200" height="1020"></div>
+      <div class="body">
+        <span class="kind">그림</span>
+        <h3>레이어 그리기 (Paper doll · 부착점)</h3>
+        <p class="what">몸과 무기를 따로 그리고, 프레임마다 정해 둔 <b>손 위치(부착점)</b>에 무기를 붙인다. 무기가 늘어도 몸 그림은 한 벌.</p>
+        <p class="ours"><b>우리 게임:</b> 손 위치는 피부색으로 자동으로 찾음, 북쪽을 볼 땐 무기를 몸 뒤에 · <code>tools/sprites/find_hands.py</code>, <code>DirLook</code></p>
       </div>
     </article>
 

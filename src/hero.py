@@ -139,6 +139,7 @@ class Hero:
     # shove, pick-up, raising the weapon - run this many times faster. 1.3 undoes settings.TEMPO
     # for the hero only; walking and the infected stay as they are. Set by the F4 panel.
     action_speed = 1.0
+    hand = None                     # screen point of the weapon hand last drawn (8-direction art)
     angle = None                    # where the hero looks (world radians), set by play for 8-direction art
 
     def update(self, dt, keys, aim_x):
@@ -203,35 +204,40 @@ class Hero:
         elif aim_x is not None:
             self.facing = 1 if aim_x >= self.x else -1
 
+    def _draw(self, *args, **kw):
+        """Draws with the look and keeps where the weapon hand is (F1; None for side sheets)."""
+        self.hand = self.look.draw(*args, **kw)
+
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
         if self.dead:
-            self.look.draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
+            self._draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
         elif self.reeling > 0:                 # reels from the blow (was: blinking)
-            self.look.draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing, held=self.held())
+            self._draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing, held=self.held())
         elif self.pickup > 0:
-            self.look.draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held())
+            self._draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held())
         elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
-            self.look.draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held())
+            self._draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held())
         elif self.roll > 0:
             face = 1 if self.roll_dir[0] >= 0 else -1
-            self.look.draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,
+            self._draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,
                            distance=self.run_distance + (1 - self.roll / ROLL_TIME) * 3, held=self.held())
         elif self.slash:
             s = self.slash
-            self.look.draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"], held=self.held())
+            self._draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"],
+                           held=self.held(), angle=s["angle"])
         elif self.ready is not None and self.ready >= weapons.QUICK_PRESS:   # holding the blow raised
             w = self.weapon
             walking = f"ready_{w['style']}"
             if self.moving and self.look.has(walking):     # stepping with it raised: the legs walk
-                self.look.draw(walking, self.time, x, y, self.facing, distance=self.run_distance, held=self.held())
+                self._draw(walking, self.time, x, y, self.facing, distance=self.run_distance, held=self.held())
             else:
-                self.look.draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"],
-                               held=self.held())
+                self._draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"],
+                               held=self.held(), angle=self.angle)
         elif self.moving:
             pose = "sneak" if self.sneaking else "run"
-            self.look.draw(pose, self.time, x, y, self.facing, distance=self.run_distance, held=self.held(),
+            self._draw(pose, self.time, x, y, self.facing, distance=self.run_distance, held=self.held(),
                            angle=self.angle)
         else:
-            self.look.draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing, held=self.held(),
+            self._draw("sneak_idle" if self.sneaking else "idle", self.time, x, y, self.facing, held=self.held(),
                            angle=self.angle)
