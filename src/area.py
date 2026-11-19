@@ -32,8 +32,21 @@ EXIT_NAME = "지하철 입구"
 GROUND = None                    # the area's own ground picture (None: assets/<AREA_DIR>/ground.png)
 CREDIT = ""                      # map data credit, shown when the area comes from a real map
 
+# --- or the empty test arena (2026-11-19 "테스트용이니까 주변에 아무것도 없게, 테스트용 맵을 따로") --
+# BUSAN_AREA=arena: the test street's ground with nothing on it, the hero in the middle and a
+# few infected standing round him to hit (frozen at the start: F4 lets them go), every weapon
+# at his feet, nobody coming in, no station people. For trying attacks and pictures.
+TEST_ARENA = AREA == "arena"
+if TEST_ARENA:
+    BLOCKS, BLOCK_LOOKS = [], []
+    HERO_START = (500.0, 320.0)
+    ZOMBIE_STARTS = [(556, 264), (444, 264), (556, 376), (444, 376), (500, 250)]
+    WEAPONS_LYING = [(470, 300, "knife"), (485, 296, "bat"), (500, 292, "pipe"), (515, 296, "axe"),
+                     (530, 300, "machete")]
+    SUPPLIES = []
+
 # --- or one built from a real map --------------------------------------------------------------
-if AREA != "test":
+if AREA not in ("test", "arena"):
     _dir = ROOT / "assets" / "areas" / AREA
     _data = json.loads((_dir / "area.json").read_text(encoding="utf-8"))
     ROOM_W, ROOM_H = _data["size"]

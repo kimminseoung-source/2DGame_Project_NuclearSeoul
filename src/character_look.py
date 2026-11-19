@@ -268,15 +268,21 @@ class DirLook:
             return None
         d = DIRS[round(angle / (pi / 4)) % 8]
         spec = self.keys.get(pose, {}).get(d)
-        if not spec:
-            return None
+        if not spec:                                     # attacks have fewer directions: the nearest one
+            i = DIRS.index(d)
+            near = sorted((DIRS[(i + s) % 8] for s in (-1, 1)),
+                          key=lambda n: abs((DIRS.index(n) * pi / 4 - angle + pi) % (2 * pi) - pi))
+            d = next((n for n in near if n in self.keys.get(pose, {})), None)
+            if d is None:
+                return None
+            spec = self.keys[pose][d]
         if time < contact:
             step = spec["windup"]
         elif (time - contact) / max(1e-6, 1 - contact) < self.HIT_HOLD:
             step = spec["hit"]
         else:
             return None
-        pic = self.named.get((spec["anim"], d, str(step["frame"])))
+        pic = self.named.get((spec["anim"], step.get("dir", d), str(step["frame"])))
         return (pic, step["hand"], radians(step["weapon"]), d) if pic else None
 
     def hand(self, key, d, i):

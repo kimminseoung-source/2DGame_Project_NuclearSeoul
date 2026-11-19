@@ -1,8 +1,17 @@
 {
-  "note": "Key-pose attacks (2026-11-19, docs/planning/MOTION_FEW_SPRITES_2026-11-19.md): per weapon style and direction, the wind-up and hit pictures (<anim>/<dir>/<frame>.png), the hand in each (picture px) and where the weapon points there (degrees, y up). Directions without an entry use the standing picture with the weapon turning about the hand.",
+  "note": "Key-pose attacks (docs/planning/MOTION_RULES.md): per weapon style and direction, the wind-up and hit pictures (<anim>/<dir>/<frame>.png; \"dir\" borrows another direction's picture), the hand in each (picture px) and where the weapon points there (degrees, y up). Attacks have 4 diagonal directions (2026-11-19 \"4방향을 유지\"); a straight aim borrows the nearest one. Picks are first tries to look at in the game: north-east/north-west hits face front (PixelLab turned the body), north-west's wind-up borrows north-east's.",
   "chop": {
     "south-east": {"anim": "strike",
                    "windup": {"frame": 6, "hand": [17.5, 19.5], "weapon": 115},
-                   "hit": {"frame": 7, "hand": [30.0, 28.0], "weapon": -40}}
+                   "hit": {"frame": 7, "hand": [30.0, 28.0], "weapon": -40}},
+    "south-west": {"anim": "strike",
+                   "windup": {"frame": 5, "hand": [17.0, 13.0], "weapon": 65},
+                   "hit": {"frame": 6, "hand": [15.0, 27.5], "weapon": -145}},
+    "north-east": {"anim": "strike",
+                   "windup": {"frame": 3, "hand": [19.0, 12.5], "weapon": 135},
+                   "hit": {"frame": 7, "hand": [33.0, 30.0], "weapon": 20}},
+    "north-west": {"anim": "strike",
+                   "windup": {"frame": 3, "dir": "north-east", "hand": [19.0, 12.5], "weapon": 45},
+                   "hit": {"frame": 6, "hand": [15.5, 28.0], "weapon": 160}}
   }
 }

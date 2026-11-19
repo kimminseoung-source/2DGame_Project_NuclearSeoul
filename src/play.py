@@ -83,6 +83,8 @@ class Game:
         self.senses = True                  # F2: infected senses on/off (compare)
         self.real = True                    # F3: realistic look on/off (compare)
         self.dev = dev_tools.Dev()          # F1 debug boxes, F4 dev settings (kept across restarts)
+        if area.TEST_ARENA:                 # the empty test map: nobody comes in, the infected wait
+            self.dev.no_spawn = self.dev.freeze = True
         infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
         infected.Zombie.blink_corpse = not self.real
         self.zoom = ZOOM_DEFAULT            # mouse wheel zoom (kept across restarts)
@@ -129,6 +131,8 @@ class Game:
         # wait by the exit; E there starts the defense, the train comes after DEFENSE_TIME
         ex, ey = (EXIT[0] + EXIT[2]) / 2, EXIT[3] + 30
         self.people = [survivors.place(kind, (ex + dx, ey + dy)) for kind, dx, dy in STATION_PEOPLE]
+        if area.TEST_ARENA:                                  # the empty test map: nobody else
+            self.people = []
         self.defense = None          # s left until the train, while the defense runs
         self.station = None
         # the station is fenced off until the hero gets there (2026-11-18 "역에 가니까 이미 다 죽어
