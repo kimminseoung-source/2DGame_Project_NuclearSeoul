@@ -23,6 +23,7 @@ import sdl2
 
 import area
 import character_look
+import slash_fx
 import daylight
 import vision_cone
 import condition
@@ -125,6 +126,10 @@ def _set_jolt(v):
     play.JOLTS["heavy"] = (v, *play.JOLTS["heavy"][1:])
 
 
+def _fx_sprites(game, step):
+    slash_fx.SpriteFx.on = not slash_fx.SpriteFx.on
+
+
 def _key_poses(game, step):
     """Key-pose attacks (2 pictures + trail) on/off, to compare with the turning weapon."""
     character_look.DirLook.key_poses = not character_look.DirLook.key_poses
@@ -195,6 +200,7 @@ ROWS = (
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("새 주인공 그림 (8방향)", lambda g: _on(character_look.DirLook.on), _new_look),
     ("핵심 자세 공격 (남동쪽 시험)", lambda g: _on(character_look.DirLook.key_poses), _key_poses),
+    ("타격 효과 그림", lambda g: _on(slash_fx.SpriteFx.on), _fx_sprites),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
     _slider("강한 타격 멈춤", "clock", lambda g: _jolt()[0], lambda g, v: _set_jolt(v), 0, 0.3, 0.01, lambda v: f"{v:.2f}s"),

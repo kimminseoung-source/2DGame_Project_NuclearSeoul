@@ -7,7 +7,48 @@ from math import cos, pi, sin
 
 import pico2d
 
-from settings import SLASH_ARC
+from settings import DOT, ROOT, SLASH_ARC
+
+# Drawn effect pictures (2026-11-19 "임팩트 효과로 좀 가려야"): the blow's trail and the burst where
+# it lands, so two key-pose pictures read as one swing (docs/planning/MOTION_FEW_SPRITES_2026-11-19.md).
+# Credits: assets/effects/CREDITS.md. Each: sheet, frame w, h, frames, frames per second, scale.
+FX = {
+    "slash": ("pixel_art_sword_slash_sprites.png", 64, 47, 7, 40, 0.75),     # tbbk, CC0 (from its 3rd frame)
+    "hit": ("oga_hit_animations_3/shards02.png", 64, 64, 10, 40, 0.6),       # Viktor Hahn, CC-BY 4.0
+    "hit_big": ("oga_hit_animations_3/splash04.png", 64, 64, 10, 36, 0.75),  # Viktor Hahn, CC-BY 4.0
+}
+FX_FIRST = {"hit": 5, "slash": 2}   # shards02: its second row (a sharp cross); slash: skip the two tiny first frames
+_sheets = {}
+
+
+class SpriteFx:
+    """One play of a drawn effect sheet (FX) at a point, turned to `angle` (radians, y up).
+    The slash sheet's crescent bulges toward +x as drawn, so `angle` turns it to bulge along the
+    blow (checked in the game: turned by angle - pi it bulged back at the hero)."""
+
+    on = True                        # F4 "타격 효과 그림"
+
+    def __init__(self, name, x, y, angle=0.0):
+        sheet, self.fw, self.fh, self.count, self.fps, self.scale = FX[name]
+        if sheet not in _sheets:
+            _sheets[sheet] = pico2d.load_image(str(ROOT / "assets" / "effects" / sheet))
+        self.image = _sheets[sheet]
+        self.first = FX_FIRST.get(name, 0)
+        self.x, self.y = x, y
+        self.angle = angle
+        self.age = 0.0
+
+    def update(self, dt):
+        self.age += dt
+        return self.age < self.count / self.fps
+
+    def draw(self, cam_x, cam_y):
+        n = self.first + min(self.count - 1, int(self.age * self.fps))
+        cols = self.image.w // self.fw
+        col, row = n % cols, n // cols
+        w, h = self.fw * self.scale / DOT, self.fh * self.scale / DOT     # its pixels are canvas pixels
+        self.image.clip_composite_draw(col * self.fw, self.image.h - (row + 1) * self.fh, self.fw, self.fh,
+                                       self.angle, "", self.x - cam_x, self.y - cam_y, w, h)
 
 
 class Crescent:

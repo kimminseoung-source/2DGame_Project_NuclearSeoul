@@ -41,7 +41,7 @@ import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
                       ROLL_TIME, ROOT, SLOW_WORLD, WIDTH,
                       ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
-from slash_fx import Blood, Crescent, Spark, Streak, Tracer, draw_stains
+from slash_fx import Blood, Crescent, Spark, SpriteFx, Streak, Tracer, draw_stains
 from sound import Sounds
 import supplies as supply_rules
 from supplies import KINDS, PILL_EFFECT, Supply
@@ -742,6 +742,10 @@ class Game:
                 ox0, oy0 = hero.slash["from"]                  # the trail runs on the shown arc
                 self.effects.append(Streak(ox0, oy0, hero.slash["angle"], weapons.attack_range(hero.slash["weapon"]),
                                            hero.slash["arc"]) if self.real else Crescent(sx, sy, hero.slash["angle"]))
+                if SpriteFx.on:                              # the drawn trail over the blow
+                    a = hero.slash["angle"]
+                    reach = weapons.attack_range(hero.slash["weapon"]) * 0.55
+                    self.effects.append(SpriteFx("slash", sx + cos(a) * reach, sy + sin(a) * reach, a))
             reach, arc, weapon = hero.slash["reach"], hero.slash["arc"], hero.slash["weapon"]
             aim = hero.slash.get("aim")
             if not shot and not any(z.alive and hypot(z.x - sx, z.y + CHEST - sy) <= reach for z in self.zombies):
@@ -771,12 +775,16 @@ class Game:
                     part = "torso" if part == "ground" else part
                     was_crawling = z.prone
                     push = weapon["push"]
+                    if SpriteFx.on and not shot:             # the drawn burst where it lands
+                        self.effects.append(SpriteFx("hit", zx, zy, atan2(zy - sy, zx - sx)))
                     if not z.hurt(hero.x, hero.y, damage, part, push, weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
                         if z.prone and not was_crawling:              # legs cut: it drops - a heavier jolt
                             self.jolt("heavy", z)
                         continue
                     z.kill(zx - sx, zy - sy)
+                    if SpriteFx.on and not shot:
+                        self.effects.append(SpriteFx("hit_big", zx, zy))
                     self.kills += 1
                     if part == "head":                           # a head blow that ends it: felt
                         self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
