@@ -1,0 +1,8 @@
+{
+  "note": "Key-pose attacks (2026-11-19, docs/planning/MOTION_FEW_SPRITES_2026-11-19.md): per weapon style and direction, the wind-up and hit pictures (<anim>/<dir>/<frame>.png), the hand in each (picture px) and where the weapon points there (degrees, y up). Directions without an entry use the standing picture with the weapon turning about the hand.",
+  "chop": {
+    "south-east": {"anim": "strike",
+                   "windup": {"frame": 6, "hand": [17.5, 19.5], "weapon": 115},
+                   "hit": {"frame": 7, "hand": [30.0, 28.0], "weapon": -40}}
+  }
+}

@@ -25,7 +25,7 @@ LegacyLook wraps the first hand-drawn hero sheets so the old art keeps working.
 """
 
 import json
-from math import atan2, cos, pi, sin
+from math import atan2, cos, pi, radians, sin
 from pathlib import Path
 
 import pico2d
@@ -221,12 +221,16 @@ class DirLook:
             elif parent.name in DIRS:
                 pose = "walk" if "walk" in parent.parent.name.lower() else parent.parent.name.lower()
                 self.anims.setdefault(pose, {}).setdefault(parent.name, []).append(path)
+        self.named = {}                                # (animation, direction, frame name) -> picture
         for pose, by_dir in self.anims.items():
             for d, paths in by_dir.items():
                 order = sorted(paths, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
                 by_dir[d] = [self._load(p, Image) for p in order]
+                self.named.update({(pose, d, p.stem): pic for p, pic in zip(order, by_dir[d])})
         hands = Path(folder) / "hands.json"
         self.hands = json.loads(hands.read_text(encoding="utf-8")) if hands.exists() else {}
+        keys = Path(folder) / "keyframes.json"
+        self.keys = json.loads(keys.read_text(encoding="utf-8")) if keys.exists() else {}
 
     @staticmethod
     def _load(path, Image):
@@ -251,6 +255,29 @@ class DirLook:
         if (standing or (contact is not None and self.hands)) and d in self.stills:
             return (*self.stills[d], "idle", d, 0)     # no walk yet: the standing picture glides
         return None
+
+    key_poses = True                # F4: key-pose attacks on/off (off: standing picture + turning weapon)
+    HIT_HOLD = 0.45                 # share of the time after the hit that the hit picture stays
+
+    def key_pose(self, pose, time, contact, angle):
+        """A key-pose attack (keyframes.json): the wind-up picture until the hit, the hit picture
+        for HIT_HOLD of the rest, then None (back to standing). Returns (picture, hand, weapon
+        radians) or None. Two pictures per direction: the slash trail, hit-stop, shake and flash
+        carry the motion between them (docs/planning/MOTION_FEW_SPRITES_2026-11-19.md)."""
+        if not (self.on and self.key_poses) or contact is None or angle is None:
+            return None
+        d = DIRS[round(angle / (pi / 4)) % 8]
+        spec = self.keys.get(pose, {}).get(d)
+        if not spec:
+            return None
+        if time < contact:
+            step = spec["windup"]
+        elif (time - contact) / max(1e-6, 1 - contact) < self.HIT_HOLD:
+            step = spec["hit"]
+        else:
+            return None
+        pic = self.named.get((spec["anim"], d, str(step["frame"])))
+        return (pic, step["hand"], radians(step["weapon"]), d) if pic else None
 
     def hand(self, key, d, i):
         points = self.hands.get(key, {}).get(d)
@@ -286,22 +313,29 @@ class DirLook:
 
     def draw(self, pose, time, x, feet_y, facing, contact=None, distance=None, alpha=1.0, held=None, tint=None,
              angle=None):
-        pic = self.picture(pose, time, angle, contact)
-        if pic is None:
-            self.base.flash = getattr(self, "flash", 0)
-            self.base.draw(pose, time, x, feet_y, facing, contact, distance, alpha, held, tint)
-            return
-        image, under, key, d, i = pic
+        keyed = self.key_pose(pose, time, contact, angle)
+        if keyed:
+            (image, under), point, fixed_ang, d = keyed
+        else:
+            pic = self.picture(pose, time, angle, contact)
+            if pic is None:
+                self.base.flash = getattr(self, "flash", 0)
+                self.base.draw(pose, time, x, feet_y, facing, contact, distance, alpha, held, tint)
+                return
+            image, under, key, d, i = pic
+            point, fixed_ang = self.hand(key, d, i), None
         w, h = image.w / self.k, image.h / self.k
         cy = feet_y - under / self.k + h / 2
-        point = self.hand(key, d, i)
         weapon, hand = None, None
         if point is not None:
             gx = x + (point[0] + 0.5 - image.w / 2) / self.k
             gy = cy + (image.h / 2 - point[1] - 0.5) / self.k
             hand = (gx, gy)
             if held is not None:
-                ang, push = self.weapon_angle(pose, time, contact, angle, d)
+                if fixed_ang is not None:
+                    ang, push = fixed_ang, 0.0
+                else:
+                    ang, push = self.weapon_angle(pose, time, contact, angle, d)
                 weapon = (gx + cos(ang) * push / self.k, gy + sin(ang) * push / self.k, ang)
         if weapon and d in BEHIND:
             draw_weapon(held, *weapon, self.k)

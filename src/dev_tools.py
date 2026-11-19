@@ -115,6 +115,11 @@ def _new_look(game, step):
     character_look.DirLook.on = not character_look.DirLook.on
 
 
+def _key_poses(game, step):
+    """Key-pose attacks (2 pictures + trail) on/off, to compare with the turning weapon."""
+    character_look.DirLook.key_poses = not character_look.DirLook.key_poses
+
+
 def _senses(game, step):
     game.toggle_senses()
 
@@ -179,6 +184,7 @@ ROWS = (
     ("주인공",),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("새 주인공 그림 (8방향)", lambda g: _on(character_look.DirLook.on), _new_look),
+    ("핵심 자세 공격 (남동쪽 시험)", lambda g: _on(character_look.DirLook.key_poses), _key_poses),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
     _slider("출혈 확률", "drop", *_module_value(condition, "BLEED_CHANCE", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),

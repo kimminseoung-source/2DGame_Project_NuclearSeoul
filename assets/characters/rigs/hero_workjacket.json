@@ -1,0 +1,19 @@
+{
+  "note": "Cut-out rig for hero_concept/ref_v2_workjacket.png (ChatGPT, 3/4 view facing right, arms hanging). Boxes and joints are in picture pixels. The right arm (picture left) is the weapon arm and is drawn in front.",
+  "sheet": "assets/characters/hero_concept/ref_v2_workjacket.png",
+  "white_out": 235,
+  "px_per_m": 620,
+  "hip_spread": 30,
+  "parts": {
+    "head": {"box": [540, 110, 765, 335], "joints": {"neck": [640, 330], "top": [650, 120]}},
+    "torso": {"box": [548, 312, 705, 655], "joints": {"hip": [630, 645], "neck": [637, 330], "shoulder": [525, 372], "back_shoulder": [722, 372]}},
+    "front_arm": {"box": [455, 340, 550, 745], "chain": ["shoulder", "elbow", "wrist"],
+                  "joints": {"shoulder": [520, 372], "elbow": [512, 560], "wrist": [505, 650], "grip": [505, 700]}},
+    "back_arm": {"box": [700, 340, 768, 745], "chain": ["shoulder", "elbow", "wrist"], "darken": 0.85,
+                 "joints": {"shoulder": [725, 372], "elbow": [735, 560], "wrist": [740, 650], "grip": [740, 700]}},
+    "front_leg": {"box": [490, 650, 640, 1160], "chain": ["hip", "knee", "ankle"],
+                  "joints": {"hip": [575, 660], "knee": [565, 870], "ankle": [560, 1060]}},
+    "back_leg": {"box": [625, 650, 775, 1160], "chain": ["hip", "knee", "ankle"], "darken": 0.85,
+                 "joints": {"hip": [690, 660], "knee": [692, 870], "ankle": [700, 1060]}}
+  }
+}
