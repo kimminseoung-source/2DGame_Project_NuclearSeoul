@@ -257,7 +257,7 @@ class DirLook:
         return None
 
     key_poses = True                # F4: key-pose attacks on/off (off: standing picture + turning weapon)
-    HIT_HOLD = 0.45                 # share of the time after the hit that the hit picture stays
+    HIT_HOLD = 0.3                  # share of the time after the hit that the hit picture stays
 
     def key_pose(self, pose, time, contact, angle):
         """A key-pose attack (keyframes.json): the wind-up picture until the hit, the hit picture

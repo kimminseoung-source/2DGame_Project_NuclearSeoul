@@ -115,6 +115,16 @@ def _new_look(game, step):
     character_look.DirLook.on = not character_look.DirLook.on
 
 
+def _jolt():
+    import play
+    return play.JOLTS["heavy"]
+
+
+def _set_jolt(v):
+    import play
+    play.JOLTS["heavy"] = (v, *play.JOLTS["heavy"][1:])
+
+
 def _key_poses(game, step):
     """Key-pose attacks (2 pictures + trail) on/off, to compare with the turning weapon."""
     character_look.DirLook.key_poses = not character_look.DirLook.key_poses
@@ -187,6 +197,9 @@ ROWS = (
     ("핵심 자세 공격 (남동쪽 시험)", lambda g: _on(character_look.DirLook.key_poses), _key_poses),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
+    _slider("강한 타격 멈춤", "clock", lambda g: _jolt()[0], lambda g, v: _set_jolt(v), 0, 0.3, 0.01, lambda v: f"{v:.2f}s"),
+    _slider("공격 뒤 걸어 나가기", "run", *_module_value(hero_rules, "CANCEL_MOVE"), 0, 0.5, 0.02, lambda v: f"{v:.2f}s"),
+    _slider("연속 공격 시점", "clock", *_module_value(hero_rules, "CANCEL_BLOW", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
     _slider("출혈 확률", "drop", *_module_value(condition, "BLEED_CHANCE", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
     _slider("맞을 때 체력", "heart", *_module_value(condition, "BLOW_DAMAGE"), 0, 100, 1, lambda v: f"-{v:g}%"),
     ("체력 채우기·출혈 멈춤", None, _heal),

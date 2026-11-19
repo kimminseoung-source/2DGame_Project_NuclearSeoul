@@ -23,6 +23,11 @@ SLOW_RECOVER = 0.2          # per second back to full speed
 SHOVE_TIME = 0.25 * TEMPO   # s of the shove (right click)
 SHOVE_COOLDOWN = 0.6
 LUNGE_SPEED = 60 * (1 - 0.82)   # the lunge fades by 0.82 a frame: start speed = distance x this
+# Cancelling the follow-through (2026-11-19 "공격 동작 때 잠깐 멈추는 틈이 더 짧으면, 각 동작마다 더
+# 부드러운 조작"): once the blow has landed, walking, rolling or the next blow end it early.
+CANCEL_MOVE = 0.06          # s after the hit that walking or a roll ends the blow
+CANCEL_BLOW = 0.5           # share of the follow-through after which the next blow may start
+CANCEL_REST = 0.5           # share of the weapon's rest (cooldown) kept after walking out of a blow
 
 
 class Hero:
@@ -85,6 +90,8 @@ class Hero:
         the ready stance skips most of its wind-up."""
         held = self.charge >= 1.0                     # a full charge: the aimed part counts
         self.ready = None
+        if self.can_cancel(CANCEL_BLOW):              # chain: the next blow cuts the follow-through
+            self.end_slash(rest=0.0)
         if not self.free:
             return
         angle = atan2(ay - (self.y + CHEST), ax - self.x)
@@ -103,6 +110,21 @@ class Hero:
                       "from": (self.x, self.y + CHEST)}            # the range is measured from here
         speed = lunge * LUNGE_SPEED                     # covers about `lunge` px whatever the tempo
         self.lunge = (cos(angle) * speed, sin(angle) * speed)
+
+    def can_cancel(self, share=0.0):
+        """The blow has landed and its follow-through may be cut short (after CANCEL_MOVE s, or
+        `share` of the follow-through if that is later)."""
+        s = self.slash
+        if not s or not s["hit"]:
+            return False
+        return s["time"] >= s["hit_at"] + max(CANCEL_MOVE, share * (s["whole"] - s["hit_at"]))
+
+    def end_slash(self, rest=CANCEL_REST):
+        """Cut the blow short; `rest` of the weapon's cooldown still follows."""
+        if self.slash:
+            self.slash_cooldown = self.slash["weapon"].get("cooldown", SLASH_COOLDOWN) * rest
+            self.slash = None
+            self.lunge = (0.0, 0.0)
 
     @property
     def free(self):
@@ -184,7 +206,7 @@ class Hero:
             move_body(self, self.roll_dir[0] * ROLL_SPEED * dt, self.roll_dir[1] * ROLL_SPEED * dt)
             if self.roll <= 0:
                 self.roll_cooldown = ROLL_COOLDOWN
-        elif self.slash:
+        elif self.slash and not ((mx or my) and self.can_cancel()):
             self.slash["time"] += adt
             move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)
             self.lunge = (self.lunge[0] * 0.82, self.lunge[1] * 0.82)
@@ -192,6 +214,7 @@ class Hero:
                 self.slash_cooldown = self.slash["weapon"].get("cooldown", SLASH_COOLDOWN)   # the weapon's rest
                 self.slash = None
         elif mx or my:
+            self.end_slash()                           # walking out of a landed blow (no-op otherwise)
             length = hypot(mx, my)
             speed = RUN_SPEED * (SNEAK_SPEED if self.sneaking else 1.0) * (1 - self.slowed)
             if self.ready is not None:                 # weapon raised: a careful step

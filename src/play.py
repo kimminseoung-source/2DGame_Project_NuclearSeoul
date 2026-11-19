@@ -53,7 +53,7 @@ SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
 # weight: (hitstop s, shake canvas px, shake s) - 2 frames / 9 frames of stop (play.jolt)
-JOLTS = {"light": (0.035, 1.0, 0.10), "heavy": (0.15, 4.0, 0.25)}
+JOLTS = {"light": (0.035, 1.0, 0.10), "heavy": (0.09, 4.0, 0.25)}   # heavy stop 0.15 -> 0.09 (2026-11-19 "멈추는 틈이 더 짧으면")
 FLASH_TIME = 0.035           # s a struck infected shows white (2 frames)
 DEFENSE_TIME = 60.0          # s from the start of the station defense to the train (small first)
 DEFENSE_WAYS = 3             # they come in by this many entrances nearest the station
