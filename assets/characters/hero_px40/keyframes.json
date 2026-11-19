@@ -1,5 +1,5 @@
 {
- "note": "Key-pose attacks (docs/planning/MOTION_RULES.md): per weapon style and direction, the wind-up and hit pictures (<anim>/<dir>/<frame>.png; \"dir\" borrows another direction's picture), the hand in each (picture px) and where the weapon points there (degrees, y up). Attacks have 4 diagonal directions (2026-11-19 \"4방향을 유지\"); a straight aim borrows the nearest one. Picks are first tries to look at in the game: north-east/north-west hits face front (PixelLab turned the body), north-west's wind-up borrows north-east's.",
+ "note": "Key-pose attacks (docs/planning/MOTION_RULES.md): per weapon style and direction, the wind-up and hit pictures (<anim>/<dir>/<frame>.png; \"dir\" borrows another direction's picture), the hand in each (picture px) and where the weapon points there (degrees, y up). Attacks have 4 diagonal directions plus the front (south, 2026-11-20 \"정면을 기준으로\") (2026-11-19 \"4방향을 유지\"); a straight aim borrows the nearest one. Picks are first tries to look at in the game: north-east/north-west hits face front (PixelLab turned the body), north-west's wind-up borrows north-east's.",
  "chop": {
   "south-east": {
    "anim": "pl_chop",
@@ -78,6 +78,26 @@
     ],
     "weapon": 160
    }
+  },
+  "south": {
+   "anim": "pl_chop",
+   "windup": {
+    "frame": 2,
+    "hand": [
+     32.0,
+     7.5
+    ],
+    "weapon": 90
+   },
+   "hit": {
+    "frame": 4,
+    "hand": [
+     31.5,
+     32.5
+    ],
+    "weapon": -90
+   },
+   "made_by": "PixelLab animate-with-skeleton from Blender chop joints seen from the front (turn 0), both hands on the handle in the body's middle (--two-hands --centre); colours snapped to the standing picture"
   }
  },
  "_kept": {

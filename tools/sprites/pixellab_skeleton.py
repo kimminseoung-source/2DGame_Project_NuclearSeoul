@@ -91,6 +91,27 @@ def keypoints(base, idle, pose, k, arm_boost=1.0):
     return out
 
 
+def two_hands(kps, centre=False):
+    """Both hands on one handle (MOTION_RULES 9). The Blender chop swings with the right arm only,
+    so the left wrist joins the right one (2% of the canvas apart) and each elbow sits halfway
+    between its shoulder and the hands, bent outward. centre=True (seen from the front or back):
+    the hands go to the middle of the body, a chop straight at the camera."""
+    at = {p["label"]: p for p in kps}
+    rs, re, rw, ls, le, lw = (at.get(n) for n in ("RIGHT SHOULDER", "RIGHT ELBOW", "RIGHT ARM",
+                                                  "LEFT SHOULDER", "LEFT ELBOW", "LEFT ARM"))
+    if not all((rs, re, rw, ls, le, lw)):
+        return kps
+    side = 1 if ls["x"] >= rs["x"] else -1          # which way the left shoulder is on screen
+    x = (rs["x"] + ls["x"]) / 2 if centre else rw["x"]
+    if centre and at.get("RIGHT HIP"):              # a chop at the camera ends in front of the belly,
+        rw["y"] = round(min(rw["y"], at["RIGHT HIP"]["y"] - 0.03), 4)   # not down at the knees
+    rw["x"], lw["x"], lw["y"] = round(x - 0.01 * side, 4), round(x + 0.01 * side, 4), rw["y"]
+    for sh, el, wr, out in ((rs, re, rw, -side), (ls, le, lw, side)):
+        el["x"] = round((sh["x"] + wr["x"]) / 2 + 0.04 * out, 4)
+        el["y"] = round((sh["y"] + wr["y"]) / 2, 4)
+    return kps
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("what", choices=["balance", "make"])
@@ -101,14 +122,17 @@ def main():
     ap.add_argument("--out", default="assets/characters/pixellab_downloads/hero_workjacket_40/Skeleton")
     ap.add_argument("--dry", action="store_true", help="only write the keypoints and a picture of them")
     ap.add_argument("--guidance", type=float, default=6.0)
-    ap.add_argument("--arm-boost", type=float, default=1.0, help="exaggerate arm moves (small sprites read better)")
+    ap.add_argument("--arm-boost", type=float, nargs="+", default=[1.0],
+                    help="exaggerate arm moves (small sprites read better); one value, or one per frame")
     ap.add_argument("--tag", default="", help="suffix for the output names, to keep earlier tries")
+    ap.add_argument("--two-hands", action="store_true", help="left hand joins the right on the handle")
+    ap.add_argument("--centre", action="store_true", help="with --two-hands: hands in the body's middle (front/back views)")
     a = ap.parse_args()
     if a.what == "balance":
         print("balance:", call("GET", "/balance"))
         return
     char = ROOT / "assets" / "characters" / a.character
-    rig = json.loads((char / "rig" / f"{a.direction}.json").read_text(encoding="utf-8"))
+    rig_file = char / "rig" / f"{a.direction}.json"
     poses = json.loads((char / "_passes" / f"poses_{a.direction}.json").read_text(encoding="utf-8"))
     still = Image.open(char / "Idle" / "rotations" / f"{a.direction}.png").convert("RGBA")
     ox, oy = (CANVAS - still.width) // 2, CANVAS - still.height - 6
@@ -121,9 +145,17 @@ def main():
     if not est.exists():
         est.write_text(json.dumps(call("POST", "/estimate-skeleton", {"image": b64(ref)})["keypoints"]), encoding="utf-8")
     base = json.loads(est.read_text(encoding="utf-8"))
-    J = rig["joints"]
-    k = abs(J["head_top"][1] - J["ankle_r"][1]) / (abs(idle["head_top"][1] - idle["ankle_r"][1]) or 1) / CANVAS
-    frames = [keypoints(base, idle, poses[a.action][i], k, a.arm_boost) for i in a.frames]
+    if rig_file.exists():                      # joints marked in tools/animator
+        J = json.loads(rig_file.read_text(encoding="utf-8"))["joints"]
+        span = abs(J["head_top"][1] - J["ankle_r"][1])
+    else:                                      # no marks for this direction: the picture's own height
+        top, bottom = still.getchannel("A").getbbox()[1::2]
+        span = bottom - top - 2
+    k = span / (abs(idle["head_top"][1] - idle["ankle_r"][1]) or 1) / CANVAS
+    boost = (a.arm_boost * 3)[:3] if len(a.arm_boost) == 1 else a.arm_boost
+    frames = [keypoints(base, idle, poses[a.action][i], k, b) for i, b in zip(a.frames, boost)]
+    if a.two_hands:
+        frames = [frames[0]] + [two_hands(f, a.centre) for f in frames[1:]]
     (out / "keypoints.json").write_text(json.dumps(frames, indent=1), encoding="utf-8")
     if a.dry:
         from PIL import ImageDraw
@@ -131,6 +163,10 @@ def main():
         for f, kps in enumerate(frames):
             sheet.alpha_composite(ref.resize((CANVAS * 6, CANVAS * 6), Image.NEAREST), (f * CANVAS * 6, 0))
             d = ImageDraw.Draw(sheet)
+            at = {p["label"]: (f * CANVAS * 6 + p["x"] * CANVAS * 6, p["y"] * CANVAS * 6) for p in kps}
+            for chain in (("RIGHT SHOULDER", "RIGHT ELBOW", "RIGHT ARM"), ("LEFT SHOULDER", "LEFT ELBOW", "LEFT ARM")):
+                pts = [at[n] for n in chain if n in at]
+                d.line(pts, fill=(255, 220, 80), width=3)
             for p in kps:
                 x, y = f * CANVAS * 6 + p["x"] * CANVAS * 6, p["y"] * CANVAS * 6
                 d.ellipse((x - 5, y - 5, x + 5, y + 5), fill=(255, 80, 80))
