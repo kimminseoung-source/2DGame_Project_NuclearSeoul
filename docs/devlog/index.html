@@ -119,6 +119,8 @@ a:focus-visible { outline: 2px solid var(--hazard); outline-offset: 2px; }
   <section class="view log" id="view-dev" aria-labelledby="logtitle">
     <div class="section-title"><h2 id="logtitle">개발 일지</h2><small>무엇을 만들었나 · 최신이 위</small></div>
     <ol>
+      <li><span class="d">11.19</span><span>동작 만들기 사이트(tools/animator): 몸 조각·관절·Blender 동작 입히기·핵심 자세 저장, 남동 내려치기 양손 → <a href="#bake">뼈대와 굽기</a></span></li>
+      <li><span class="d">11.19</span><span>빈 테스트 맵(BUSAN_AREA=arena), 공격 뒤 빈틈 줄이기, 베기 궤적·타격 효과 그림(CC0·CC-BY)</span></li>
       <li><span class="d">11.19</span><span>무기를 손에 붙여 그리기: 몸은 빈손 한 벌, 무기는 그림 한 장씩. 손 위치는 피부색으로 자동으로 찾고, 휘두르기는 무기를 손을 축으로 돌림 → <a href="#paperdoll">레이어 그리기</a></span></li>
       <li><span class="d">11.19</span><span>새 주인공(PixelLab, 갈색 작업 재킷, 키 36px) 8방향 서 있기와 남쪽 걷기, 마우스 방향으로 돎</span></li>
       <li><span class="d">11.19</span><span>2차 기획 점검: 근접 중심 + 총은 비상용, 변이는 부위별·영구, 첫 변이는 칼날 팔, Q로 칼날 ↔ 왼손 총</span></li>
@@ -301,6 +303,16 @@ stateDiagram-v2
         <h3>레이어 그리기 (Paper doll · 부착점)</h3>
         <p class="what">몸과 무기를 따로 그리고, 프레임마다 정해 둔 <b>손 위치(부착점)</b>에 무기를 붙인다. 무기가 늘어도 몸 그림은 한 벌.</p>
         <p class="ours"><b>우리 게임:</b> 손 위치는 피부색으로 자동으로 찾음, 북쪽을 볼 땐 무기를 몸 뒤에 · <code>tools/sprites/find_hands.py</code>, <code>DirLook</code></p>
+      </div>
+    </article>
+
+    <article class="card" id="bake">
+      <div class="media"><img src="img/se_chop_3dposes.png" alt="Blender 관절대로 주인공 조각을 돌려 만든 남동 내려치기: 준비와 치기" loading="lazy" width="1280" height="200"></div>
+      <div class="body">
+        <span class="kind">그림</span>
+        <h3>스프라이트와 뼈대 (Spine · 굽기)</h3>
+        <p class="what">스프라이트는 장면마다 그림, 뼈대는 조각을 뼈로 움직임. 뼈대로 만들고 <b>프레임 그림으로 구우면</b> 둘의 장점을 같이 쓴다.</p>
+        <p class="ours"><b>우리 게임:</b> Blender 관절 → 사이트에서 조각 돌리기 → 굽기 → AI로 다듬기 · <code>tools/animator</code></p>
       </div>
     </article>
 
