@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>부산까지 동작 만들기</title>
+<style>
+:root { --bg:#16171a; --panel:#202227; --line:#33363d; --text:#e6e3dc; --mute:#9a978f; --accent:#d9a441; --ok:#5fb37b; --bad:#d9645a; }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 "Malgun Gothic", system-ui, sans-serif; }
+header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+header h1 { font-size:17px; margin:0; font-weight:600; }
+header small { color:var(--mute); }
+main { display:grid; grid-template-columns:300px 1fr; min-height:calc(100vh - 50px); }
+aside { border-right:1px solid var(--line); padding:12px 14px; overflow:auto; }
+section.work { padding:12px 16px; overflow:auto; }
+label { display:block; color:var(--mute); font-size:12px; margin:10px 0 3px; }
+select, button, input[type=number] { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:inherit; }
+select { width:100%; }
+button { cursor:pointer; }
+button:hover { border-color:var(--accent); }
+button.primary { background:var(--accent); color:#1b1408; border-color:var(--accent); font-weight:600; }
+.steps { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.steps button.on { border-color:var(--accent); color:var(--accent); }
+.row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; }
+canvas { image-rendering:pixelated; background:repeating-conic-gradient(#2a2c31 0 25%, #24262b 0 50%) 0 0/16px 16px; border-radius:4px; display:block; }
+.labels button { display:flex; align-items:center; gap:8px; width:100%; margin:3px 0; text-align:left; }
+.sw { width:14px; height:14px; border-radius:3px; flex:none; }
+.hint { color:var(--mute); font-size:12px; margin:6px 0; }
+.frames { display:flex; gap:6px; flex-wrap:wrap; }
+.frames .f { text-align:center; font-size:12px; color:var(--mute); }
+.frames .f canvas { border:2px solid transparent; cursor:pointer; }
+.frames .f.windup canvas { border-color:#5fa8d9; }
+.frames .f.hit canvas { border-color:var(--bad); }
+#log { color:var(--ok); font-size:12px; min-height:18px; }
+.chk { display:flex; gap:6px; align-items:center; color:var(--text); font-size:13px; margin:6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>동작 만들기</h1>
+  <small>캐릭터 그림을 조각으로 나누고, Blender 동작의 관절 각도대로 돌려 프레임을 만든다. 그림을 새로 그리지 않는다.</small>
+</header>
+<main>
+<aside>
+  <label>캐릭터</label><select id="char"></select>
+  <label>방향</label><select id="dir"></select>
+  <label>동작 파일</label><select id="poseFile"></select>
+  <label>동작</label><select id="action"></select>
+  <div class="chk"><input type="checkbox" id="mirror"><span>동작 좌우 반전 (왼쪽을 보는 방향)</span></div>
+  <div class="chk"><input type="checkbox" id="swap"><span>오른팔·왼팔 바꾸기</span></div>
+  <div class="chk"><input type="checkbox" id="frontRight" checked><span>앞에 그릴 팔 = 오른팔</span></div>
+  <label>회전 품질</label>
+  <select id="quality"><option value="8">도트 보존 회전 (RotSprite식, 8배)</option><option value="1">단순 회전</option></select>
+  <hr style="border-color:var(--line);margin:14px 0">
+  <button id="saveRig">나누기·관절 저장</button>
+  <div class="hint">저장 위치: assets/characters/&lt;캐릭터&gt;/rig/&lt;방향&gt;.json</div>
+  <div id="log"></div>
+</aside>
+<section class="work">
+  <div class="steps">
+    <button data-step="1" class="on">① 몸 나누기</button>
+    <button data-step="2">② 관절 찍기</button>
+    <button data-step="3">③ 동작 입히기</button>
+    <button data-step="4">④ 핵심 자세 저장</button>
+  </div>
+
+  <div id="step1" class="row">
+    <div class="card"><canvas id="paint" width="480" height="480"></canvas>
+      <div class="hint">왼쪽 버튼으로 칠하기, 오른쪽 버튼으로 지우기(나누지 않음). 붓 크기 <input type="number" id="brush" value="1" min="1" max="4" style="width:52px"></div></div>
+    <div class="card labels" id="labels" style="min-width:220px"></div>
+    <div class="card" style="max-width:260px"><b>왜 나누나</b><div class="hint">조각마다 다른 관절을 축으로 돌린다. 몸통은 엉덩이, 머리는 목, 윗팔은 어깨, 아랫팔은 팔꿈치, 다리는 고관절·무릎을 축으로.</div>
+      <button id="autoSplit">자동으로 대충 나누기</button>
+      <div class="hint">키 비율로 나눈 뒤, 팔·손이 몸통에 겹친 곳만 고치면 된다.</div></div>
+  </div>
+
+  <div id="step2" class="row" hidden>
+    <div class="card"><canvas id="joints" width="480" height="480"></canvas>
+      <div class="hint">고른 관절을 그림 위에 클릭해서 옮긴다.</div></div>
+    <div class="card labels" id="jointList" style="min-width:220px"></div>
+    <div class="card" style="max-width:260px"><button id="autoJoints">조각에서 관절 추정</button>
+      <div class="hint">조각의 위·아래 끝으로 어깨·팔꿈치·손목 등을 추정한다. 틀린 점만 옮긴다.</div></div>
+  </div>
+
+  <div id="step3" hidden>
+    <div class="row">
+      <div class="card"><canvas id="play" width="512" height="512"></canvas>
+        <div class="hint">초록 점 = 손(무기 손잡이), 노란 선 = 무기 방향(동작의 bat_dir)</div></div>
+      <div class="card" style="min-width:240px">
+        <button id="makeFrames" class="primary">프레임 만들기</button>
+        <label>재생 속도 (초당 장수)</label><input type="number" id="fps" value="8" min="1" max="24" style="width:70px">
+        <label>보기</label>
+        <div class="chk"><input type="checkbox" id="showBones" checked><span>뼈대 보기</span></div>
+        <div class="chk"><input type="checkbox" id="showOrig"><span>원래 그림 겹쳐 보기</span></div>
+        <div class="hint" id="info"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px"><div class="frames" id="frames"></div>
+      <div class="hint">프레임을 클릭: 파란 테두리 = 준비, 빨간 테두리 = 치기 (④에서 저장)</div></div>
+  </div>
+
+  <div id="step4" hidden class="row">
+    <div class="card" style="min-width:320px">
+      <label>무기 동작 종류 (keyframes.json의 키)</label>
+      <select id="style"><option value="chop">chop (내려치기·휘두르기)</option><option value="stab">stab (찌르기)</option></select>
+      <div class="hint" id="pick"></div>
+      <button id="saveKeys" class="primary">게임에 저장</button>
+      <div class="hint">프레임 그림: &lt;캐릭터&gt;/Tool_&lt;동작&gt;/&lt;방향&gt;/번호.png<br>keyframes.json의 이 방향을 덮어쓴다(원래 값은 같은 폴더 keyframes_backup.json).</div>
+    </div>
+  </div>
+</section>
+</main>
+<script>
+const DIRS = ["south","south-east","east","north-east","north","north-west","west","south-west"];
+const PARTS = [
+  ["head","머리","#e0b45a"],["torso","몸통","#7aa6d6"],
+  ["arm_r_up","오른 윗팔","#d66a5e"],["arm_r_lo","오른 아랫팔·손","#f09a8e"],
+  ["arm_l_up","왼 윗팔","#6abf7a"],["arm_l_lo","왼 아랫팔·손","#a6e0ae"],
+  ["leg_r_up","오른 허벅지","#b37ad6"],["leg_r_lo","오른 정강이·발","#d6aef0"],
+  ["leg_l_up","왼 허벅지","#d6c35a"],["leg_l_lo","왼 정강이·발","#f0e2a0"]];
+const JOINTS = [["head_top","정수리"],["neck","목"],["hip","엉덩이(가운데)"],
+  ["shoulder_r","오른 어깨"],["elbow_r","오른 팔꿈치"],["wrist_r","오른 손"],
+  ["shoulder_l","왼 어깨"],["elbow_l","왼 팔꿈치"],["wrist_l","왼 손"],
+  ["hip_r","오른 고관절"],["knee_r","오른 무릎"],["ankle_r","오른 발목"],
+  ["hip_l","왼 고관절"],["knee_l","왼 무릎"],["ankle_l","왼 발목"]];
+// part -> [pivot joint, end joint]
+const BONES = {head:["neck","head_top"], torso:["hip","neck"], arm_r_up:["shoulder_r","elbow_r"], arm_r_lo:["elbow_r","wrist_r"],
+  arm_l_up:["shoulder_l","elbow_l"], arm_l_lo:["elbow_l","wrist_l"], leg_r_up:["hip_r","knee_r"], leg_r_lo:["knee_r","ankle_r"],
+  leg_l_up:["hip_l","knee_l"], leg_l_lo:["knee_l","ankle_l"]};
+const $ = id => document.getElementById(id);
+const S = 10;                        // paint/joint zoom
+const OUT = 64;                      // frame canvas (like PixelLab animation frames)
+let sprite = null, W = 0, H = 0, pix = null, labels = null, joints = {};
+let curPart = "torso", curJoint = "neck", poses = {}, frames = [], windup = null, hit = null;
+const log = t => { $("log").textContent = t; };
+
+async function api(p) { return (await fetch(p)).json(); }
+async function init() {
+  const L = await api("/api/list");
+  $("char").innerHTML = L.characters.map(c => `<option ${c==="hero_px40"?"selected":""}>${c}</option>`).join("");
+  $("dir").innerHTML = DIRS.map(d => `<option ${d==="south-east"?"selected":""}>${d}</option>`).join("");
+  $("poseFile").innerHTML = Object.keys(L.poses).map(f => `<option ${f.endsWith("hero_dot/_passes/poses_0.json")?"selected":""}>${f}</option>`).join("");
+  window.POSEFILES = L.poses;
+  $("labels").innerHTML = PARTS.map(([k,n,c]) => `<button data-part="${k}"><span class="sw" style="background:${c}"></span>${n}</button>`).join("");
+  $("jointList").innerHTML = JOINTS.map(([k,n]) => `<button data-joint="${k}"><span class="sw" style="background:#fff"></span>${n}</button>`).join("");
+  document.querySelectorAll("[data-part]").forEach(b => b.onclick = () => { curPart = b.dataset.part; mark(); });
+  document.querySelectorAll("[data-joint]").forEach(b => b.onclick = () => { curJoint = b.dataset.joint; mark(); });
+  document.querySelectorAll(".steps button").forEach(b => b.onclick = () => step(+b.dataset.step));
+  ["char","dir"].forEach(id => $(id).onchange = loadSprite);
+  $("poseFile").onchange = loadPoses; $("action").onchange = () => {};
+  $("autoSplit").onclick = () => { autoSplit(); drawPaint(); };
+  $("autoJoints").onclick = () => { autoJoints(); drawJoints(); };
+  $("saveRig").onclick = saveRig; $("makeFrames").onclick = makeFrames; $("saveKeys").onclick = saveKeys;
+  paintEvents(); jointEvents(); mark();
+  try { await loadPoses(); } catch (e) { log("동작 파일을 못 읽었다: " + e); }
+  try { await loadSprite(); } catch (e) { log("그림을 못 읽었다: " + e); }
+  animate();
+}
+function mark() {
+  document.querySelectorAll("[data-part]").forEach(b => b.style.borderColor = b.dataset.part === curPart ? "var(--accent)" : "");
+  document.querySelectorAll("[data-joint]").forEach(b => {
+    b.style.borderColor = b.dataset.joint === curJoint ? "var(--accent)" : "";
+    b.querySelector(".sw").style.background = joints[b.dataset.joint] ? "#5fb37b" : "#555";
+  });
+}
+function step(n) { for (let i = 1; i <= 4; i++) $("step" + i).hidden = i !== n;
+  document.querySelectorAll(".steps button").forEach(b => b.classList.toggle("on", +b.dataset.step === n));
+  if (n === 1) drawPaint(); if (n === 2) drawJoints(); if (n === 4) showPick(); }
+
+async function loadPoses() {
+  poses = await api("/" + $("poseFile").value);
+  const acts = Object.keys(poses);
+  $("action").innerHTML = acts.map(a => `<option ${a==="chop"?"selected":""}>${a}</option>`).join("");
+}
+async function loadSprite() {
+  const c = $("char").value, d = $("dir").value;
+  const img = new Image(); img.src = `/assets/characters/${c}/Idle/rotations/${d}.png?${Date.now()}`;
+  await img.decode(); W = img.width; H = img.height;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d"); g.drawImage(img, 0, 0); pix = g.getImageData(0, 0, W, H); sprite = cv;
+  labels = new Int8Array(W * H).fill(-1); joints = {}; frames = []; windup = hit = null;
+  try { const r = await api(`/assets/characters/${c}/rig/${d}.json?${Date.now()}`);
+        if (r.labels && r.labels.length === W * H) labels = Int8Array.from(r.labels); joints = r.joints || {};
+        Object.assign($("mirror"), {checked: !!r.mirror}); $("swap").checked = !!r.swap; $("frontRight").checked = r.frontRight !== false;
+        log("저장된 나누기·관절을 불러왔다"); }
+  catch { autoSplit(); autoJoints(); log("자동으로 나눴다: 틀린 곳만 고치면 된다"); }
+  $("paint").width = $("joints").width = W * S; $("paint").height = $("joints").height = H * S;
+  drawPaint(); drawJoints(); mark(); $("frames").innerHTML = "";
+}
+const alpha = (x, y) => pix.data[(y * W + x) * 4 + 3];
+function bbox() { let l = W, t = H, r = -1, b = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (alpha(x, y) > 0) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
+  return {l, t, r, b, w: r - l + 1, h: b - t + 1}; }
+function autoSplit() {
+  // A rough first guess by height (adult proportions): head to 24%, arms between the shoulders
+  // (27%) and the hands (66%) as the outer columns of each row, legs below the hips (58%).
+  const B = bbox(), cx = (B.l + B.r) / 2;
+  const headEnd = B.t + B.h * 0.24, shoulder = B.t + B.h * 0.27, elbow = B.t + B.h * 0.45,
+        handEnd = B.t + B.h * 0.66, torsoEnd = B.t + B.h * 0.58, kneeY = B.t + B.h * 0.79;
+  const armW = Math.max(2, Math.round(B.w * 0.22));
+  for (let y = 0; y < H; y++) {
+    let xl = W, xr = -1;
+    for (let x = 0; x < W; x++) if (alpha(x, y)) { xl = Math.min(xl, x); xr = Math.max(xr, x); }
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x; if (!alpha(x, y)) { labels[i] = -1; continue; }
+      let p;
+      if (y < headEnd) p = "head";
+      else if (y >= shoulder && y < handEnd && x < xl + armW && xr - xl >= 2 * armW) p = "arm_r" + (y < elbow ? "_up" : "_lo");
+      else if (y >= shoulder && y < handEnd && x > xr - armW && xr - xl >= 2 * armW) p = "arm_l" + (y < elbow ? "_up" : "_lo");
+      else if (y < torsoEnd) p = "torso";
+      else p = (x < cx ? "leg_r" : "leg_l") + (y < kneeY ? "_up" : "_lo");
+      labels[i] = PARTS.findIndex(q => q[0] === p);
+    }
+  }
+}
+function partBox(k) { const id = PARTS.findIndex(q => q[0] === k); let l = W, t = H, r = -1, b = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (labels[y * W + x] === id) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
+  return r < 0 ? null : {l, t, r, b, cx: (l + r) / 2}; }
+function autoJoints() {
+  const B = bbox(), P = k => partBox(k) || {l:B.l, t:B.t, r:B.r, b:B.b, cx:(B.l+B.r)/2};
+  const h = P("head"), to = P("torso");
+  joints.head_top = [h.cx, h.t]; joints.neck = [h.cx, h.b + 0.5]; joints.hip = [to.cx, to.b];
+  for (const s of ["r", "l"]) {
+    const u = P(`arm_${s}_up`), lo = P(`arm_${s}_lo`), lu = P(`leg_${s}_up`), ll = P(`leg_${s}_lo`);
+    joints["shoulder_" + s] = [u.cx, u.t + 1]; joints["elbow_" + s] = [u.cx, u.b]; joints["wrist_" + s] = [lo.cx, lo.b - 1];
+    joints["hip_" + s] = [lu.cx, lu.t]; joints["knee_" + s] = [lu.cx, lu.b]; joints["ankle_" + s] = [ll.cx, ll.b - 1];
+  }
+}
+// --- step 1: painting
+function drawPaint() { if (!sprite) return; const g = $("paint").getContext("2d"); g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, W * S, H * S); g.drawImage(sprite, 0, 0, W * S, H * S);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const id = labels[y * W + x]; if (id < 0) continue;
+    g.fillStyle = PARTS[id][2] + "88"; g.fillRect(x * S, y * S, S, S); } }
+function paintEvents() { const c = $("paint"); let down = 0;
+  const at = e => { const r = c.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * W), Math.floor((e.clientY - r.top) / r.height * H)]; };
+  const put = e => { const [x0, y0] = at(e), n = +$("brush").value, id = down === 2 ? -1 : PARTS.findIndex(q => q[0] === curPart);
+    for (let y = y0; y < y0 + n; y++) for (let x = x0; x < x0 + n; x++) if (x >= 0 && y >= 0 && x < W && y < H && alpha(x, y)) labels[y * W + x] = id;
+    drawPaint(); };
+  c.oncontextmenu = e => e.preventDefault();
+  c.onmousedown = e => { down = e.button === 2 ? 2 : 1; put(e); }; c.onmousemove = e => down && put(e); window.onmouseup = () => down = 0; }
+// --- step 2: joints
+function drawJoints() { if (!sprite) return; const g = $("joints").getContext("2d"); g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, W * S, H * S); g.drawImage(sprite, 0, 0, W * S, H * S); g.globalAlpha = 0.35;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const id = labels[y * W + x]; if (id >= 0) { g.fillStyle = PARTS[id][2]; g.fillRect(x * S, y * S, S, S); } }
+  g.globalAlpha = 1; g.lineWidth = 2;
+  for (const [k, [a, b]] of Object.entries(BONES)) if (joints[a] && joints[b]) { g.strokeStyle = "#fff8"; g.beginPath();
+    g.moveTo((joints[a][0] + .5) * S, (joints[a][1] + .5) * S); g.lineTo((joints[b][0] + .5) * S, (joints[b][1] + .5) * S); g.stroke(); }
+  for (const [k, p] of Object.entries(joints)) { g.fillStyle = k === curJoint ? "#d9a441" : "#fff";
+    g.beginPath(); g.arc((p[0] + .5) * S, (p[1] + .5) * S, k === curJoint ? 6 : 4, 0, 7); g.fill(); } }
+function jointEvents() { const c = $("joints");
+  c.onclick = e => { const r = c.getBoundingClientRect();
+    joints[curJoint] = [Math.round((e.clientX - r.left) / r.width * W - .5), Math.round((e.clientY - r.top) / r.height * H - .5)];
+    drawJoints(); mark(); }; }
+
+// --- step 3: posing
+const ang = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]);
+const rot = (v, r) => [v[0] * Math.cos(r) - v[1] * Math.sin(r), v[0] * Math.sin(r) + v[1] * Math.cos(r)];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]], sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+function poseOf(p) { // mirror / swap the Blender pose to fit this direction
+  const q = {}; const m = $("mirror").checked, s = $("swap").checked;
+  for (const [k, v] of Object.entries(p)) { let key = k;
+    if (s) key = k.endsWith("_r") ? k.slice(0, -2) + "_l" : k.endsWith("_l") ? k.slice(0, -2) + "_r" : k;
+    q[key] = Array.isArray(v) ? [m ? -v[0] : v[0], v[1]] : v; }
+  return q; }
+function scale2x(src, w, h) { // EPX: doubles a picture without blurring (RotSprite's first step)
+  const out = new Uint32Array(w * h * 4), P = (x, y) => src[Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const p = P(x, y), A = P(x, y - 1), B = P(x + 1, y), C = P(x - 1, y), D = P(x, y + 1);
+    let e0 = p, e1 = p, e2 = p, e3 = p;
+    if (A !== D && C !== B) { if (C === A) e0 = A; if (A === B) e1 = B; if (D === C) e2 = C; if (B === D) e3 = D; }
+    const o = (2 * y) * (2 * w) + 2 * x; out[o] = e0; out[o + 1] = e1; out[o + 2 * w] = e2; out[o + 2 * w + 1] = e3; }
+  return out; }
+function partPixels(id) { const a = new Uint32Array(W * H), d = new Uint32Array(pix.data.buffer);
+  for (let i = 0; i < W * H; i++) if (labels[i] === id) a[i] = d[i]; return a; }
+function drawPart(dst, id, pivot, at, r) {  // rotate one part around its pivot (picture px) and put it at `at`
+  const q = +$("quality").value; let src = partPixels(id), w = W, h = H;
+  for (let s = 1; s < q; s *= 2) { src = scale2x(src, w, h); w *= 2; h *= 2; }
+  const k = q, d = new Uint32Array(dst.data.buffer), c = Math.cos(-r), sn = Math.sin(-r);
+  for (let y = 0; y < OUT; y++) for (let x = 0; x < OUT; x++) {
+    const dx = x + .5 - at[0], dy = y + .5 - at[1];
+    const sx = (dx * c - dy * sn + pivot[0] + .5) * k, sy = (dx * sn + dy * c + pivot[1] + .5) * k;
+    const ix = Math.floor(sx), iy = Math.floor(sy);
+    if (ix < 0 || iy < 0 || ix >= w || iy >= h) continue;
+    const v = src[iy * w + ix]; if (v >>> 24) d[y * OUT + x] = v; } }
+function frameFrom(p0, p) { // forward kinematics from the hips (like tools/sprites/cutout_rig.py)
+  const J = joints, ox = (OUT - W) / 2, oy = OUT - H - 6, off = v => [v[0] + ox, v[1] + oy];
+  const restH = Math.hypot(...sub(p0.head_top, p0.ankle_r || p0.hip)) || 1, sprH = Math.hypot(...sub(J.head_top, J.ankle_r)) || 1;
+  const k = sprH / restH;                                         // Blender metres -> picture px
+  const hip = add(off(J.hip), [(p.hip[0] - p0.hip[0]) * k, (p.hip[1] - p0.hip[1]) * k]);
+  const da = (a, b, c, d) => ang(p[c], p[d]) - ang(J[a], J[b]);
+  const aT = da("hip", "neck", "hip", "neck"), at = name => add(hip, rot(sub(J[name], J.hip), aT));
+  const img = new ImageData(OUT, OUT), id = k2 => PARTS.findIndex(q => q[0] === k2);
+  const limb = (s, up, lo, a, b, c, start) => { const a1 = da(a + "_" + s, b + "_" + s, a + "_" + s, b + "_" + s);
+    const mid = add(start, rot(sub(J[b + "_" + s], J[a + "_" + s]), a1));
+    const a2 = da(b + "_" + s, c + "_" + s, b + "_" + s, c + "_" + s);
+    const end = add(mid, rot(sub(J[c + "_" + s], J[b + "_" + s]), a2));
+    return {draw: () => { drawPart(img, id(up), J[a + "_" + s], start, a1); drawPart(img, id(lo), J[b + "_" + s], mid, a2); }, end}; };
+  const front = $("frontRight").checked ? "r" : "l", back = front === "r" ? "l" : "r";
+  const legStart = s => add(hip, sub(J["hip_" + s], J.hip));
+  const L = {arm: {}, leg: {}};
+  for (const s of ["r", "l"]) { L.arm[s] = limb(s, `arm_${s}_up`, `arm_${s}_lo`, "shoulder", "elbow", "wrist", at("shoulder_" + s));
+    L.leg[s] = limb(s, `leg_${s}_up`, `leg_${s}_lo`, "hip", "knee", "ankle", legStart(s)); }
+  L.arm[back].draw(); L.leg[back].draw();
+  drawPart(img, id("torso"), J.hip, hip, aT); L.leg[front].draw();
+  const neck = at("neck"); drawPart(img, id("head"), J.neck, neck, da("neck", "head_top", "neck", "head_top"));
+  L.arm[front].draw();
+  const hand = L.arm["r"].end;                                   // the weapon hand: the right one
+  let wdir = null; if (p.bat_dir) wdir = Math.atan2(-p.bat_dir[1], p.bat_dir[0]) * 180 / Math.PI;
+  return {img, hand: [Math.round(hand[0] * 10) / 10, Math.round(hand[1] * 10) / 10], weapon: wdir == null ? null : Math.round(wdir)}; }
+function makeFrames() {
+  const need = Object.values(BONES).flat().filter(j => !joints[j]);
+  if (need.length) { log("관절이 빠졌다: " + [...new Set(need)].join(", ")); return; }
+  const list = poses[$("action").value], idle = poseOf((poses.idle || list)[0]);
+  frames = list.map(p => frameFrom(idle, poseOf(p))); windup = hit = null;
+  const box = $("frames"); box.innerHTML = "";
+  frames.forEach((f, i) => { const d = document.createElement("div"); d.className = "f";
+    const c = document.createElement("canvas"); c.width = c.height = OUT; c.style.width = c.style.height = "128px";
+    c.getContext("2d").putImageData(f.img, 0, 0); c.onclick = () => pickFrame(i, d);
+    d.append(c, document.createTextNode(i)); box.append(d); });
+  $("info").textContent = `${frames.length}장 · 손 위치·무기 방향을 함께 계산했다`; log("프레임을 만들었다"); }
+function pickFrame(i, el) { if (windup === null || (windup !== null && hit !== null)) { windup = i; hit = null; }
+  else hit = i;
+  document.querySelectorAll("#frames .f").forEach((d, k) => d.className = "f" + (k === windup ? " windup" : "") + (k === hit ? " hit" : "")); showPick(); }
+function showPick() { $("pick").textContent = windup === null ? "③에서 준비·치기 프레임을 고른다" :
+  `준비 ${windup}번 · 치기 ${hit === null ? "?" : hit + "번"}`; }
+let tick = 0;
+function animate() { const c = $("play"), g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 512, 512);
+  if (frames.length) { const i = Math.floor(tick / (60 / +$("fps").value)) % frames.length, f = frames[i];
+    const t = document.createElement("canvas"); t.width = t.height = OUT; t.getContext("2d").putImageData(f.img, 0, 0);
+    if ($("showOrig").checked) { g.globalAlpha = .3; g.drawImage(sprite, (OUT - W) / 2 * 8, (OUT - H - 6) * 8, W * 8, H * 8); g.globalAlpha = 1; }
+    g.drawImage(t, 0, 0, 512, 512);
+    if ($("showBones").checked) { g.fillStyle = "#5fb37b"; g.beginPath(); g.arc((f.hand[0] + .5) * 8, (f.hand[1] + .5) * 8, 5, 0, 7); g.fill();
+      if (f.weapon !== null) { const r = f.weapon * Math.PI / 180; g.strokeStyle = "#d9a441"; g.lineWidth = 3; g.beginPath();
+        g.moveTo((f.hand[0] + .5) * 8, (f.hand[1] + .5) * 8); g.lineTo((f.hand[0] + .5) * 8 + Math.cos(r) * 90, (f.hand[1] + .5) * 8 - Math.sin(r) * 90); g.stroke(); } } }
+  tick++; requestAnimationFrame(animate); }
+
+// --- saving
+async function save(path, payload) { const r = await fetch("/save", {method: "POST", body: JSON.stringify({path, ...payload})});
+  if (!r.ok) throw new Error(await r.text()); return r.json(); }
+async function saveRig() { const c = $("char").value, d = $("dir").value;
+  await save(`assets/characters/${c}/rig/${d}.json`, {json: {labels: Array.from(labels), joints, mirror: $("mirror").checked,
+    swap: $("swap").checked, frontRight: $("frontRight").checked, parts: PARTS.map(p => p[0])}});
+  log(`저장: ${c}/rig/${d}.json`); }
+async function saveKeys() {
+  if (windup === null || hit === null) { log("준비·치기 프레임을 먼저 고른다"); return; }
+  const c = $("char").value, d = $("dir").value, act = $("action").value, anim = "tool_" + act;
+  for (const i of [windup, hit]) { const t = document.createElement("canvas"); t.width = t.height = OUT;
+    t.getContext("2d").putImageData(frames[i].img, 0, 0);
+    await save(`assets/characters/${c}/Tool_${act}/${d}/${i}.png`, {data: t.toDataURL("image/png")}); }
+  let keys = {}; try { keys = await api(`/assets/characters/${c}/keyframes.json?${Date.now()}`); } catch {}
+  await save(`assets/characters/${c}/keyframes_backup.json`, {json: keys});
+  const st = $("style").value; keys[st] = keys[st] || {};
+  const step = i => ({frame: i, hand: frames[i].hand, weapon: frames[i].weapon ?? 0});
+  keys[st][d] = {anim, windup: step(windup), hit: step(hit), made_by: "tools/animator"};
+  await save(`assets/characters/${c}/keyframes.json`, {json: keys});
+  await saveRig(); log(`게임에 저장: ${st} · ${d} (준비 ${windup}, 치기 ${hit})`); }
+init();
+</script>
+</body>
+</html>
