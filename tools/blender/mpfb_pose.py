@@ -44,7 +44,7 @@ def args():
     p.add_argument("--name", default="act")
     p.add_argument("--pass", dest="render_pass", choices=["color", "id", "light"], default="color")
     p.add_argument("--weapon", type=float, default=0.0, help="test pipe length in metres (0 = none)")
-    p.add_argument("--weapon-axis", default="x", choices=["x", "-x", "z", "-z"],
+    p.add_argument("--weapon-axis", default="z", choices=["x", "-x", "z", "-z"],
                    help="which way the pipe leaves the fist, in the hand bone's axes")
     p.add_argument("--damp", nargs="*", default=[], help="bone=share, e.g. Spine=0.5 (mixamorig: added)")
     return p.parse_args(sys.argv[sys.argv.index("--") + 1:])
