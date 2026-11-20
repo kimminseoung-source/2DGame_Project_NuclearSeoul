@@ -188,6 +188,8 @@ CHARGE_TIME = 0.35 * TEMPO      # s to fill the charge
 READY_SPEED = 0.5               # share of the walking speed while holding the blow ready
 READY_DRAIN = 4.0               # stamina per second while holding it
 READY_SKIP = 0.7                # share of the wind-up skipped when a held blow is let go
+QUICK_SKIP = 0.5                # share of the wind-up skipped by a plain click (2026-11-20 "클릭 공격의
+                                # 준비 동작 시간을 줄여야"); less than READY_SKIP, so aiming still pays
 QUICK_PRESS = 0.15              # s: a press shorter than this is a plain click (a full blow)
 
 

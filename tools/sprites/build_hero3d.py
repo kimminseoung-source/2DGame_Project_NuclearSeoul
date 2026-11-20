@@ -34,6 +34,19 @@ ACTIONS = {
     "chop": ("Standing_Melee_Attack_Downward", 10, list(TURN),
              "MP_chop", ["--weapon", "0.75", "--hide-weapon"]),
 }
+# One-off and other body motions (docs/plans/2026-11-20_기본_주인공_교체.md): rendered `n` pictures,
+# kept the listed ones (few, MOTION_RULES 2-1), saved as <Folder>/<dir>/0..k-1 with the hand per
+# picture in hands.json under the folder's name (= the game's pose name).
+BODY = {
+    # pose: (Mixamo file, rendered, kept, folder)
+    "hurt": ("Hit_Reaction", 6, [1, 3], "Hurt"),
+    "down": ("Death_Backward", 8, [1, 3, 5, 7], "Down"),
+    "pickup": ("Picking_Up", 6, [1, 3], "Pickup"),
+    "sneak": ("Crouch_Walk_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak"),
+    "sneak_idle": ("Crouch_Walk_Forward", 1, [0], "Sneak_Idle"),
+}
+for _pose, (_fbx, _n, _keep, _folder) in BODY.items():
+    ACTIONS["b_" + _pose] = (_fbx, _n, list(TURN), _folder, [])
 CHOP_KEYS = {"windup": 3, "hit": 4, "recover": 7}   # of the 10 rendered: pipe over the head, forward-down,
                                                      # coming back; only these 3 are kept (2026-11-20 plan)
 SPRITE = ["--pixel", "64", "--person-px", "36", "--feet", "12", "--tilt", "30"]
@@ -119,7 +132,14 @@ def main():
                     keep = sorted(CHOP_KEYS.values()) if action == "chop" else range(frames)
                     for i in keep:
                         shutil.copy(pics[i], dest / f"{i}.png")
-                    if action in ("aim", "aim_step"):
+                    if action.startswith("b_"):
+                        kept = BODY[action[2:]][2]
+                        shutil.rmtree(dest)
+                        dest.mkdir(parents=True)
+                        for j, i in enumerate(kept):
+                            shutil.copy(pics[i], dest / f"{j}.png")
+                        hands.setdefault(folder.lower(), {})[d] = [notes[i]["hand"] for i in kept]
+                    elif action in ("aim", "aim_step"):
                         key = folder.lower()
                         hands.setdefault(key, {})[d] = [n["hand"] for n in notes]
                         keys.setdefault("held_angles", {}).setdefault(key, {})[d] = [n["weapon"] for n in notes]

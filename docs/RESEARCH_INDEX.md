@@ -77,6 +77,7 @@
 | [planning/FUN_RESEARCH_2026-11-18.md](planning/FUN_RESEARCH_2026-11-18.md) | 11-18 | 재미 요소 기획 이론 | ✓ |
 | [research/FUN_APPLICATION_REPORT.md](research/FUN_APPLICATION_REPORT.md) | 11-16 | 우리 게임에 무엇을 적용하면 재미있나 | ✓ |
 | [research/ZOMBOID_COMMUNITY_RESEARCH.md](research/ZOMBOID_COMMUNITY_RESEARCH.md) | 11-16 | 좀보이드 커뮤니티·공략 | ○ |
+| [research/GAME_JUICE_2026-11-20.md](research/GAME_JUICE_2026-11-20.md) | 11-20 | **전투 손맛(게임 쥬스)**: 지금 있는 것(히트스톱·흔들림·번쩍·궤적·피·소리)과 더할 후보 12개 | ○ 다음 계획 |
 | [research/BG3_COMBAT_RESEARCH.md](research/BG3_COMBAT_RESEARCH.md) | 11-08 | 발더스 게이트 3 전투·UI | ✗ 턴제는 버림 |
 | [research/UI_NOT_AI_RESEARCH.md](research/UI_NOT_AI_RESEARCH.md) | 11-16 | UI에서 "AI 티" 없애기 | ★ UI 원칙 |
 | [research/GROUND_INVENTORY_UI_RESEARCH.md](research/GROUND_INVENTORY_UI_RESEARCH.md) | 11-16 | 바닥에 늘어놓는 인벤토리 UI | ✓ |
@@ -106,6 +107,7 @@
 | [plans/2026-11-20_사무라이_베기_자세.md](plans/2026-11-20_사무라이_베기_자세.md) | 11-20 | 휘두른 뒤 자세를 야구 → 사무라이 베기(준비는 방망이 그대로, 치기·회복은 양손 검) | 완료 |
 | [plans/2026-11-20_공격_8방향.md](plans/2026-11-20_공격_8방향.md) | 11-20 | 공격을 8방향으로, 조준 걷기 머리, 3D 주인공 모든 동작 8방향 | 완료 |
 | [plans/2026-11-20_기본_주인공_교체.md](plans/2026-11-20_기본_주인공_교체.md) | 11-20 | 기본 주인공을 3D로, 빠진 동작(맞기·쓰러짐·줍기·살금살금·밀치기·구르기·밟기·찌르기·쏘기) | 진행 중 |
+| [plans/2026-11-20_클릭공격_준비시간.md](plans/2026-11-20_클릭공격_준비시간.md) | 11-20 | 짧게 클릭한 공격의 준비 시간 줄이기(QUICK_SKIP, F4) | 완료 |
 
 ## 10. 공부 노트 (왜 그렇게 하는지)
 

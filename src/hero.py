@@ -87,7 +87,7 @@ class Hero:
     def start_slash(self, ax, ay, stomp=False, aim=None):
         """A blow of the weapon toward (ax, ay) (weapons.py); `stomp` makes it a stamp of the foot
         on a crawler instead. `aim` = (infected, part) it is aimed at, if any. A blow let go from
-        the ready stance skips most of its wind-up."""
+        the ready stance skips most of its wind-up (READY_SKIP), a plain click some (QUICK_SKIP)."""
         held = self.charge >= 1.0                     # a full charge: the aimed part counts
         self.ready = None
         if self.can_cancel(CANCEL_BLOW):              # chain: the next blow cuts the follow-through
@@ -103,7 +103,10 @@ class Hero:
             whole, hit, lunge, cost = w["time"], w["hit"], w["lunge"], w["stamina"]
         if not self.stamina.pay(cost):                                 # out of breath: a slow one
             whole, hit = whole * breath.TIRED_SLOW, hit * breath.TIRED_SLOW
-        start = hit * weapons.READY_SKIP if held and not stomp else 0.0
+        if stomp:
+            start = 0.0
+        else:                                         # raised already: most of the wind-up is done;
+            start = hit * (weapons.READY_SKIP if held else weapons.QUICK_SKIP)   # a click: some of it
         self.slash = {"time": start, "angle": angle, "hit": False, "stomp": stomp, "aim": aim,
                       "whole": whole, "hit_at": hit, "pose": "stomp" if stomp else w["pose"],
                       "reach": w["reach"], "arc": w["arc"], "weapon": w, "held": held,
@@ -234,13 +237,13 @@ class Hero:
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
         if self.dead:
-            self._draw("down", min(1.0, self.dead * 1.5), x, y, self.facing)
+            self._draw("down", min(1.0, self.dead * 1.5), x, y, self.facing, angle=self.angle)
         elif self.reeling > 0:                 # reels from the blow (was: blinking)
-            self._draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing, held=self.held())
+            self._draw("hurt", 1 - self.reeling / HURT_REACT, x, y, self.facing, held=self.held(), angle=self.angle)
         elif self.pickup > 0:
-            self._draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held())
+            self._draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held(), angle=self.angle)
         elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
-            self._draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held())
+            self._draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held(), angle=self.angle)
         elif self.roll > 0:
             face = 1 if self.roll_dir[0] >= 0 else -1
             self._draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,

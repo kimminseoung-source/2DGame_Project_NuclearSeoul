@@ -206,6 +206,7 @@ class DirLook:
     on = True                       # F4 "새 주인공 그림": off shows the old sheets for comparison
     FRAME_TIME = 0.1                # seconds per walking frame (until a stride is measured)
     BREATH_TIME = 0.6               # seconds per standing (breathing) picture, <folder>/Breath/<dir>/
+    ONCE = ("hurt", "down", "pickup", "push", "roll")   # poses drawn by progress 0..1, not looped
     SWING_ARC = 1.05                # radians either side of the aim a chop sweeps (60 degrees)
     THRUST = 6                      # picture px a stab pushes the weapon forward
     HANG_OUT = 0.3                  # radians a carried weapon leans out from straight down
@@ -266,6 +267,13 @@ class DirLook:
             if frames:
                 i = int(time / self.FRAME_TIME) % len(frames)
                 return (*frames[i], key, d, i)
+        own = self.anims.get(pose, {}).get(d)          # a folder named after the pose (Hurt/, Sneak/ ...)
+        if own and pose not in ("walk", "run"):
+            if pose in self.ONCE:                      # one-off: `time` is its progress 0..1
+                i = min(len(own) - 1, int(time * len(own)))
+            else:
+                i = int(time / self.FRAME_TIME) % len(own)
+            return (*own[i], pose, d, i)
         if pose in MOVING:
             frames = self.anims.get("walk", {}).get(d)
             if frames:

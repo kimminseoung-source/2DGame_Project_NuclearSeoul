@@ -233,6 +233,7 @@ ROWS = (
     _slider("강한 타격 멈춤", "clock", lambda g: _jolt()[0], lambda g, v: _set_jolt(v), 0, 0.3, 0.01, lambda v: f"{v:.2f}s"),
     _slider("공격 뒤 걸어 나가기", "run", *_module_value(hero_rules, "CANCEL_MOVE"), 0, 0.5, 0.02, lambda v: f"{v:.2f}s"),
     _slider("연속 공격 시점", "clock", *_module_value(hero_rules, "CANCEL_BLOW", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
+    _slider("클릭 공격 준비 줄이기", "clock", *_module_value(weapons, "QUICK_SKIP", 100), 0, 90, 5, lambda v: f"{v:.0f}%"),
     _slider("출혈 확률", "drop", *_module_value(condition, "BLEED_CHANCE", 100), 0, 100, 5, lambda v: f"{v:.0f}%"),
     _slider("맞을 때 체력", "heart", *_module_value(condition, "BLOW_DAMAGE"), 0, 100, 1, lambda v: f"-{v:g}%"),
     ("체력 채우기·출혈 멈춤", None, _heal),
