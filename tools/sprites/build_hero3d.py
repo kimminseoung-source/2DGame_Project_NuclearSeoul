@@ -6,9 +6,10 @@ For each action: tools/blender/mpfb_pose.py renders the id and light passes at s
 (64 canvas, 36 px tall, feet 12 px up, camera 30 deg above), records the right fist and the
 weapon direction per picture, tools/sprites/repaint.py paints them, and the pictures land in
 the layout character_look.DirLook reads (same as the PixelLab hero):
-  Idle/rotations/<dir>.png, Walking/<dir>/<n>.png, MP_chop/<dir>/<n>.png,
-  hands.json (idle, walk: hand per picture), keyframes.json (chop: wind-up and hit picture,
-  hand, weapon angle). The body is drawn empty-handed; the game draws the weapon at the hand
+  Idle/rotations/<dir>.png, Breath/<dir>/0-1.png (standing, 2 pictures), Walking/<dir>/0-5.png,
+  MP_chop/<dir>/<n>.png (only the 3 key poses), hands.json (idle, breath, walk: hand per
+  picture), keyframes.json (chop: wind-up, hit and recover picture, hand, weapon angle).
+  Counts follow docs/plans/2026-11-20_hero3d_장수_줄이기.md: 2 + 6 + 3. The body is drawn empty-handed; the game draws the weapon at the hand
   (MOTION_RULES 7). Directions: turn 0 faces the camera (south), +45 per step clockwise.
 Model: C:/Users/doboh/busan_ai/mpfb/busan_hero.blend (tools/blender/mpfb_hero.py, spec
 assets/characters/mpfb/hero.json). Actions: Mixamo files in assets/source3d/mixamo.
@@ -28,12 +29,13 @@ TURN = {"south": 0, "south-east": 45, "east": 90, "north-east": 135, "north": 18
         "north-west": 225, "west": 270, "south-west": 315}
 ACTIONS = {
     # name: (Mixamo file, pictures, directions, folder, extra args)
-    "idle": ("Breathing_Idle", 1, list(TURN), "Idle", []),
-    "walk": ("Walking", 8, list(TURN), "Walking", []),
+    "idle": ("Breathing_Idle", 2, list(TURN), "Breath", []),    # 2 breathing pictures; the 1st is also the still
+    "walk": ("Walking", 6, list(TURN), "Walking", []),
     "chop": ("Standing_Melee_Attack_Downward", 10, ["south", "south-east", "south-west", "north-east", "north-west"],
              "MP_chop", ["--weapon", "0.75", "--hide-weapon"]),
 }
-CHOP_KEYS = {"windup": 3, "hit": 4}      # pictures of the 10 (2026-11-20: pipe over the head, pipe forward-down)
+CHOP_KEYS = {"windup": 3, "hit": 4, "recover": 7}   # of the 10 rendered: pipe over the head, forward-down,
+                                                     # coming back; only these 3 are kept (2026-11-20 plan)
 SPRITE = ["--pixel", "64", "--person-px", "36", "--feet", "12", "--tilt", "30"]
 
 
@@ -73,17 +75,25 @@ def main():
                 pics = [tmp / action / "paint" / f"a_t{TURN[d]}_{i}.png" for i in range(frames)]
                 notes = rec[str(TURN[d])]
                 if action == "idle":
-                    dest = out / folder / "rotations"
-                    dest.mkdir(parents=True, exist_ok=True)
-                    shutil.copy(pics[0], dest / f"{d}.png")
+                    still = out / "Idle" / "rotations"
+                    still.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(pics[0], still / f"{d}.png")
                     hands.setdefault("idle", {})[d] = [notes[0]["hand"]]
-                else:
                     dest = out / folder / d
                     if dest.exists():
                         shutil.rmtree(dest)
                     dest.mkdir(parents=True)
                     for i, p in enumerate(pics):
                         shutil.copy(p, dest / f"{i}.png")
+                    hands.setdefault("breath", {})[d] = [n["hand"] for n in notes]
+                else:
+                    dest = out / folder / d
+                    if dest.exists():
+                        shutil.rmtree(dest)
+                    dest.mkdir(parents=True)
+                    keep = range(frames) if action == "walk" else sorted(CHOP_KEYS.values())
+                    for i in keep:
+                        shutil.copy(pics[i], dest / f"{i}.png")
                     if action == "walk":
                         hands.setdefault("walk", {})[d] = [n["hand"] for n in notes]
                     else:

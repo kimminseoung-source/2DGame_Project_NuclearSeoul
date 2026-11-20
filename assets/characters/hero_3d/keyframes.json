@@ -18,6 +18,14 @@
     ],
     "weapon": -45.5
    },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     27.9,
+     37.0
+    ],
+    "weapon": 17.6
+   },
    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
   },
   "south-east": {
@@ -37,6 +45,14 @@
      38.3
     ],
     "weapon": -11.6
+   },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     35.2,
+     37.0
+    ],
+    "weapon": 50.6
    },
    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
   },
@@ -58,6 +74,14 @@
     ],
     "weapon": -116.5
    },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     22.8,
+     34.4
+    ],
+    "weapon": -4.8
+   },
    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
   },
   "north-east": {
@@ -78,6 +102,14 @@
     ],
     "weapon": 57.2
    },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     40.3,
+     30.8
+    ],
+    "weapon": 153.8
+   },
    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
   },
   "north-west": {
@@ -97,6 +129,14 @@
      32.8
     ],
     "weapon": 175.6
+   },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     27.9,
+     28.2
+    ],
+    "weapon": -152.9
    },
    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
   }

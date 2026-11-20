@@ -35,7 +35,7 @@
 | 문서 | 날짜 | 무엇 | 결론·지금 |
 |---|---|---|---|
 | [planning/MOTION_FEW_SPRITES_2026-11-19.md](planning/MOTION_FEW_SPRITES_2026-11-19.md) | 11-19 | **적은 스프라이트로 역동적인 동작**: 핵심 자세 2~3장, 스미어, 베기 효과로 가리기, 히트스톱, 무기 따로, 방향 줄이기 | ★ 공격 = 몸 3장 + 효과 + 멈춤 |
-| [planning/MOTION_RULES.md](planning/MOTION_RULES.md) | 11-19 | 위 조사로 정한 **동작 제작 기준**과 점검표 | ★ (3D 방식에 맞게 고칠 곳 있음: 2장 규칙, 만드는 순서) |
+| [planning/MOTION_RULES.md](planning/MOTION_RULES.md) | 11-19, 11-20 | 위 조사로 정한 **동작 제작 기준**과 점검표. 11-20: 공격 3장, 장수 기준(2-1), 3D 만드는 순서(5-1) | ★ |
 | [references/ANIMATION_GUIDES.md](references/ANIMATION_GUIDES.md) | 11-11~20 | **사용자가 준 방법 글 모음**: 일관성 해결법, AI 제작 방식 4가지, 5대 파이프라인과 실행 지침 | ★ 본체 = 3D→도트, 효과 = pixelfx |
 | [research/ZOMBOID_ANIMATION_RESEARCH.md](research/ZOMBOID_ANIMATION_RESEARCH.md) | 11-15 | 좀보이드 동작 구성과 규칙 | ○ 동작 목록 참고 |
 | [research/ZOMBOID_REA_ANALYSIS.md](research/ZOMBOID_REA_ANALYSIS.md) | 11-14 | 좀보이드 피폭체 동작 분석(REA) | ○ |
@@ -99,7 +99,7 @@
 
 | 계획서 | 날짜 | 무엇 | 상태 |
 |---|---|---|---|
-| [plans/2026-11-20_hero3d_장수_줄이기.md](plans/2026-11-20_hero3d_장수_줄이기.md) | 11-20 | 3D 주인공 서 있기 2장, 걷기 6장, 공격 3장(준비·치기·회복) | 진행 중 |
+| [plans/2026-11-20_hero3d_장수_줄이기.md](plans/2026-11-20_hero3d_장수_줄이기.md) | 11-20 | 3D 주인공 서 있기 2장, 걷기 6장, 공격 3장(준비·치기·회복) | 완료 |
 
 ## 10. 공부 노트 (왜 그렇게 하는지)
 

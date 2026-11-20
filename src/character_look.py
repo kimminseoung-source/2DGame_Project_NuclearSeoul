@@ -205,6 +205,7 @@ class DirLook:
 
     on = True                       # F4 "새 주인공 그림": off shows the old sheets for comparison
     FRAME_TIME = 0.1                # seconds per walking frame (until a stride is measured)
+    BREATH_TIME = 0.6               # seconds per standing (breathing) picture, <folder>/Breath/<dir>/
     SWING_ARC = 1.05                # radians either side of the aim a chop sweeps (60 degrees)
     THRUST = 6                      # picture px a stab pushes the weapon forward
     HANG_OUT = 0.3                  # radians a carried weapon leans out from straight down
@@ -252,6 +253,10 @@ class DirLook:
                 i = int(time / self.FRAME_TIME) % len(frames)
                 return (*frames[i], "walk", d, i)
         standing = pose in MOVING or pose in ("idle", "sneak_idle")
+        breath = self.anims.get("breath", {}).get(d) if pose in ("idle", "sneak_idle") else None
+        if breath:                                     # standing still: two breathing pictures in turn
+            i = int(time / self.BREATH_TIME) % len(breath)
+            return (*breath[i], "breath", d, i)
         if (standing or (contact is not None and self.hands)) and d in self.stills:
             return (*self.stills[d], "idle", d, 0)     # no walk yet: the standing picture glides
         return None
@@ -261,7 +266,8 @@ class DirLook:
 
     def key_pose(self, pose, time, contact, angle):
         """A key-pose attack (keyframes.json): the wind-up picture until the hit, the hit picture
-        for HIT_HOLD of the rest, then None (back to standing). Returns (picture, hand, weapon
+        for HIT_HOLD of the rest, then the "recover" picture if the attack has one (3 key poses,
+        2026-11-20), else None (back to standing). Returns (picture, hand, weapon
         radians) or None. Two pictures per direction: the slash trail, hit-stop, shake and flash
         carry the motion between them (docs/planning/MOTION_FEW_SPRITES_2026-11-19.md)."""
         if not (self.on and self.key_poses) or contact is None or angle is None:
@@ -280,6 +286,8 @@ class DirLook:
             step = spec["windup"]
         elif (time - contact) / max(1e-6, 1 - contact) < self.HIT_HOLD:
             step = spec["hit"]
+        elif "recover" in spec:                          # third key pose: the weapon comes back
+            step = spec["recover"]
         else:
             return None
         pic = self.named.get((spec["anim"], step.get("dir", d), str(step["frame"])))
