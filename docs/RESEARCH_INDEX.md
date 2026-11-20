@@ -38,7 +38,8 @@
 | [references/ANIMATION_GUIDES.md](references/ANIMATION_GUIDES.md) | 11-11~20 | **사용자가 준 방법 글 모음**: 일관성 해결법, AI 제작 방식 4가지, 5대 파이프라인과 실행 지침 | ★ 본체 = 3D→도트, 효과 = pixelfx |
 | [research/ZOMBOID_ANIMATION_RESEARCH.md](research/ZOMBOID_ANIMATION_RESEARCH.md) | 11-15 | 좀보이드 동작 구성과 규칙 | ○ 동작 목록 참고 |
 | [research/ZOMBOID_REA_ANALYSIS.md](research/ZOMBOID_REA_ANALYSIS.md) | 11-14 | 좀보이드 피폭체 동작 분석(REA) | ○ |
-| [planning/hero3d_swing_v2.png](planning/hero3d_swing_v2.png) | 11-20 | 3D 휘두르기 다듬기(허리 회전 줄이기, 무기 방향) | ○ Mixamo 동작 교체 중(Heavy Weapon Swing, Bash, Downward, Baseball Hit 받음) |
+| [planning/hero3d_swing_v2.png](planning/hero3d_swing_v2.png) | 11-20 | 3D 휘두르기 다듬기(허리 회전 줄이기, 무기 방향) | ✓ 동작 교체로 넘어감 |
+| [planning/hero3d_attacks4.png](planning/hero3d_attacks4.png) | 11-20 | Mixamo 공격 4개 비교(Heavy Weapon Swing, Bash, Downward, Baseball Hit) | ○ 고르는 중 (Downward가 준비·치기 가장 또렷) |
 
 ## 4. 3D → 도트 변환 기법
 
