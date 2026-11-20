@@ -27,7 +27,7 @@ import os
 import sys
 
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 
 def args():
@@ -44,6 +44,9 @@ def args():
     p.add_argument("--name", default="act")
     p.add_argument("--pass", dest="render_pass", choices=["color", "id", "light"], default="color")
     p.add_argument("--weapon", type=float, default=0.0, help="test pipe length in metres (0 = none)")
+    p.add_argument("--weapon-axis", default="x", choices=["x", "-x", "z", "-z"],
+                   help="which way the pipe leaves the fist, in the hand bone's axes")
+    p.add_argument("--damp", nargs="*", default=[], help="bone=share, e.g. Spine=0.5 (mixamorig: added)")
     return p.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
 
@@ -63,8 +66,12 @@ def import_source(path):
     return src
 
 
-def retarget(src, dst, frame):
-    """Pose dst like src at this frame (world orientations, rest offsets kept)."""
+def retarget(src, dst, frame, damp=None):
+    """Pose dst like src at this frame (world orientations, rest offsets kept).
+    damp: bone -> share of its own turn to keep (0.5 = half). Only that bone's local turn is
+    eased; its children are still set to the source's world directions, so arms and head
+    point the same way while the torso bends less (2026-11-20: "허리가 과하게 젖혀짐")."""
+    damp = damp or {}
     scene = bpy.context.scene
     scene.frame_set(frame)
     bpy.context.view_layer.update()
@@ -101,6 +108,9 @@ def retarget(src, dst, frame):
             loc = dst_rest_h + move * k
         m = Matrix.Translation(loc) @ want.to_matrix().to_4x4()
         db.matrix = dw.inverted() @ m
+        if name in damp:
+            db.rotation_mode = "QUATERNION"
+            db.rotation_quaternion = Quaternion().slerp(db.rotation_quaternion, damp[name])
         if name == "mixamorig:Head" and dst.get("head_scale"):
             db.scale = (dst["head_scale"],) * 3                  # the sprite head size (mpfb_hero.py)
         bpy.context.view_layer.update()
@@ -238,7 +248,7 @@ def frame_cam(cam, a, rest_pts):
     bpy.context.view_layer.update()
 
 
-def add_weapon(rig, length):
+def add_weapon(rig, length, axis="x"):
     """A test pipe in the right fist (for judging the motion only; the game draws its own
     weapon at the hand, character_look.draw_weapon)."""
     import bmesh
@@ -255,7 +265,10 @@ def add_weapon(rig, length):
     bone = rig.data.bones["mixamorig:RightHand"]
     rest = rig.matrix_world @ bone.matrix_local
     # fist ~8 cm along the hand; the pipe crosses the palm (hand X), most of it on the thumb side
-    place = rest @ Matrix.Translation((length * 0.35, 0.08, 0.0)) @ Matrix.Rotation(math.radians(90), 4, "Y")
+    turn = {"x": Matrix.Rotation(math.radians(90), 4, "Y"), "-x": Matrix.Rotation(math.radians(-90), 4, "Y"),
+            "z": Matrix(), "-z": Matrix.Rotation(math.radians(180), 4, "Y")}[axis]
+    along = turn @ Vector((0, 0, length * 0.35))
+    place = rest @ Matrix.Translation(Vector((0, 0.08, 0)) + along) @ turn
     obj.parent = rig
     obj.parent_type = "BONE"
     obj.parent_bone = bone.name
@@ -273,7 +286,7 @@ def main():
     frames = [round(f0 + (f1 - f0) * i / max(1, a.frames)) for i in range(a.frames)]
     cam = setup(a)
     if a.weapon:
-        add_weapon(dst, a.weapon)
+        add_weapon(dst, a.weapon, a.weapon_axis)
     if a.render_pass != "color":
         setup_workbench(bpy.context.scene, a.render_pass)
         if a.render_pass == "id":
@@ -297,7 +310,7 @@ def main():
         for i, f in enumerate(frames):
             dst.rotation_euler[2] = 0                            # pose facing the source, then turn
             bpy.context.view_layer.update()
-            retarget(src, dst, f)
+            retarget(src, dst, f, {("mixamorig:" + k): float(v) for k, v in (d.split("=") for d in a.damp)})
             dst.rotation_euler[2] = math.radians(t)
             bpy.context.view_layer.update()
             scene.render.filepath = os.path.join(a.out, f"{a.name}_t{int(t)}_{i}.png")
