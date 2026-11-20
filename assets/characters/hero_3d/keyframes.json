@@ -139,6 +139,90 @@
     "weapon": -152.9
    },
    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
+  },
+  "east": {
+   "anim": "mp_chop",
+   "windup": {
+    "frame": 3,
+    "hand": [
+     33.0,
+     20.5
+    ],
+    "weapon": 157.8
+   },
+   "hit": {
+    "frame": 4,
+    "hand": [
+     44.8,
+     32.7
+    ],
+    "weapon": 11.9
+   },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     40.3,
+     34.4
+    ],
+    "weapon": 111.4
+   },
+   "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
+  },
+  "north": {
+   "anim": "mp_chop",
+   "windup": {
+    "frame": 3,
+    "hand": [
+     41.4,
+     14.9
+    ],
+    "weapon": -149.3
+   },
+   "hit": {
+    "frame": 4,
+    "hand": [
+     25.9,
+     28.9
+    ],
+    "weapon": 142.6
+   },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     35.1,
+     28.2
+    ],
+    "weapon": 177.2
+   },
+   "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
+  },
+  "west": {
+   "anim": "mp_chop",
+   "windup": {
+    "frame": 3,
+    "hand": [
+     30.0,
+     10.7
+    ],
+    "weapon": -29.0
+   },
+   "hit": {
+    "frame": 4,
+    "hand": [
+     18.2,
+     38.4
+    ],
+    "weapon": -160.6
+   },
+   "recover": {
+    "frame": 7,
+    "hand": [
+     22.7,
+     30.8
+    ],
+    "weapon": -49.8
+   },
+   "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
   }
  },
  "note": "Key-pose attacks for the 3D hero (build_hero3d.py): wind-up and hit picture per direction, hand (picture px) and weapon direction (degrees, y up) measured in Blender.",
@@ -690,6 +774,336 @@
        28.9
       ],
       "weapon": 139.0
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
+   },
+   "east": {
+    "anim": "mp_chop_downward",
+    "windup": {
+     "frame": 3,
+     "hand": [
+      33.0,
+      20.5
+     ],
+     "weapon": 157.8
+    },
+    "hit": {
+     "frame": 4,
+     "hand": [
+      44.8,
+      32.7
+     ],
+     "weapon": 11.9
+    },
+    "recover": {
+     "frame": 7,
+     "hand": [
+      40.3,
+      34.4
+     ],
+     "weapon": 111.4
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       30.3,
+       39.3
+      ],
+      "weapon": 47.0
+     },
+     {
+      "frame": 1,
+      "hand": [
+       22.9,
+       30.7
+      ],
+      "weapon": -16.9
+     },
+     {
+      "frame": 2,
+      "hand": [
+       20.7,
+       20.1
+      ],
+      "weapon": 33.7
+     },
+     {
+      "frame": 3,
+      "hand": [
+       33.0,
+       20.5
+      ],
+      "weapon": 157.8
+     },
+     {
+      "frame": 4,
+      "hand": [
+       44.8,
+       32.7
+      ],
+      "weapon": 11.9
+     },
+     {
+      "frame": 5,
+      "hand": [
+       39.3,
+       31.0
+      ],
+      "weapon": 101.8
+     },
+     {
+      "frame": 6,
+      "hand": [
+       40.5,
+       30.3
+      ],
+      "weapon": 143.7
+     },
+     {
+      "frame": 7,
+      "hand": [
+       40.3,
+       34.4
+      ],
+      "weapon": 111.4
+     },
+     {
+      "frame": 8,
+      "hand": [
+       33.7,
+       37.5
+      ],
+      "weapon": 42.8
+     },
+     {
+      "frame": 9,
+      "hand": [
+       31.1,
+       39.1
+      ],
+      "weapon": 48.3
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
+   },
+   "north": {
+    "anim": "mp_chop_downward",
+    "windup": {
+     "frame": 3,
+     "hand": [
+      41.4,
+      14.9
+     ],
+     "weapon": -149.3
+    },
+    "hit": {
+     "frame": 4,
+     "hand": [
+      25.9,
+      28.9
+     ],
+     "weapon": 142.6
+    },
+    "recover": {
+     "frame": 7,
+     "hand": [
+      35.1,
+      28.2
+     ],
+     "weapon": 177.2
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       43.3,
+       34.0
+      ],
+      "weapon": 99.4
+     },
+     {
+      "frame": 1,
+      "hand": [
+       38.8,
+       31.3
+      ],
+      "weapon": 62.7
+     },
+     {
+      "frame": 2,
+      "hand": [
+       35.5,
+       23.5
+      ],
+      "weapon": 125.9
+     },
+     {
+      "frame": 3,
+      "hand": [
+       41.4,
+       14.9
+      ],
+      "weapon": -149.3
+     },
+     {
+      "frame": 4,
+      "hand": [
+       25.9,
+       28.9
+      ],
+      "weapon": 142.6
+     },
+     {
+      "frame": 5,
+      "hand": [
+       22.2,
+       31.7
+      ],
+      "weapon": 164.9
+     },
+     {
+      "frame": 6,
+      "hand": [
+       24.9,
+       29.2
+      ],
+      "weapon": 170.5
+     },
+     {
+      "frame": 7,
+      "hand": [
+       35.1,
+       28.2
+      ],
+      "weapon": 177.2
+     },
+     {
+      "frame": 8,
+      "hand": [
+       41.7,
+       31.3
+      ],
+      "weapon": 154.5
+     },
+     {
+      "frame": 9,
+      "hand": [
+       43.6,
+       33.3
+      ],
+      "weapon": 113.8
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
+   },
+   "west": {
+    "anim": "mp_chop_downward",
+    "windup": {
+     "frame": 3,
+     "hand": [
+      30.0,
+      10.7
+     ],
+     "weapon": -29.0
+    },
+    "hit": {
+     "frame": 4,
+     "hand": [
+      18.2,
+      38.4
+     ],
+     "weapon": -160.6
+    },
+    "recover": {
+     "frame": 7,
+     "hand": [
+      22.7,
+      30.8
+     ],
+     "weapon": -49.8
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       32.7,
+       27.5
+      ],
+      "weapon": 140.2
+     },
+     {
+      "frame": 1,
+      "hand": [
+       40.1,
+       23.3
+      ],
+      "weapon": -170.5
+     },
+     {
+      "frame": 2,
+      "hand": [
+       42.3,
+       16.1
+      ],
+      "weapon": 177.4
+     },
+     {
+      "frame": 3,
+      "hand": [
+       30.0,
+       10.7
+      ],
+      "weapon": -29.0
+     },
+     {
+      "frame": 4,
+      "hand": [
+       18.2,
+       38.4
+      ],
+      "weapon": -160.6
+     },
+     {
+      "frame": 5,
+      "hand": [
+       23.7,
+       40.3
+      ],
+      "weapon": -38.4
+     },
+     {
+      "frame": 6,
+      "hand": [
+       22.5,
+       37.0
+      ],
+      "weapon": 21.0
+     },
+     {
+      "frame": 7,
+      "hand": [
+       22.7,
+       30.8
+      ],
+      "weapon": -49.8
+     },
+     {
+      "frame": 8,
+      "hand": [
+       29.3,
+       27.3
+      ],
+      "weapon": -151.9
+     },
+     {
+      "frame": 9,
+      "hand": [
+       31.9,
+       27.0
+      ],
+      "weapon": 151.8
      }
     ],
     "made_by": "MPFB hero + Mixamo Standing_Melee_Attack_Downward (tools/sprites/build_hero3d.py)"
@@ -1245,6 +1659,336 @@
      }
     ],
     "made_by": "MPFB hero + Mixamo Heavy_Weapon_Swing (tools/sprites/build_hero3d.py)"
+   },
+   "east": {
+    "anim": "mp_chop_heavy",
+    "windup": {
+     "frame": 3,
+     "hand": [
+      17.3,
+      32.5
+     ],
+     "weapon": 104.6
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      38.5,
+      34.7
+     ],
+     "weapon": 8.1
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      22.0,
+      27.1
+     ],
+     "weapon": 44.1
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       27.5,
+       28.7
+      ],
+      "weapon": 101.8
+     },
+     {
+      "frame": 1,
+      "hand": [
+       28.2,
+       27.4
+      ],
+      "weapon": 75.2
+     },
+     {
+      "frame": 2,
+      "hand": [
+       32.4,
+       27.5
+      ],
+      "weapon": 95.9
+     },
+     {
+      "frame": 3,
+      "hand": [
+       17.3,
+       32.5
+      ],
+      "weapon": 104.6
+     },
+     {
+      "frame": 4,
+      "hand": [
+       22.2,
+       27.7
+      ],
+      "weapon": 38.4
+     },
+     {
+      "frame": 5,
+      "hand": [
+       51.8,
+       33.2
+      ],
+      "weapon": 64.6
+     },
+     {
+      "frame": 6,
+      "hand": [
+       38.5,
+       34.7
+      ],
+      "weapon": 8.1
+     },
+     {
+      "frame": 7,
+      "hand": [
+       32.3,
+       39.0
+      ],
+      "weapon": 176.0
+     },
+     {
+      "frame": 8,
+      "hand": [
+       22.0,
+       27.1
+      ],
+      "weapon": 44.1
+     },
+     {
+      "frame": 9,
+      "hand": [
+       31.4,
+       28.2
+      ],
+      "weapon": 139.8
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Heavy_Weapon_Swing (tools/sprites/build_hero3d.py)"
+   },
+   "north": {
+    "anim": "mp_chop_heavy",
+    "windup": {
+     "frame": 3,
+     "hand": [
+      35.7,
+      37.5
+     ],
+     "weapon": 127.0
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      28.0,
+      33.0
+     ],
+     "weapon": 128.2
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      30.9,
+      32.1
+     ],
+     "weapon": 149.0
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       37.5,
+       27.7
+      ],
+      "weapon": 159.5
+     },
+     {
+      "frame": 1,
+      "hand": [
+       36.5,
+       26.6
+      ],
+      "weapon": 143.8
+     },
+     {
+      "frame": 2,
+      "hand": [
+       37.3,
+       24.1
+      ],
+      "weapon": 154.6
+     },
+     {
+      "frame": 3,
+      "hand": [
+       35.7,
+       37.5
+      ],
+      "weapon": 127.0
+     },
+     {
+      "frame": 4,
+      "hand": [
+       27.9,
+       34.2
+      ],
+      "weapon": 133.0
+     },
+     {
+      "frame": 5,
+      "hand": [
+       36.0,
+       20.8
+      ],
+      "weapon": 95.6
+     },
+     {
+      "frame": 6,
+      "hand": [
+       28.0,
+       33.0
+      ],
+      "weapon": 128.2
+     },
+     {
+      "frame": 7,
+      "hand": [
+       41.1,
+       33.8
+      ],
+      "weapon": -62.9
+     },
+     {
+      "frame": 8,
+      "hand": [
+       30.9,
+       32.1
+      ],
+      "weapon": 149.0
+     },
+     {
+      "frame": 9,
+      "hand": [
+       37.7,
+       25.2
+      ],
+      "weapon": -168.6
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Heavy_Weapon_Swing (tools/sprites/build_hero3d.py)"
+   },
+   "west": {
+    "anim": "mp_chop_heavy",
+    "windup": {
+     "frame": 3,
+     "hand": [
+      45.7,
+      28.4
+     ],
+     "weapon": 63.5
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      24.5,
+      38.2
+     ],
+     "weapon": -167.6
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      41.0,
+      27.6
+     ],
+     "weapon": -160.0
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       35.5,
+       22.7
+      ],
+      "weapon": -6.9
+     },
+     {
+      "frame": 1,
+      "hand": [
+       34.8,
+       22.4
+      ],
+      "weapon": 163.1
+     },
+     {
+      "frame": 2,
+      "hand": [
+       30.6,
+       21.6
+      ],
+      "weapon": 14.6
+     },
+     {
+      "frame": 3,
+      "hand": [
+       45.7,
+       28.4
+      ],
+      "weapon": 63.5
+     },
+     {
+      "frame": 4,
+      "hand": [
+       40.8,
+       31.3
+      ],
+      "weapon": -178.3
+     },
+     {
+      "frame": 5,
+      "hand": [
+       11.2,
+       28.7
+      ],
+      "weapon": 118.2
+     },
+     {
+      "frame": 6,
+      "hand": [
+       24.5,
+       38.2
+      ],
+      "weapon": -167.6
+     },
+     {
+      "frame": 7,
+      "hand": [
+       30.7,
+       29.3
+      ],
+      "weapon": 13.8
+     },
+     {
+      "frame": 8,
+      "hand": [
+       41.0,
+       27.6
+      ],
+      "weapon": -160.0
+     },
+     {
+      "frame": 9,
+      "hand": [
+       31.6,
+       22.1
+      ],
+      "weapon": -17.2
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Heavy_Weapon_Swing (tools/sprites/build_hero3d.py)"
    }
   },
   "bash": {
@@ -1794,6 +2538,336 @@
        34.7
       ],
       "weapon": 172.4
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Bash (tools/sprites/build_hero3d.py)"
+   },
+   "east": {
+    "anim": "mp_chop_bash",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      48.7,
+      26.0
+     ],
+     "weapon": 74.8
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      40.1,
+      32.9
+     ],
+     "weapon": 139.2
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      29.1,
+      38.1
+     ],
+     "weapon": -13.8
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       28.3,
+       36.5
+      ],
+      "weapon": -17.0
+     },
+     {
+      "frame": 1,
+      "hand": [
+       27.8,
+       37.2
+      ],
+      "weapon": -14.6
+     },
+     {
+      "frame": 2,
+      "hand": [
+       24.4,
+       36.7
+      ],
+      "weapon": -50.5
+     },
+     {
+      "frame": 3,
+      "hand": [
+       25.2,
+       33.7
+      ],
+      "weapon": 127.4
+     },
+     {
+      "frame": 4,
+      "hand": [
+       48.7,
+       26.0
+      ],
+      "weapon": 74.8
+     },
+     {
+      "frame": 5,
+      "hand": [
+       35.8,
+       31.6
+      ],
+      "weapon": 143.4
+     },
+     {
+      "frame": 6,
+      "hand": [
+       40.1,
+       32.9
+      ],
+      "weapon": 139.2
+     },
+     {
+      "frame": 7,
+      "hand": [
+       37.6,
+       37.5
+      ],
+      "weapon": 32.7
+     },
+     {
+      "frame": 8,
+      "hand": [
+       29.1,
+       38.1
+      ],
+      "weapon": -13.8
+     },
+     {
+      "frame": 9,
+      "hand": [
+       27.6,
+       36.6
+      ],
+      "weapon": -19.7
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Bash (tools/sprites/build_hero3d.py)"
+   },
+   "north": {
+    "anim": "mp_chop_bash",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      31.9,
+      17.1
+     ],
+     "weapon": 75.8
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      26.4,
+      31.1
+     ],
+     "weapon": -177.3
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      38.0,
+      36.1
+     ],
+     "weapon": 108.6
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       35.3,
+       36.2
+      ],
+      "weapon": 86.8
+     },
+     {
+      "frame": 1,
+      "hand": [
+       36.0,
+       36.7
+      ],
+      "weapon": 89.1
+     },
+     {
+      "frame": 2,
+      "hand": [
+       34.4,
+       38.8
+      ],
+      "weapon": 3.9
+     },
+     {
+      "frame": 3,
+      "hand": [
+       39.2,
+       33.0
+      ],
+      "weapon": 105.3
+     },
+     {
+      "frame": 4,
+      "hand": [
+       31.9,
+       17.1
+      ],
+      "weapon": 75.8
+     },
+     {
+      "frame": 5,
+      "hand": [
+       24.5,
+       33.0
+      ],
+      "weapon": 154.7
+     },
+     {
+      "frame": 6,
+      "hand": [
+       26.4,
+       31.1
+      ],
+      "weapon": -177.3
+     },
+     {
+      "frame": 7,
+      "hand": [
+       36.2,
+       32.1
+      ],
+      "weapon": 166.5
+     },
+     {
+      "frame": 8,
+      "hand": [
+       38.0,
+       36.1
+      ],
+      "weapon": 108.6
+     },
+     {
+      "frame": 9,
+      "hand": [
+       35.3,
+       36.6
+      ],
+      "weapon": 61.7
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Bash (tools/sprites/build_hero3d.py)"
+   },
+   "west": {
+    "anim": "mp_chop_bash",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      14.3,
+      25.5
+     ],
+     "weapon": 101.6
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      22.9,
+      38.0
+     ],
+     "weapon": 3.4
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      34.0,
+      31.6
+     ],
+     "weapon": -162.3
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       34.7,
+       32.6
+      ],
+      "weapon": -163.6
+     },
+     {
+      "frame": 1,
+      "hand": [
+       35.2,
+       32.6
+      ],
+      "weapon": -165.6
+     },
+     {
+      "frame": 2,
+      "hand": [
+       38.6,
+       33.8
+      ],
+      "weapon": 156.5
+     },
+     {
+      "frame": 3,
+      "hand": [
+       37.8,
+       26.0
+      ],
+      "weapon": 48.1
+     },
+     {
+      "frame": 4,
+      "hand": [
+       14.3,
+       25.5
+      ],
+      "weapon": 101.6
+     },
+     {
+      "frame": 5,
+      "hand": [
+       27.2,
+       38.7
+      ],
+      "weapon": 26.2
+     },
+     {
+      "frame": 6,
+      "hand": [
+       22.9,
+       38.0
+      ],
+      "weapon": 3.4
+     },
+     {
+      "frame": 7,
+      "hand": [
+       25.4,
+       32.8
+      ],
+      "weapon": -137.9
+     },
+     {
+      "frame": 8,
+      "hand": [
+       34.0,
+       31.6
+      ],
+      "weapon": -162.3
+     },
+     {
+      "frame": 9,
+      "hand": [
+       35.4,
+       32.7
+      ],
+      "weapon": -165.7
      }
     ],
     "made_by": "MPFB hero + Mixamo Bash (tools/sprites/build_hero3d.py)"
@@ -2349,6 +3423,336 @@
      }
     ],
     "made_by": "MPFB hero + Mixamo Baseball_Hit (tools/sprites/build_hero3d.py)"
+   },
+   "east": {
+    "anim": "mp_chop_baseball",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      22.5,
+      25.7
+     ],
+     "weapon": 49.4
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      41.0,
+      36.6
+     ],
+     "weapon": 19.4
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      36.2,
+      44.8
+     ],
+     "weapon": 19.5
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       27.5,
+       26.1
+      ],
+      "weapon": 80.5
+     },
+     {
+      "frame": 1,
+      "hand": [
+       25.2,
+       26.5
+      ],
+      "weapon": 71.8
+     },
+     {
+      "frame": 2,
+      "hand": [
+       22.6,
+       25.8
+      ],
+      "weapon": 63.6
+     },
+     {
+      "frame": 3,
+      "hand": [
+       21.8,
+       25.0
+      ],
+      "weapon": 50.2
+     },
+     {
+      "frame": 4,
+      "hand": [
+       22.5,
+       25.7
+      ],
+      "weapon": 49.4
+     },
+     {
+      "frame": 5,
+      "hand": [
+       26.3,
+       35.0
+      ],
+      "weapon": 140.1
+     },
+     {
+      "frame": 6,
+      "hand": [
+       41.0,
+       36.6
+      ],
+      "weapon": 19.4
+     },
+     {
+      "frame": 7,
+      "hand": [
+       39.4,
+       32.2
+      ],
+      "weapon": 77.1
+     },
+     {
+      "frame": 8,
+      "hand": [
+       36.2,
+       44.8
+      ],
+      "weapon": 19.5
+     },
+     {
+      "frame": 9,
+      "hand": [
+       29.3,
+       47.7
+      ],
+      "weapon": -20.8
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Baseball_Hit (tools/sprites/build_hero3d.py)"
+   },
+   "north": {
+    "anim": "mp_chop_baseball",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      37.6,
+      27.1
+     ],
+     "weapon": 144.2
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      40.2,
+      27.5
+     ],
+     "weapon": 72.6
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      45.5,
+      35.5
+     ],
+     "weapon": 71.8
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       38.6,
+       24.5
+      ],
+      "weapon": 155.1
+     },
+     {
+      "frame": 1,
+      "hand": [
+       38.5,
+       26.2
+      ],
+      "weapon": 148.1
+     },
+     {
+      "frame": 2,
+      "hand": [
+       38.5,
+       26.8
+      ],
+      "weapon": 143.8
+     },
+     {
+      "frame": 3,
+      "hand": [
+       37.9,
+       26.6
+      ],
+      "weapon": 143.1
+     },
+     {
+      "frame": 4,
+      "hand": [
+       37.6,
+       27.1
+      ],
+      "weapon": 144.2
+     },
+     {
+      "frame": 5,
+      "hand": [
+       43.1,
+       31.8
+      ],
+      "weapon": 147.7
+     },
+     {
+      "frame": 6,
+      "hand": [
+       40.2,
+       27.5
+      ],
+      "weapon": 72.6
+     },
+     {
+      "frame": 7,
+      "hand": [
+       36.4,
+       25.8
+      ],
+      "weapon": 97.9
+     },
+     {
+      "frame": 8,
+      "hand": [
+       45.5,
+       35.5
+      ],
+      "weapon": 71.8
+     },
+     {
+      "frame": 9,
+      "hand": [
+       53.6,
+       37.8
+      ],
+      "weapon": 51.7
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Baseball_Hit (tools/sprites/build_hero3d.py)"
+   },
+   "west": {
+    "anim": "mp_chop_baseball",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      40.5,
+      19.6
+     ],
+     "weapon": -168.7
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      22.0,
+      27.9
+     ],
+     "weapon": 146.3
+    },
+    "recover": {
+     "frame": 8,
+     "hand": [
+      26.8,
+      30.8
+     ],
+     "weapon": 145.4
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       35.5,
+       18.9
+      ],
+      "weapon": -143.2
+     },
+     {
+      "frame": 1,
+      "hand": [
+       37.8,
+       19.5
+      ],
+      "weapon": -173.5
+     },
+     {
+      "frame": 2,
+      "hand": [
+       40.4,
+       18.9
+      ],
+      "weapon": -178.4
+     },
+     {
+      "frame": 3,
+      "hand": [
+       41.2,
+       18.6
+      ],
+      "weapon": -170.9
+     },
+     {
+      "frame": 4,
+      "hand": [
+       40.5,
+       19.6
+      ],
+      "weapon": -168.7
+     },
+     {
+      "frame": 5,
+      "hand": [
+       36.7,
+       23.4
+      ],
+      "weapon": 28.3
+     },
+     {
+      "frame": 6,
+      "hand": [
+       22.0,
+       27.9
+      ],
+      "weapon": 146.3
+     },
+     {
+      "frame": 7,
+      "hand": [
+       23.6,
+       27.3
+      ],
+      "weapon": 105.0
+     },
+     {
+      "frame": 8,
+      "hand": [
+       26.8,
+       30.8
+      ],
+      "weapon": 145.4
+     },
+     {
+      "frame": 9,
+      "hand": [
+       33.7,
+       25.6
+      ],
+      "weapon": -167.5
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo Baseball_Hit (tools/sprites/build_hero3d.py)"
    }
   },
   "greatsword": {
@@ -2901,6 +4305,336 @@
      }
     ],
     "made_by": "MPFB hero + Mixamo GreatSword_Downward (tools/sprites/build_hero3d.py)"
+   },
+   "east": {
+    "anim": "mp_chop_greatsword",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      38.4,
+      20.0
+     ],
+     "weapon": -166.9
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      40.5,
+      29.3
+     ],
+     "weapon": 7.1
+    },
+    "recover": {
+     "frame": 7,
+     "hand": [
+      41.2,
+      28.8
+     ],
+     "weapon": 18.2
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       42.1,
+       32.6
+      ],
+      "weapon": 72.2
+     },
+     {
+      "frame": 1,
+      "hand": [
+       41.2,
+       34.4
+      ],
+      "weapon": 46.3
+     },
+     {
+      "frame": 2,
+      "hand": [
+       32.8,
+       37.8
+      ],
+      "weapon": 177.8
+     },
+     {
+      "frame": 3,
+      "hand": [
+       29.3,
+       30.6
+      ],
+      "weapon": 168.4
+     },
+     {
+      "frame": 4,
+      "hand": [
+       38.4,
+       20.0
+      ],
+      "weapon": -166.9
+     },
+     {
+      "frame": 5,
+      "hand": [
+       52.7,
+       25.2
+      ],
+      "weapon": 80.9
+     },
+     {
+      "frame": 6,
+      "hand": [
+       40.5,
+       29.3
+      ],
+      "weapon": 7.1
+     },
+     {
+      "frame": 7,
+      "hand": [
+       41.2,
+       28.8
+      ],
+      "weapon": 18.2
+     },
+     {
+      "frame": 8,
+      "hand": [
+       46.4,
+       28.2
+      ],
+      "weapon": 79.7
+     },
+     {
+      "frame": 9,
+      "hand": [
+       46.2,
+       29.6
+      ],
+      "weapon": 83.8
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo GreatSword_Downward (tools/sprites/build_hero3d.py)"
+   },
+   "north": {
+    "anim": "mp_chop_greatsword",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      36.2,
+      14.2
+     ],
+     "weapon": -121.0
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      19.3,
+      31.0
+     ],
+     "weapon": 111.3
+    },
+    "recover": {
+     "frame": 7,
+     "hand": [
+      21.2,
+      29.1
+     ],
+     "weapon": 70.8
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       33.6,
+       26.3
+      ],
+      "weapon": 89.3
+     },
+     {
+      "frame": 1,
+      "hand": [
+       36.2,
+       27.2
+      ],
+      "weapon": 61.9
+     },
+     {
+      "frame": 2,
+      "hand": [
+       42.7,
+       31.5
+      ],
+      "weapon": -68.3
+     },
+     {
+      "frame": 3,
+      "hand": [
+       41.9,
+       26.5
+      ],
+      "weapon": -143.4
+     },
+     {
+      "frame": 4,
+      "hand": [
+       36.2,
+       14.2
+      ],
+      "weapon": -121.0
+     },
+     {
+      "frame": 5,
+      "hand": [
+       25.7,
+       17.6
+      ],
+      "weapon": 47.4
+     },
+     {
+      "frame": 6,
+      "hand": [
+       19.3,
+       31.0
+      ],
+      "weapon": 111.3
+     },
+     {
+      "frame": 7,
+      "hand": [
+       21.2,
+       29.1
+      ],
+      "weapon": 70.8
+     },
+     {
+      "frame": 8,
+      "hand": [
+       26.2,
+       23.4
+      ],
+      "weapon": 67.6
+     },
+     {
+      "frame": 9,
+      "hand": [
+       31.5,
+       22.3
+      ],
+      "weapon": 87.8
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo GreatSword_Downward (tools/sprites/build_hero3d.py)"
+   },
+   "west": {
+    "anim": "mp_chop_greatsword",
+    "windup": {
+     "frame": 4,
+     "hand": [
+      24.6,
+      15.3
+     ],
+     "weapon": -40.8
+    },
+    "hit": {
+     "frame": 6,
+     "hand": [
+      22.6,
+      41.5
+     ],
+     "weapon": -175.4
+    },
+    "recover": {
+     "frame": 7,
+     "hand": [
+      21.9,
+      39.1
+     ],
+     "weapon": 145.8
+    },
+    "all": [
+     {
+      "frame": 0,
+      "hand": [
+       20.9,
+       30.5
+      ],
+      "weapon": 107.6
+     },
+     {
+      "frame": 1,
+      "hand": [
+       21.8,
+       29.7
+      ],
+      "weapon": 114.7
+     },
+     {
+      "frame": 2,
+      "hand": [
+       30.2,
+       26.6
+      ],
+      "weapon": 10.9
+     },
+     {
+      "frame": 3,
+      "hand": [
+       33.7,
+       20.2
+      ],
+      "weapon": -45.2
+     },
+     {
+      "frame": 4,
+      "hand": [
+       24.6,
+       15.3
+      ],
+      "weapon": -40.8
+     },
+     {
+      "frame": 5,
+      "hand": [
+       10.4,
+       31.0
+      ],
+      "weapon": 93.2
+     },
+     {
+      "frame": 6,
+      "hand": [
+       22.6,
+       41.5
+      ],
+      "weapon": -175.4
+     },
+     {
+      "frame": 7,
+      "hand": [
+       21.9,
+       39.1
+      ],
+      "weapon": 145.8
+     },
+     {
+      "frame": 8,
+      "hand": [
+       16.6,
+       33.5
+      ],
+      "weapon": 96.6
+     },
+     {
+      "frame": 9,
+      "hand": [
+       16.8,
+       29.6
+      ],
+      "weapon": 96.0
+     }
+    ],
+    "made_by": "MPFB hero + Mixamo GreatSword_Downward (tools/sprites/build_hero3d.py)"
    }
   },
   "samurai": {
@@ -3134,116 +4868,116 @@
     "all_hit": 5,
     "made_by": "key poses mixed from ['baseball', 'greatsword']"
    },
-   "south-west": {
+   "east": {
     "anim": "mp_chop_baseball",
     "windup": {
      "anim": "mp_chop_baseball",
      "frame": 4,
      "hand": [
-      33.6,
-      17.3
+      22.5,
+      25.7
      ],
-     "weapon": -53.7
+     "weapon": 49.4
     },
     "hit": {
      "anim": "mp_chop_greatsword",
      "frame": 6,
      "hand": [
-      33.8,
-      42.9
+      40.5,
+      29.3
      ],
-     "weapon": -144.4
+     "weapon": 7.1
     },
     "recover": {
      "anim": "mp_chop_greatsword",
      "frame": 7,
      "hand": [
-      31.9,
-      41.0
+      41.2,
+      28.8
      ],
-     "weapon": 164.0
+     "weapon": 18.2
     },
     "all": [
      {
       "anim": "mp_chop_baseball",
       "frame": 0,
       "hand": [
-       29.3,
-       18.6
+       27.5,
+       26.1
       ],
-      "weapon": -1.6
+      "weapon": 80.5
      },
      {
       "anim": "mp_chop_baseball",
       "frame": 1,
       "hand": [
-       31.0,
-       18.3
+       25.2,
+       26.5
       ],
-      "weapon": -0.2
+      "weapon": 71.8
      },
      {
       "anim": "mp_chop_baseball",
       "frame": 2,
       "hand": [
-       32.9,
-       16.8
+       22.6,
+       25.8
       ],
-      "weapon": -6.4
+      "weapon": 63.6
      },
      {
       "anim": "mp_chop_baseball",
       "frame": 3,
       "hand": [
-       33.8,
-       16.1
+       21.8,
+       25.0
       ],
-      "weapon": -50.8
+      "weapon": 50.2
      },
      {
       "anim": "mp_chop_baseball",
       "frame": 4,
       "hand": [
-       33.6,
-       17.3
+       22.5,
+       25.7
       ],
-      "weapon": -53.7
+      "weapon": 49.4
      },
      {
       "anim": "mp_chop_greatsword",
       "frame": 6,
       "hand": [
-       33.8,
-       42.9
+       40.5,
+       29.3
       ],
-      "weapon": -144.4
+      "weapon": 7.1
      },
      {
       "anim": "mp_chop_greatsword",
       "frame": 7,
       "hand": [
-       31.9,
-       41.0
+       41.2,
+       28.8
       ],
-      "weapon": 164.0
+      "weapon": 18.2
      },
      {
       "anim": "mp_chop_greatsword",
       "frame": 8,
       "hand": [
-       24.7,
-       38.0
+       46.4,
+       28.2
       ],
-      "weapon": 110.4
+      "weapon": 79.7
      },
      {
       "anim": "mp_chop_greatsword",
       "frame": 9,
       "hand": [
-       21.1,
-       34.8
+       46.2,
+       29.6
       ],
-      "weapon": 96.1
+      "weapon": 83.8
      }
     ],
     "all_hit": 5,
@@ -3364,6 +5098,121 @@
     "all_hit": 5,
     "made_by": "key poses mixed from ['baseball', 'greatsword']"
    },
+   "north": {
+    "anim": "mp_chop_baseball",
+    "windup": {
+     "anim": "mp_chop_baseball",
+     "frame": 4,
+     "hand": [
+      37.6,
+      27.1
+     ],
+     "weapon": 144.2
+    },
+    "hit": {
+     "anim": "mp_chop_greatsword",
+     "frame": 6,
+     "hand": [
+      19.3,
+      31.0
+     ],
+     "weapon": 111.3
+    },
+    "recover": {
+     "anim": "mp_chop_greatsword",
+     "frame": 7,
+     "hand": [
+      21.2,
+      29.1
+     ],
+     "weapon": 70.8
+    },
+    "all": [
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 0,
+      "hand": [
+       38.6,
+       24.5
+      ],
+      "weapon": 155.1
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 1,
+      "hand": [
+       38.5,
+       26.2
+      ],
+      "weapon": 148.1
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 2,
+      "hand": [
+       38.5,
+       26.8
+      ],
+      "weapon": 143.8
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 3,
+      "hand": [
+       37.9,
+       26.6
+      ],
+      "weapon": 143.1
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 4,
+      "hand": [
+       37.6,
+       27.1
+      ],
+      "weapon": 144.2
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 6,
+      "hand": [
+       19.3,
+       31.0
+      ],
+      "weapon": 111.3
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 7,
+      "hand": [
+       21.2,
+       29.1
+      ],
+      "weapon": 70.8
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 8,
+      "hand": [
+       26.2,
+       23.4
+      ],
+      "weapon": 67.6
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 9,
+      "hand": [
+       31.5,
+       22.3
+      ],
+      "weapon": 87.8
+     }
+    ],
+    "all_hit": 5,
+    "made_by": "key poses mixed from ['baseball', 'greatsword']"
+   },
    "north-west": {
     "anim": "mp_chop_baseball",
     "windup": {
@@ -3474,6 +5323,236 @@
        24.4
       ],
       "weapon": 92.5
+     }
+    ],
+    "all_hit": 5,
+    "made_by": "key poses mixed from ['baseball', 'greatsword']"
+   },
+   "west": {
+    "anim": "mp_chop_baseball",
+    "windup": {
+     "anim": "mp_chop_baseball",
+     "frame": 4,
+     "hand": [
+      40.5,
+      19.6
+     ],
+     "weapon": -168.7
+    },
+    "hit": {
+     "anim": "mp_chop_greatsword",
+     "frame": 6,
+     "hand": [
+      22.6,
+      41.5
+     ],
+     "weapon": -175.4
+    },
+    "recover": {
+     "anim": "mp_chop_greatsword",
+     "frame": 7,
+     "hand": [
+      21.9,
+      39.1
+     ],
+     "weapon": 145.8
+    },
+    "all": [
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 0,
+      "hand": [
+       35.5,
+       18.9
+      ],
+      "weapon": -143.2
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 1,
+      "hand": [
+       37.8,
+       19.5
+      ],
+      "weapon": -173.5
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 2,
+      "hand": [
+       40.4,
+       18.9
+      ],
+      "weapon": -178.4
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 3,
+      "hand": [
+       41.2,
+       18.6
+      ],
+      "weapon": -170.9
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 4,
+      "hand": [
+       40.5,
+       19.6
+      ],
+      "weapon": -168.7
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 6,
+      "hand": [
+       22.6,
+       41.5
+      ],
+      "weapon": -175.4
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 7,
+      "hand": [
+       21.9,
+       39.1
+      ],
+      "weapon": 145.8
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 8,
+      "hand": [
+       16.6,
+       33.5
+      ],
+      "weapon": 96.6
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 9,
+      "hand": [
+       16.8,
+       29.6
+      ],
+      "weapon": 96.0
+     }
+    ],
+    "all_hit": 5,
+    "made_by": "key poses mixed from ['baseball', 'greatsword']"
+   },
+   "south-west": {
+    "anim": "mp_chop_baseball",
+    "windup": {
+     "anim": "mp_chop_baseball",
+     "frame": 4,
+     "hand": [
+      33.6,
+      17.3
+     ],
+     "weapon": -53.7
+    },
+    "hit": {
+     "anim": "mp_chop_greatsword",
+     "frame": 6,
+     "hand": [
+      33.8,
+      42.9
+     ],
+     "weapon": -144.4
+    },
+    "recover": {
+     "anim": "mp_chop_greatsword",
+     "frame": 7,
+     "hand": [
+      31.9,
+      41.0
+     ],
+     "weapon": 164.0
+    },
+    "all": [
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 0,
+      "hand": [
+       29.3,
+       18.6
+      ],
+      "weapon": -1.6
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 1,
+      "hand": [
+       31.0,
+       18.3
+      ],
+      "weapon": -0.2
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 2,
+      "hand": [
+       32.9,
+       16.8
+      ],
+      "weapon": -6.4
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 3,
+      "hand": [
+       33.8,
+       16.1
+      ],
+      "weapon": -50.8
+     },
+     {
+      "anim": "mp_chop_baseball",
+      "frame": 4,
+      "hand": [
+       33.6,
+       17.3
+      ],
+      "weapon": -53.7
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 6,
+      "hand": [
+       33.8,
+       42.9
+      ],
+      "weapon": -144.4
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 7,
+      "hand": [
+       31.9,
+       41.0
+      ],
+      "weapon": 164.0
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 8,
+      "hand": [
+       24.7,
+       38.0
+      ],
+      "weapon": 110.4
+     },
+     {
+      "anim": "mp_chop_greatsword",
+      "frame": 9,
+      "hand": [
+       21.1,
+       34.8
+      ],
+      "weapon": 96.1
      }
     ],
     "all_hit": 5,

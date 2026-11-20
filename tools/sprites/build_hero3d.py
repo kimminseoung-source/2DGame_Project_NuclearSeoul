@@ -31,13 +31,13 @@ ACTIONS = {
     # name: (Mixamo file, pictures, directions, folder, extra args)
     "idle": ("Breathing_Idle", 2, list(TURN), "Breath", []),    # 2 breathing pictures; the 1st is also the still
     "walk": ("Walking", 6, list(TURN), "Walking", []),
-    "chop": ("Standing_Melee_Attack_Downward", 10, ["south", "south-east", "south-west", "north-east", "north-west"],
+    "chop": ("Standing_Melee_Attack_Downward", 10, list(TURN),
              "MP_chop", ["--weapon", "0.75", "--hide-weapon"]),
 }
 CHOP_KEYS = {"windup": 3, "hit": 4, "recover": 7}   # of the 10 rendered: pipe over the head, forward-down,
                                                      # coming back; only these 3 are kept (2026-11-20 plan)
 SPRITE = ["--pixel", "64", "--person-px", "36", "--feet", "12", "--tilt", "30"]
-CHOP_DIRS = ["south", "south-east", "south-west", "north-east", "north-west"]
+CHOP_DIRS = list(TURN)     # attacks in all 8 directions too (2026-11-20 "8방향으로"; was S + 4 diagonals)
 # Attack motions to try in the game (F4 "공격 동작"), all 10 pictures kept so F4 "공격 장수" can show
 # 2, 3 or all of them (docs/plans/2026-11-20_공격동작_바꿔가며_시연.md). name: (Mixamo file, key poses)
 VARIANTS = {
