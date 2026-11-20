@@ -1,6 +1,6 @@
 {
  "name": "busan_hero",
- "note": "MPFB2 human spec (2026-11-20). Young slim Korean man in an open jacket over a T-shirt, jeans, boots (MakeHuman system assets, CC0). Colours are repainted later to the PixelLab hero's palette. 2026-11-20: hair culturalibre_hair_05 (hair01 pack, CC0) for a fuller silhouette; head_scale 1.25 so the face reads at 36 px.",
+ "note": "MPFB2 human spec (2026-11-20). Young slim Korean man in an open jacket over a T-shirt, jeans, boots (MakeHuman system assets, CC0). Colours are repainted later to the PixelLab hero's palette. 2026-11-20: hair culturalibre_hair_05 (hair01 pack, CC0) for a fuller silhouette; head_scale 1.25 so the face reads at 36 px. 2026-11-20: no jacket (user: \"카디건이 없어도 될 것 같아요\"): white T-shirt + jeans (male_casualsuit06), bare arms. Then long sleeves (user: \"긴팔로 가죠\"): toigo_fisherman_sweater (shirts01, CC0) + cortu_cargo_pants (pants01, CC0), painted ochre top + jeans.",
  "phenotype": {
   "gender": 1.0,
   "age": 0.42,
@@ -25,7 +25,8 @@
  "tongue": "",
  "proxy": "",
  "clothes": [
-  "male_casualsuit05/male_casualsuit05.mhclo",
+  "toigo_fisherman_sweater/toigo_fisherman_sweater.mhclo",
+  "cortu_cargo_pants/cortu_cargo_pants.mhclo",
   "shoes03/shoes03.mhclo"
  ],
  "skin_mhmat": "young_asian_male/young_asian_male.mhmat",

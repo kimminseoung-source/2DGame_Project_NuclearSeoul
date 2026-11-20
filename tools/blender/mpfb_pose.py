@@ -17,8 +17,8 @@ Realistic textures turn to mud at 36 px, so the figure is split into parts and e
 one flat ID colour (id pass); a white figure under the studio light gives the light (light
 pass); repaint.py then paints each part with a 3-step colour ramp. Parts come from the MPFB
 objects (body = skin, hair, eyebrows, eyes, shoes) and, for the one-mesh outfit, from the
-outfit texture under each face: blue = jeans, red or near-black stripes = shirt, the rest =
-jacket. ids.json is written next to the frames.
+outfit texture under each face: blue = jeans, light, red or near-black = shirt, the rest
+(mid grey-green) = jacket. ids.json is written next to the frames.
 """
 
 import argparse
@@ -107,13 +107,14 @@ def retarget(src, dst, frame):
 
 PARTS = {"skin": (0.85, 0.55, 0.40), "hair": (0.10, 0.10, 0.10), "eyes": (0.05, 0.9, 0.3),
          "jacket": (0.9, 0.7, 0.1), "shirt": (0.95, 0.95, 0.95), "jeans": (0.1, 0.2, 0.9),
-         "boots": (0.6, 0.1, 0.6)}
+         "boots": (0.6, 0.1, 0.6), "top": (1.0, 0.45, 0.0)}
 
 
 def part_of_object(o):
     n = o.name.lower()
     for key, part in (("eyebrow", "hair"), ("short", "hair"), ("hair", "hair"), ("low-poly", "eyes"),
-                      ("high-poly", "eyes"), ("shoes", "boots"), ("body", "skin")):
+                      ("high-poly", "eyes"), ("shoes", "boots"), ("body", "skin"),
+                      ("sweater", "top"), ("shirt", "top"), ("pants", "jeans")):
         if key in n:
             return part
     return None
@@ -133,7 +134,7 @@ def outfit_part(rgb):
     lum = 0.3 * r + 0.59 * g + 0.11 * b
     if b > r + 0.08 and b > g:
         return "jeans"
-    if r > g + 0.1 or lum < 0.16:
+    if r > g + 0.1 or lum < 0.16 or lum > 0.55:          # stripes, a print, or a light T-shirt
         return "shirt"
     return "jacket"
 
