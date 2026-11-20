@@ -10,7 +10,8 @@ Every character is the same rigged body and the same actions; only these change:
 - hair: one of the free rigged hairstyles, recoloured;
 - shells: clothes with volume. A copy of the body keeps only the chosen regions and is
   pushed out along its normals (a puffy jacket, baggy trousers, chunky boots); it is
-  skinned to the same bones, so it moves with the body in every action;
+  skinned to the same bones, so it moves with the body in every action. "open_front": m
+  leaves the chest's middle strip uncovered (an open jacket over the shirt underneath);
 - props: boxes, cylinders, spheres and cones fixed to a bone (hood, hard hat, backpack,
   bag, bat, pipe ...). They follow that bone in every action.
 
@@ -274,10 +275,11 @@ def add_shells(armature, costume):
         bm.from_mesh(obj.data)
         deform = bm.verts.layers.deform.verify()
         drop = []
+        gap = shell.get("open_front", 0.0)      # an open jacket: no cloth on the chest's middle strip
         for v in bm.verts:
             groups = v[deform]
             bone = names.get(max(groups.items(), key=lambda kv: kv[1])[0], "spine_02") if groups else "spine_02"
-            if region_of(bone) not in keep:
+            if region_of(bone) not in keep or (gap and v.co.y < 0 and abs(v.co.x) < gap):
                 drop.append(v)
         bmesh.ops.delete(bm, geom=drop, context="VERTS")
         bm.to_mesh(obj.data)
@@ -345,10 +347,11 @@ def add_outfit(armature, costume, root):
         bm.from_mesh(body.data)
         deform = bm.verts.layers.deform.verify()
         drop = []
+        gap = shell.get("open_front", 0.0)      # an open jacket: no cloth on the chest's middle strip
         for v in bm.verts:
             groups = v[deform]
             bone = names.get(max(groups.items(), key=lambda kv: kv[1])[0], "spine_02") if groups else "spine_02"
-            if region_of(bone) not in keep:
+            if region_of(bone) not in keep or (gap and v.co.y < 0 and abs(v.co.x) < gap):
                 drop.append(v)
         bmesh.ops.delete(bm, geom=drop, context="VERTS")
         bm.to_mesh(body.data)
