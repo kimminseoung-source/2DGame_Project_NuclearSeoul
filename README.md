@@ -68,6 +68,7 @@ python src/main.py
 - [개발 요구사항 원문](PRD.md)
 - [1차 발표 PDF (9장)](docs/presentation/부산까지_기획2_1차발표.pdf)
 - [개발 계획](PLAN.md)
+- **[조사·참고 자료 목차 (카테고리별, 모든 조사 문서)](docs/RESEARCH_INDEX.md)**
 - [개발일지(날짜별)](docs/DEVLOG.md)
 - [작업 회고와 학습 기록](docs/DEVELOPMENT_RETROSPECTIVE.md)
 - [제출 확인 목록](docs/presentation/SUBMISSION_CHECKLIST.md)
