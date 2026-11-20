@@ -34,3 +34,17 @@
 ## 방법·글
 
 - 게임 전용 AI 툴(Scenario 등)로 내 화풍을 LoRA로 학습시켜 일관성 유지 → 우리는 무료로 내 컴퓨터에서 학습(`C:\Users\doboh\busan_ai`, SD1.5 LoRA, 트리거 단어 `busanhero`). 2026-11-20
+
+## 3D 캐릭터 (무료로 쓸 수 있는 곳, 2026-11-20 조사)
+
+사용자 "무료 캐릭터 이용할 수 있는 사이트도 조사해 봐요". 3D 동작 → 도트(방식 5)의 몸으로 쓸 후보.
+
+| 곳 | 무엇 | 라이선스 | 우리에게 |
+|---|---|---|---|
+| [MPFB2 (MakeHuman, Blender 확장)](https://extensions.blender.org/add-ons/mpfb/) + [자산 묶음](https://static.makehumancommunity.org/assets/assetpacks/) | 체형·얼굴·머리·옷을 골라 사람을 만듦, 게임 뼈대 | 도구 GPL, 자산 대부분 CC0(일부 묶음 CC-BY) | **진행 중**: 마른 청년 + 티셔츠 + 바지 + 부츠 + 머리 |
+| [Mixamo](https://www.mixamo.com) | 사람 캐릭터와 동작, 올린 모델에 뼈대 자동 붙이기 | 게임 안에서 상업 사용 가능, 모델·동작만 따로 파는 건 안 됨([Adobe 커뮤니티 FAQ](https://community.adobe.com/t5/mixamo-discussions/mixamo-faq-licensing-royalties-ownership-eula-and-tos/td-p/13234775)) | 이미 `assets/source3d/mixamo`에 Alex와 동작 몇 개. Adobe 로그인 필요 |
+| [VRoid Studio](https://vroid.com/en/studio/guidelines) | 애니메 풍 사람 캐릭터 만들기(무료 프로그램) | 기본 제공 자산은 상업 사용 가능, 일부 예외 | 머리카락·옷이 애니메 풍이라 우리 그림과 다를 수 있음 |
+| [KayKit](https://kaylousberg.itch.io/kaykit-adventurers) | 귀여운 저폴리 캐릭터·동작 | CC0 | 비율이 장난감 같아 주인공보단 참고용 |
+| Quaternius | 기본 몸·동작 라이브러리 | CC0 | 지금 쓰는 몸과 동작(UAL1·UAL2) |
+| [CGTrader 무료 "Realistic Male Character Rigged"](https://www.cgtrader.com/free-3d-models/character/man/realistic-male-character-rigged) | 사실적인 남자, 뼈대 있음 | 로열티 프리(AI 금지 조항) | 옷 확인 필요, 대부분 재킷·청바지 모델은 유료 |
+| Ready Player Me | (아바타 만들기) | 2026-01-31 서비스 종료 | 쓸 수 없음 |

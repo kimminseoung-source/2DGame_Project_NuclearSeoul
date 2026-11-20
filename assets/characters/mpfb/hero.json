@@ -1,0 +1,22 @@
+{
+ "name": "busan_hero",
+ "note": "MPFB2 human spec (2026-11-20). Young slim Korean man in an open jacket over a T-shirt, jeans, boots (MakeHuman system assets, CC0). Colours are repainted later to the PixelLab hero's palette.",
+ "phenotype": {"gender": 1.0, "age": 0.42, "muscle": 0.45, "weight": 0.35, "proportions": 0.7, "height": 0.55,
+               "cupsize": 0.5, "firmness": 0.5, "race": {"asian": 1.0, "caucasian": 0.0, "african": 0.0}},
+ "rig": "mixamo",
+ "eyes": "low-poly/low-poly.mhclo",
+ "eyebrows": "eyebrow001/eyebrow001.mhclo",
+ "eyelashes": "",
+ "hair": "short04/short04.mhclo",
+ "teeth": "",
+ "tongue": "",
+ "proxy": "",
+ "clothes": ["male_casualsuit05/male_casualsuit05.mhclo", "shoes03/shoes03.mhclo"],
+ "skin_mhmat": "young_asian_male/young_asian_male.mhmat",
+ "skin_material_type": "MAKESKIN",
+ "eyes_material_type": "MAKESKIN",
+ "clothes_material_type": "MAKESKIN",
+ "alternative_materials": {},
+ "color_adjustments": {},
+ "targets": []
+}
