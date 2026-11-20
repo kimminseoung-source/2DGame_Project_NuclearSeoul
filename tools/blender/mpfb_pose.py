@@ -47,6 +47,11 @@ def args():
     p.add_argument("--weapon-axis", default="z", choices=["x", "-x", "z", "-z"],
                    help="which way the pipe leaves the fist, in the hand bone's axes")
     p.add_argument("--damp", nargs="*", default=[], help="bone=share, e.g. Spine=0.5 (mixamorig: added)")
+    p.add_argument("--hide-weapon", action="store_true",
+                   help="keep the test pipe out of the picture (the game draws the weapon) but still measure it")
+    p.add_argument("--record", default=None,
+                   help="json: per picture the hand (picture px, x right, y down) and where the weapon points "
+                        "(degrees, y up), for the game's hands.json / keyframes.json")
     return p.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
 
@@ -277,8 +282,24 @@ def add_weapon(rig, length, axis="x"):
     return obj
 
 
+def hand_and_weapon(scene, cam, rig, axis):
+    """The right fist's picture pixel and the pipe's screen angle (degrees, y up) this frame."""
+    from bpy_extras.object_utils import world_to_camera_view
+    pb = rig.pose.bones["mixamorig:RightHand"]
+    m = rig.matrix_world @ pb.matrix
+    grip = m @ Vector((0, 0.08, 0))
+    along = {"x": Vector((1, 0, 0)), "-x": Vector((-1, 0, 0)), "z": Vector((0, 0, 1)), "-z": Vector((0, 0, -1))}[axis]
+    tip = grip + (m.to_quaternion() @ along) * 0.5
+    w, h = scene.render.resolution_x, scene.render.resolution_y
+    g, e = world_to_camera_view(scene, cam, grip), world_to_camera_view(scene, cam, tip)
+    gx, gy = g.x * w, (1 - g.y) * h
+    ex, ey = e.x * w, (1 - e.y) * h
+    return [round(gx - 0.5, 1), round(gy - 0.5, 1)], round(math.degrees(math.atan2(-(ey - gy), ex - gx)), 1)
+
+
 def main():
     a = args()
+    record = {}
     dst = target_rig()
     src = import_source(a.anim)
     act = src.animation_data.action if src.animation_data else None
@@ -286,7 +307,9 @@ def main():
     frames = [round(f0 + (f1 - f0) * i / max(1, a.frames)) for i in range(a.frames)]
     cam = setup(a)
     if a.weapon:
-        add_weapon(dst, a.weapon, a.weapon_axis)
+        pipe = add_weapon(dst, a.weapon, a.weapon_axis)
+        if a.hide_weapon:
+            pipe.hide_render = True
     if a.render_pass != "color":
         setup_workbench(bpy.context.scene, a.render_pass)
         if a.render_pass == "id":
@@ -314,9 +337,17 @@ def main():
             dst.rotation_euler[2] = math.radians(t)
             bpy.context.view_layer.update()
             scene.render.filepath = os.path.join(a.out, f"{a.name}_t{int(t)}_{i}.png")
+            if a.record:
+                hand, ang = hand_and_weapon(scene, cam, dst, a.weapon_axis)
+                record.setdefault(str(int(t)), []).append({"hand": hand, "weapon": ang})
             bpy.ops.render.render(write_still=True)
             print("saved", scene.render.filepath)
         dst.rotation_euler[2] = 0
+    if a.record:
+        import json
+        with open(a.record, "w", encoding="utf-8") as f:
+            json.dump(record, f, indent=1)
+        print("recorded", a.record)
 
 
 if __name__ == "__main__":

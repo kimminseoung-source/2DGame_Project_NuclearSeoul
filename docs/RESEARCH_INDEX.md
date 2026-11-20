@@ -39,7 +39,8 @@
 | [research/ZOMBOID_ANIMATION_RESEARCH.md](research/ZOMBOID_ANIMATION_RESEARCH.md) | 11-15 | 좀보이드 동작 구성과 규칙 | ○ 동작 목록 참고 |
 | [research/ZOMBOID_REA_ANALYSIS.md](research/ZOMBOID_REA_ANALYSIS.md) | 11-14 | 좀보이드 피폭체 동작 분석(REA) | ○ |
 | [planning/hero3d_swing_v2.png](planning/hero3d_swing_v2.png) | 11-20 | 3D 휘두르기 다듬기(허리 회전 줄이기, 무기 방향) | ✓ 동작 교체로 넘어감 |
-| [planning/hero3d_attacks4_v2.png](planning/hero3d_attacks4_v2.png) | 11-20 | Mixamo 공격 4개 비교(Heavy Weapon Swing, Bash, Downward, Baseball Hit), 무기 방향 z | ○ 고르는 중 (Downward가 준비·치기 가장 또렷) |
+| [planning/hero3d_attacks4_v2.png](planning/hero3d_attacks4_v2.png) | 11-20 | Mixamo 공격 4개 비교, 무기 방향 z | ✓ Downward로 정함 |
+| [planning/arena_hero3d_chop.png](planning/arena_hero3d_chop.png) | 11-20 | 3D 주인공 게임 안 내려치기 8방향 (`BUSAN_HERO=hero_3d`, `tools/sprites/build_hero3d.py`) | ★ 시험 중 |
 
 ## 4. 3D → 도트 변환 기법
 

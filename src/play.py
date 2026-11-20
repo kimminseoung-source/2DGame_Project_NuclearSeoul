@@ -7,6 +7,7 @@ one comes in through an entrance the hero is not looking at, heading for the las
 (a slash or a roll), and a slash makes the next one come sooner. The area is clear once all of
 them are down."""
 
+import os
 import random
 from math import atan2, cos, hypot, pi, sin
 
@@ -33,7 +34,9 @@ from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_
                   WEAPONS_LYING, ZOMBIE_STARTS)
 from character_look import DirLook, SheetLook
 
-HERO_PX = "hero_px40"     # PixelLab hero folder: hero_px (32 canvas, 29 px tall) or hero_px40 (40 canvas, 36 px)
+# Hero picture folder: hero_px40 (PixelLab, 36 px) or hero_3d (MPFB 3D hero rendered to dots,
+# tools/sprites/build_hero3d.py). BUSAN_HERO picks one to compare them in the game (2026-11-20).
+HERO_PX = os.environ.get("BUSAN_HERO", "hero_px40")
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
