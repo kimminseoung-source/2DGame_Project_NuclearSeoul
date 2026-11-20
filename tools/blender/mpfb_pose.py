@@ -43,6 +43,7 @@ def args():
     p.add_argument("--tilt", type=float, default=10)
     p.add_argument("--name", default="act")
     p.add_argument("--pass", dest="render_pass", choices=["color", "id", "light"], default="color")
+    p.add_argument("--weapon", type=float, default=0.0, help="test pipe length in metres (0 = none)")
     return p.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
 
@@ -107,14 +108,14 @@ def retarget(src, dst, frame):
 
 PARTS = {"skin": (0.85, 0.55, 0.40), "hair": (0.10, 0.10, 0.10), "eyes": (0.05, 0.9, 0.3),
          "jacket": (0.9, 0.7, 0.1), "shirt": (0.95, 0.95, 0.95), "jeans": (0.1, 0.2, 0.9),
-         "boots": (0.6, 0.1, 0.6), "top": (1.0, 0.45, 0.0)}
+         "boots": (0.6, 0.1, 0.6), "top": (1.0, 0.45, 0.0), "weapon": (0.5, 0.5, 0.55)}
 
 
 def part_of_object(o):
     n = o.name.lower()
     for key, part in (("eyebrow", "hair"), ("short", "hair"), ("hair", "hair"), ("low-poly", "eyes"),
                       ("high-poly", "eyes"), ("shoes", "boots"), ("body", "skin"),
-                      ("sweater", "top"), ("shirt", "top"), ("pants", "jeans")):
+                      ("sweater", "top"), ("shirt", "top"), ("pants", "jeans"), ("weapon", "weapon")):
         if key in n:
             return part
     return None
@@ -211,20 +212,56 @@ def setup(a):
     return cam
 
 
-def frame_cam(cam, a, height_m, centre, feet_z):
+def frame_cam(cam, a, rest_pts):
+    """Camera for the whole action, fixed from the standing body: in --pixel mode the standing
+    figure is person_px tall ON SCREEN (the tilt shortens it) and its lowest point sits a.feet px
+    above the bottom edge, so every frame and direction shares one scale and one floor row."""
     tilt = math.radians(a.tilt)
     d = 10.0
-    if a.pixel:
-        px = height_m / a.person_px                              # metres per pixel
-        cam.data.ortho_scale = px * a.pixel
-        # feet a.feet px above the bottom edge (seen through the tilt)
-        aim_z = feet_z + (a.pixel / 2 - a.feet) * px / math.cos(tilt)
-        aim = Vector((centre.x, centre.y, aim_z))
-    else:
-        cam.data.ortho_scale = height_m * 1.15
-        aim = centre
-    cam.location = aim + Vector((0, -d * math.cos(tilt), d * math.sin(tilt)))
+    lo = Vector([min(p[i] for p in rest_pts) for i in range(3)])
+    hi = Vector([max(p[i] for p in rest_pts) for i in range(3)])
+    centre = (lo + hi) / 2
     cam.rotation_euler = (math.radians(90) - tilt, 0, 0)
+    cam.location = centre + Vector((0, -d * math.cos(tilt), d * math.sin(tilt)))
+    bpy.context.view_layer.update()
+    inv = cam.matrix_world.inverted()
+    ys = [(inv @ p).y for p in rest_pts]
+    tall = max(ys) - min(ys)                                     # on-screen height, metres
+    if not a.pixel:
+        cam.data.ortho_scale = tall * 1.15
+        return
+    px = tall / a.person_px
+    cam.data.ortho_scale = px * a.pixel
+    want = -a.pixel / 2 * px + a.feet * px                       # feet row in camera space
+    up = cam.matrix_world.to_quaternion() @ Vector((0, 1, 0))
+    cam.location += up * (min(ys) - want)
+    bpy.context.view_layer.update()
+
+
+def add_weapon(rig, length):
+    """A test pipe in the right fist (for judging the motion only; the game draws its own
+    weapon at the hand, character_look.draw_weapon)."""
+    import bmesh
+    me = bpy.data.meshes.new("weapon")
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.022, radius2=0.022, depth=length)
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new("weapon_pipe", me)
+    bpy.context.scene.collection.objects.link(obj)
+    mat = bpy.data.materials.new("pipe")
+    mat.diffuse_color = (0.45, 0.45, 0.5, 1)
+    me.materials.append(mat)
+    bone = rig.data.bones["mixamorig:RightHand"]
+    rest = rig.matrix_world @ bone.matrix_local
+    # fist ~8 cm along the hand; the pipe crosses the palm (hand X), most of it on the thumb side
+    place = rest @ Matrix.Translation((length * 0.35, 0.08, 0.0)) @ Matrix.Rotation(math.radians(90), 4, "Y")
+    obj.parent = rig
+    obj.parent_type = "BONE"
+    obj.parent_bone = bone.name
+    bpy.context.view_layer.update()
+    obj.matrix_world = place
+    return obj
 
 
 def main():
@@ -235,15 +272,21 @@ def main():
     f0, f1 = (int(act.frame_range[0]), int(act.frame_range[1])) if act else (1, 1)
     frames = [round(f0 + (f1 - f0) * i / max(1, a.frames)) for i in range(a.frames)]
     cam = setup(a)
+    if a.weapon:
+        add_weapon(dst, a.weapon)
     if a.render_pass != "color":
         setup_workbench(bpy.context.scene, a.render_pass)
         if a.render_pass == "id":
             paint_ids()
-    meshes = [o for o in bpy.data.objects if o.type == "MESH" and not o.hide_render]
-    rest_pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
-    height = max(p.z for p in rest_pts) - min(p.z for p in rest_pts)
-    feet_z = min(p.z for p in rest_pts)
-    centre = Vector((0, 0, feet_z + height / 2))
+    meshes = [o for o in bpy.data.objects if o.type == "MESH" and not o.hide_render and not o.name.startswith("weapon")]
+    dg = bpy.context.evaluated_depsgraph_get()
+    rest_pts = []
+    for o in meshes:                                             # the standing body as it is drawn
+        ev = o.evaluated_get(dg)
+        m = ev.to_mesh()
+        rest_pts += [o.matrix_world @ v.co for k, v in enumerate(m.vertices) if k % 7 == 0]
+        ev.to_mesh_clear()
+    frame_cam(cam, a, rest_pts)
     os.makedirs(a.out, exist_ok=True)
     if a.render_pass == "id":
         import json
@@ -252,10 +295,11 @@ def main():
     scene = bpy.context.scene
     for t in a.turn:
         for i, f in enumerate(frames):
+            dst.rotation_euler[2] = 0                            # pose facing the source, then turn
+            bpy.context.view_layer.update()
             retarget(src, dst, f)
             dst.rotation_euler[2] = math.radians(t)
             bpy.context.view_layer.update()
-            frame_cam(cam, a, height, centre, feet_z)
             scene.render.filepath = os.path.join(a.out, f"{a.name}_t{int(t)}_{i}.png")
             bpy.ops.render.render(write_still=True)
             print("saved", scene.render.filepath)
