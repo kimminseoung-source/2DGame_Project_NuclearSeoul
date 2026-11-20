@@ -243,12 +243,16 @@ class DirLook:
         return getattr(self.base, name)
 
     def has(self, pose):
-        """Aiming pictures (2026-11-20): "ready_stand" = Aim/, "ready_<style>" (stepping with the
-        weapon raised) = AimStep/, legs walking under the aiming upper body. Else the old sheets."""
-        if self.on and pose == "ready_stand" and "aim" in self.anims:
-            return True
-        if self.on and pose.startswith("ready_") and "aimstep" in self.anims:
-            return True
+        """Aiming pictures (2026-11-20): "ready_stand_<style>" = Aim/, "ready_<style>" (stepping
+        with the weapon raised) = AimStep/, for the weapon styles in keyframes.json "aim_styles"
+        (a knife is not held like a bat). With the new pictures on, an aim it has no picture for
+        is not taken from the old side sheets (they are another drawing); the hero then keeps
+        its standing aim."""
+        if self.on and self.stills and pose.startswith("ready_"):
+            style = pose.rsplit("_", 1)[1]
+            if style not in self.keys.get("aim_styles", []):
+                return False
+            return ("aim" if pose.startswith("ready_stand_") else "aimstep") in self.anims
         return self.base.has(pose)
 
     def picture(self, pose, time, angle, contact=None):
@@ -257,7 +261,7 @@ class DirLook:
             return None
         d = DIRS[round(angle / (pi / 4)) % 8]
         if pose.startswith("ready_"):                  # aiming: standing, or stepping with it raised
-            key = "aim" if pose == "ready_stand" else "aimstep"
+            key = "aim" if pose.startswith("ready_stand_") else "aimstep"
             frames = self.anims.get(key, {}).get(d)
             if frames:
                 i = int(time / self.FRAME_TIME) % len(frames)

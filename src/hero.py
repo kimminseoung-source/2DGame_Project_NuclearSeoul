@@ -255,8 +255,9 @@ class Hero:
             if self.moving and self.look.has(walking):     # stepping with it raised: the legs walk
                 self._draw(walking, self.time, x, y, self.facing, distance=self.run_distance, held=self.held(),
                            angle=self.angle)
-            elif self.look.has("ready_stand"):             # an aiming picture of its own (3D hero)
-                self._draw("ready_stand", self.time, x, y, self.facing, held=self.held(), angle=self.angle)
+            elif self.look.has(f"ready_stand_{w['style']}"):    # an aiming picture for this kind of weapon
+                self._draw(f"ready_stand_{w['style']}", self.time, x, y, self.facing, held=self.held(),
+                           angle=self.angle)
             else:
                 self._draw(w["pose"], w["hit"] * 0.95 / w["time"], x, y, self.facing, contact=w["hit"] / w["time"],
                                held=self.held(), angle=self.angle)

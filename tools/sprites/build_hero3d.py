@@ -50,7 +50,7 @@ VARIANTS = {
 # or walking (docs/plans/2026-11-20_조준자세_하체걷기.md). Folder "AimStep", not "AimWalk":
 # DirLook treats any folder with "walk" in its name as the plain walk.
 AIM_UPPER = ["--upper", str(ROOT / "assets/source3d/mixamo/Baseball_Hit.fbx"), "--upper-at", "0.4",
-             "--weapon", "0.75", "--hide-weapon"]
+             "--upper-skip", "Neck", "--weapon", "0.75", "--hide-weapon"]   # head: looks ahead, not at a pitcher
 ACTIONS["aim"] = ("Breathing_Idle", 1, list(TURN), "Aim", AIM_UPPER)
 ACTIONS["aim_step"] = ("Walking", 6, list(TURN), "AimStep", AIM_UPPER)
 for _name, (_fbx, _) in VARIANTS.items():
@@ -134,6 +134,7 @@ def main():
                             "made_by": f"MPFB hero + Mixamo {fbx} (tools/sprites/build_hero3d.py)"}
             print("built", action, dirs)
     keys["default_variant"] = "baseball"     # aim with the bat wind-up, swing the bat (2026-11-20)
+    keys["aim_styles"] = ["chop"]            # the bat aim is for swung weapons; knife and pistol keep their own
     keys["note"] = ("Key-pose attacks for the 3D hero (build_hero3d.py): wind-up and hit picture per direction, "
                     "hand (picture px) and weapon direction (degrees, y up) measured in Blender.")
     out.mkdir(parents=True, exist_ok=True)

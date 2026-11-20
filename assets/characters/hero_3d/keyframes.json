@@ -2446,5 +2446,8 @@
    ]
   }
  },
- "default_variant": "baseball"
+ "default_variant": "baseball",
+ "aim_styles": [
+  "chop"
+ ]
 }

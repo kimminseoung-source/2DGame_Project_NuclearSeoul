@@ -49,6 +49,9 @@ def args():
     p.add_argument("--damp", nargs="*", default=[], help="bone=share, e.g. Spine=0.5 (mixamorig: added)")
     p.add_argument("--upper", default=None, help="another Mixamo action for the spine and above (aim while walking)")
     p.add_argument("--upper-at", type=float, default=0.4, help="which moment of --upper, 0..1 of its length")
+    p.add_argument("--upper-skip", nargs="*", default=[],
+                   help="bones (and what hangs on them) kept from the main action, e.g. Neck: the head looks "
+                        "where the body faces, not where the batter looked (2026-11-20)")
     p.add_argument("--hide-weapon", action="store_true",
                    help="keep the test pipe out of the picture (the game draws the weapon) but still measure it")
     p.add_argument("--record", default=None,
@@ -130,15 +133,23 @@ def retarget(src, dst, frame, damp=None, snap=None, only=None, rebase=None):
         bpy.context.view_layer.update()
 
 
-def upper_bones(rig):
-    """The spine and everything above it (the part that aims), by the rig's own hierarchy."""
+def subtree(rig, bone):
+    """A bone and everything under it, by the rig's own hierarchy."""
     out = set()
 
     def walk(b):
         out.add(b.name)
         for c in b.children:
             walk(c)
-    walk(rig.data.bones["mixamorig:Spine"])
+    walk(rig.data.bones[bone])
+    return out
+
+
+def upper_bones(rig, skip=()):
+    """The spine and everything above it (the part that aims), less the `skip` subtrees."""
+    out = subtree(rig, "mixamorig:Spine")
+    for s in skip:
+        out -= subtree(rig, "mixamorig:" + s)
     return out
 
 
@@ -331,7 +342,8 @@ def main():
         ua = up_src.animation_data.action
         u0, u1 = ua.frame_range
         up_snap = snapshot(up_src, round(u0 + (u1 - u0) * a.upper_at))
-        upper = upper_bones(dst)
+        upper = upper_bones(dst, a.upper_skip)
+        kept = set().union(*(subtree(dst, "mixamorig:" + s) for s in a.upper_skip)) if a.upper_skip else set()
     cam = setup(a)
     if a.weapon:
         pipe = add_weapon(dst, a.weapon, a.weapon_axis)
@@ -365,6 +377,8 @@ def main():
             if up_src is not None:                               # the aiming upper body on these legs
                 turn = snap["mixamorig:Hips"].to_quaternion() @ up_snap["mixamorig:Hips"].to_quaternion().inverted()
                 retarget(up_src, dst, f, snap=up_snap, only=upper, rebase=turn)
+                if kept:                                         # set again: their parents moved
+                    retarget(src, dst, f, snap=snap, only=kept)
             dst.rotation_euler[2] = math.radians(t)
             bpy.context.view_layer.update()
             scene.render.filepath = os.path.join(a.out, f"{a.name}_t{int(t)}_{i}.png")
