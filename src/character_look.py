@@ -263,6 +263,20 @@ class DirLook:
 
     key_poses = True                # F4: key-pose attacks on/off (off: standing picture + turning weapon)
     HIT_HOLD = 0.3                  # share of the time after the hit that the hit picture stays
+    variant = None                  # F4 "공격 동작": a name in keyframes.json "variants" (None = the attack's own)
+    key_count = 3                   # F4 "공격 장수": 2 (wind-up, hit), 3 (+ recover), 0 = every picture in turn
+
+    def attack_table(self, pose):
+        """Per-direction specs of this attack: the chosen variant's (to try motions in the game,
+        docs/plans/2026-11-20_공격동작_바꿔가며_시연.md) or the attack's own."""
+        if pose == "chop" and self.variant:
+            table = self.keys.get("variants", {}).get(self.variant)
+            if table:
+                return table
+        return self.keys.get(pose, {})
+
+    def variants(self):
+        return list(self.keys.get("variants", {}))
 
     def key_pose(self, pose, time, contact, angle):
         """A key-pose attack (keyframes.json): the wind-up picture until the hit, the hit picture
@@ -273,20 +287,26 @@ class DirLook:
         if not (self.on and self.key_poses) or contact is None or angle is None:
             return None
         d = DIRS[round(angle / (pi / 4)) % 8]
-        spec = self.keys.get(pose, {}).get(d)
+        table = self.attack_table(pose)
+        spec = table.get(d)
         if not spec:                                     # attacks have fewer directions: the nearest one
             i = DIRS.index(d)
             near = sorted((DIRS[(i + s) % 8] for s in (-1, 1)),
                           key=lambda n: abs((DIRS.index(n) * pi / 4 - angle + pi) % (2 * pi) - pi))
-            d = next((n for n in near if n in self.keys.get(pose, {})), None)
+            d = next((n for n in near if n in table), None)
             if d is None:
                 return None
-            spec = self.keys[pose][d]
-        if time < contact:
+            spec = table[d]
+        after = (time - contact) / max(1e-6, 1 - contact)
+        if self.key_count == 0 and "all" in spec:        # every picture: rest .. hit by the contact, then on
+            seq, hit = spec["all"], spec["hit"]["frame"]
+            i = round(time / contact * hit) if time < contact else hit + round(after * (len(seq) - 1 - hit))
+            step = seq[max(0, min(i, len(seq) - 1))]
+        elif time < contact:
             step = spec["windup"]
-        elif (time - contact) / max(1e-6, 1 - contact) < self.HIT_HOLD:
+        elif after < self.HIT_HOLD:
             step = spec["hit"]
-        elif "recover" in spec:                          # third key pose: the weapon comes back
+        elif "recover" in spec and self.key_count >= 3:  # third key pose: the weapon comes back
             step = spec["recover"]
         else:
             return None

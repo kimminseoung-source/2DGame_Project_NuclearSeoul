@@ -37,6 +37,17 @@ ACTIONS = {
 CHOP_KEYS = {"windup": 3, "hit": 4, "recover": 7}   # of the 10 rendered: pipe over the head, forward-down,
                                                      # coming back; only these 3 are kept (2026-11-20 plan)
 SPRITE = ["--pixel", "64", "--person-px", "36", "--feet", "12", "--tilt", "30"]
+CHOP_DIRS = ["south", "south-east", "south-west", "north-east", "north-west"]
+# Attack motions to try in the game (F4 "공격 동작"), all 10 pictures kept so F4 "공격 장수" can show
+# 2, 3 or all of them (docs/plans/2026-11-20_공격동작_바꿔가며_시연.md). name: (Mixamo file, key poses)
+VARIANTS = {
+    "downward": ("Standing_Melee_Attack_Downward", {"windup": 3, "hit": 4, "recover": 7}),
+    "heavy": ("Heavy_Weapon_Swing", {"windup": 3, "hit": 6, "recover": 8}),
+    "bash": ("Bash", {"windup": 4, "hit": 6, "recover": 8}),
+    "baseball": ("Baseball_Hit", {"windup": 4, "hit": 6, "recover": 8}),
+}
+for _name, (_fbx, _) in VARIANTS.items():
+    ACTIONS["v_" + _name] = (_fbx, 10, CHOP_DIRS, "MP_chop_" + _name, ["--weapon", "0.75", "--hide-weapon"])
 
 
 def render(action, tmp):
@@ -60,7 +71,7 @@ def render(action, tmp):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="assets/characters/hero_3d")
-    ap.add_argument("--only", nargs="*", default=list(ACTIONS))
+    ap.add_argument("--only", nargs="*", default=["idle", "walk", "chop"], help=f"of {list(ACTIONS)}")
     a = ap.parse_args()
     out = ROOT / a.out
     hands_file, keys_file = out / "hands.json", out / "keyframes.json"
@@ -91,11 +102,19 @@ def main():
                     if dest.exists():
                         shutil.rmtree(dest)
                     dest.mkdir(parents=True)
-                    keep = range(frames) if action == "walk" else sorted(CHOP_KEYS.values())
+                    keep = sorted(CHOP_KEYS.values()) if action == "chop" else range(frames)
                     for i in keep:
                         shutil.copy(pics[i], dest / f"{i}.png")
                     if action == "walk":
                         hands.setdefault("walk", {})[d] = [n["hand"] for n in notes]
+                    elif action.startswith("v_"):
+                        name = action[2:]
+                        keys.setdefault("variants", {}).setdefault(name, {})[d] = {
+                            "anim": folder.lower(),
+                            **{k: {"frame": i, "hand": notes[i]["hand"], "weapon": notes[i]["weapon"]}
+                               for k, i in VARIANTS[name][1].items()},
+                            "all": [{"frame": i, "hand": n["hand"], "weapon": n["weapon"]} for i, n in enumerate(notes)],
+                            "made_by": f"MPFB hero + Mixamo {fbx} (tools/sprites/build_hero3d.py)"}
                     else:
                         keys.setdefault("chop", {})[d] = {
                             "anim": folder.lower(),

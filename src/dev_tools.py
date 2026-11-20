@@ -135,6 +135,29 @@ def _key_poses(game, step):
     character_look.DirLook.key_poses = not character_look.DirLook.key_poses
 
 
+VARIANT_NAMES = {None: "기본", "downward": "도끼 내려치기", "heavy": "양손 휘두르기",
+                 "bash": "머리 위 내려치기", "baseball": "방망이 휘두르기"}
+COUNT_NAMES = {2: "2장 (준비·치기)", 3: "3장 (+회복)", 0: "전체 10장"}
+
+
+def _variants(game):
+    look = game.hero_look
+    return [None] + (look.variants() if hasattr(look, "variants") else [])
+
+
+def _next_variant(game, step):
+    """Try another attack motion in the game (3D hero, keyframes.json "variants")."""
+    names = _variants(game)
+    i = names.index(character_look.DirLook.variant) if character_look.DirLook.variant in names else 0
+    character_look.DirLook.variant = names[(i + step) % len(names)]
+
+
+def _next_count(game, step):
+    order = [2, 3, 0]
+    i = order.index(character_look.DirLook.key_count)
+    character_look.DirLook.key_count = order[(i + step) % len(order)]
+
+
 def _senses(game, step):
     game.toggle_senses()
 
@@ -199,7 +222,10 @@ ROWS = (
     ("주인공",),
     ("무적", lambda g: _on(g.dev.god), _flip("god")),
     ("새 주인공 그림 (8방향)", lambda g: _on(character_look.DirLook.on), _new_look),
-    ("핵심 자세 공격 (남동쪽 시험)", lambda g: _on(character_look.DirLook.key_poses), _key_poses),
+    ("핵심 자세 공격", lambda g: _on(character_look.DirLook.key_poses), _key_poses),
+    ("공격 동작 (3D 주인공)", lambda g: VARIANT_NAMES.get(character_look.DirLook.variant, character_look.DirLook.variant),
+     _next_variant),
+    ("공격 장수 (3D 주인공)", lambda g: COUNT_NAMES[character_look.DirLook.key_count], _next_count),
     ("타격 효과 그림", lambda g: _on(slash_fx.SpriteFx.on), _fx_sprites),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),

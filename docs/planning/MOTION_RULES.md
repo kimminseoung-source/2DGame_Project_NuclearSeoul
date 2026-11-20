@@ -53,6 +53,7 @@
 3. 큰 3D와 36px로 10장 뽑아 비교하고(`tools/blender/mpfb_pose.py`), 사용자와 고른다.
 4. `tools/sprites/build_hero3d.py`의 ACTIONS에 넣고 핵심 자세 번호를 정해 `assets/characters/hero_3d`를 만든다(손 위치·무기 각도는 Blender에서 잰다).
 5. `BUSAN_HERO=hero_3d`, 테스트 맵에서 숨긴 창으로 찍어 보여 준다.
+6. 사용자가 직접 비교할 때는 `build_hero3d.py`의 VARIANTS에 넣어 `--only v_<이름>`으로 만들면, 게임 F4 "공격 동작 (3D 주인공)"·"공격 장수 (3D 주인공)"에서 바꿔 가며 쳐 볼 수 있다(2026-11-20).
 
 ## 5. 새 동작을 만드는 순서 (PixelLab, 예전)
 
