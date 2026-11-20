@@ -136,7 +136,8 @@ def _key_poses(game, step):
 
 
 VARIANT_NAMES = {None: "기본 (그림 폴더가 정한 것)", "downward": "도끼 내려치기", "heavy": "양손 휘두르기",
-                 "bash": "머리 위 내려치기", "baseball": "방망이 휘두르기"}
+                 "bash": "머리 위 내려치기", "baseball": "방망이 휘두르기",
+                 "greatsword": "양손 검 내려 베기", "samurai": "사무라이 (방망이 준비 + 검 베기)"}
 COUNT_NAMES = {2: "2장 (준비·치기)", 3: "3장 (+회복)", 0: "전체 10장"}
 
 

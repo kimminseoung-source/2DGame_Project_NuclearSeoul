@@ -45,6 +45,13 @@ VARIANTS = {
     "heavy": ("Heavy_Weapon_Swing", {"windup": 3, "hit": 6, "recover": 8}),
     "bash": ("Bash", {"windup": 4, "hit": 6, "recover": 8}),
     "baseball": ("Baseball_Hit", {"windup": 4, "hit": 6, "recover": 8}),
+    "greatsword": ("GreatSword_Downward", {"windup": 4, "hit": 6, "recover": 7}),
+}
+# Attacks put together from two motions' key poses (2026-11-20 "준비 자세는 그대로, 휘두르고 난 뒤
+# 자세만 사무라이처럼"): key pose -> (variant, picture). The wind-up is the bat aim, the hit and
+# the follow-through are the two-handed sword's lunge and held blade (docs/plans/2026-11-20_사무라이_베기_자세.md).
+MIXED = {
+    "samurai": {"windup": ("baseball", 4), "hit": ("greatsword", 6), "recover": ("greatsword", 7)},
 }
 # Aiming (left button held): the spine and above from the baseball wind-up, the legs standing
 # or walking (docs/plans/2026-11-20_조준자세_하체걷기.md). Folder "AimStep", not "AimWalk":
@@ -133,7 +140,23 @@ def main():
                                for k, i in CHOP_KEYS.items()},
                             "made_by": f"MPFB hero + Mixamo {fbx} (tools/sprites/build_hero3d.py)"}
             print("built", action, dirs)
-    keys["default_variant"] = "baseball"     # aim with the bat wind-up, swing the bat (2026-11-20)
+    for name, parts in MIXED.items():        # from variants already built (their pictures and notes)
+        made = keys.get("variants", {})
+        if not all(v in made for v, _ in parts.values()):
+            continue
+        mixed = {}
+        for d in CHOP_DIRS:
+            def step(v, i):
+                note = made[v][d]["all"][i]
+                return {"anim": made[v][d]["anim"], "frame": i, "hand": note["hand"], "weapon": note["weapon"]}
+            spec = {k: step(v, i) for k, (v, i) in parts.items()}
+            wv, wi = parts["windup"]
+            hv, hi = parts["hit"]
+            seq = [step(wv, i) for i in range(wi + 1)] + [step(hv, i) for i in range(hi, 10)]
+            mixed[d] = {"anim": spec["windup"]["anim"], **spec, "all": seq, "all_hit": wi + 1,
+                        "made_by": f"key poses mixed from {sorted({v for v, _ in parts.values()})}"}
+        keys["variants"][name] = mixed
+    keys["default_variant"] = "samurai"      # bat aim, sword lunge and held blade (2026-11-20)
     keys["aim_styles"] = ["chop"]            # the bat aim is for swung weapons; knife and pistol keep their own
     keys["note"] = ("Key-pose attacks for the 3D hero (build_hero3d.py): wind-up and hit picture per direction, "
                     "hand (picture px) and weapon direction (degrees, y up) measured in Blender.")

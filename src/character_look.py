@@ -319,7 +319,7 @@ class DirLook:
             spec = table[d]
         after = (time - contact) / max(1e-6, 1 - contact)
         if self.key_count == 0 and "all" in spec:        # every picture: rest .. hit by the contact, then on
-            seq, hit = spec["all"], spec["hit"]["frame"]
+            seq, hit = spec["all"], spec.get("all_hit", spec["hit"]["frame"])
             i = round(time / contact * hit) if time < contact else hit + round(after * (len(seq) - 1 - hit))
             step = seq[max(0, min(i, len(seq) - 1))]
         elif time < contact:
@@ -330,7 +330,7 @@ class DirLook:
             step = spec["recover"]
         else:
             return None
-        pic = self.named.get((spec["anim"], step.get("dir", d), str(step["frame"])))
+        pic = self.named.get((step.get("anim", spec["anim"]), step.get("dir", d), str(step["frame"])))
         return (pic, step["hand"], radians(step["weapon"]), d) if pic else None
 
     def hand(self, key, d, i):
