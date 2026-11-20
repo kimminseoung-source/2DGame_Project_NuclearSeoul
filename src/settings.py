@@ -72,3 +72,8 @@ ZOMBIE_WINDUP = 0.5 * TEMPO
 ZOMBIE_STRIKE = 0.15 * TEMPO
 ZOMBIE_RECOVER = 0.6 * TEMPO
 ZOMBIE_ARC = 1.0                # radians either side of where it lunged: step around it to dodge
+
+# Legs as a target, crawling infected and the stomp (2026-11-20, "다리는 비활성화, 머리랑 몸통 정도만,
+# 2D이다 보니까"): off. Blows find only head and torso, no infected crawls. The code stays; True
+# brings it back (docs/plans/2026-11-20_다리_기어다니기_끄기.md).
+LEGS_AND_CRAWLERS = False

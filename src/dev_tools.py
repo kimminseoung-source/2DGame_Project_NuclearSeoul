@@ -31,7 +31,7 @@ import hero as hero_rules
 import infected
 import pixel_ui as px
 import weapons
-from settings import CHEST, DOT, HERO_HP, ZOMBIE_ARC
+from settings import CHEST, DOT, HERO_HP, LEGS_AND_CRAWLERS, ZOMBIE_ARC
 from weapons import BODY_CONTACT
 
 PANEL = (368, 30, 632)              # canvas px: left, top, right (the rows set the bottom)
@@ -249,7 +249,7 @@ ROWS = (
     _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
     _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
     ("피폭체 소환 (커서)", None, _spawn(False)),
-    ("기어가는 피폭체 소환", None, _spawn(True)),
+    *([("기어가는 피폭체 소환", None, _spawn(True))] if LEGS_AND_CRAWLERS else []),   # off: no crawlers
     ("피폭체 모두 없애기", None, _clear),
     ("게임",),
     _slider("게임 속도", "clock", lambda g: g.dev.speed, lambda g, v: setattr(g.dev, "speed", v), 0.25, 2.0, 0.25,

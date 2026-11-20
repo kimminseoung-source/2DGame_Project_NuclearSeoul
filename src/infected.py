@@ -9,7 +9,7 @@ from math import atan2, cos, hypot, pi
 
 import ui
 from area import BLOCKS, blocks_between, move_body, waypoint
-from settings import TEMPO, ZOMBIE_ARC, ZOMBIE_REACH, ZOMBIE_RECOVER, ZOMBIE_SPEED, ZOMBIE_STRIKE, ZOMBIE_WINDUP
+from settings import LEGS_AND_CRAWLERS, TEMPO, ZOMBIE_ARC, ZOMBIE_REACH, ZOMBIE_RECOVER, ZOMBIE_SPEED, ZOMBIE_STRIKE, ZOMBIE_WINDUP
 from vision_cone import ray_hit
 
 # Infected senses (numbers are ours; the rules come from Zomboid's sight / hearing / memory).
@@ -91,7 +91,7 @@ class Zombie:
         self.death = (0.0, 0.0)
         self.push = (0.0, 0.0)
         self.health = random.randint(*(CRAWLER_HEALTH if crawler else HEALTH))
-        self.prone = crawler         # a crawler: on the ground, moves and bites from there
+        self.prone = crawler and LEGS_AND_CRAWLERS   # a crawler: on the ground, moves and bites from there
         roll, self.pace = random.random(), 1.0
         for name, share, pace in PACES:
             if roll < share:
