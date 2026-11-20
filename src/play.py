@@ -30,6 +30,7 @@ import stamina as stamina_rules
 import ui
 from hero import PICKUP_TIME
 import area
+import attack_tells
 from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_H, ROOM_W, SUPPLIES,
                   WEAPONS_LYING, ZOMBIE_STARTS)
 from character_look import DirLook, SheetLook
@@ -1114,6 +1115,7 @@ class Game:
             pico2d.draw_line(l + 4 - cx, b + 6 + i * 12 - cy, r - 4 - cx, b + 6 + i * 12 - cy, 60, 64, 66)
         pico2d.draw_rectangle(l - cx, b - cy, r - cx, t - cy, 90, 96, 92)
         draw_stains(self.stains, cx, cy)
+        attack_tells.draw(self, cx, cy)                     # claws winding up: where they will land
         if not self.station_open:                          # the station's fence, until the defense
             self.draw_fence(cx, cy)
         near_weapon = self.nearest_weapon()

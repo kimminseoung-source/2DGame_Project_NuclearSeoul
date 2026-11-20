@@ -60,6 +60,7 @@ class Dev:
         self.sight = False           # F5: the infected's sight
         self.sounds = False          # F6: the hero's noises and the entrances they call through
         self.director = False        # F7: the AI director's intensity graph
+        self.tells = True            # where a winding-up claw will land, faintly on the ground (attack_tells)
         self.noises = []             # [x, y, radius, age] of noises the hero made (F6 rings)
         self.god = False             # blows do nothing, no bleeding
         self.speed = 1.0             # the whole game's time
@@ -243,6 +244,7 @@ ROWS = (
     ("피폭체",),
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
     ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),
+    ("피폭체 공격 예고 (빨간 범위)", lambda g: _on(g.dev.tells), _flip("tells")),
     ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
     _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
     _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
@@ -480,41 +482,8 @@ def draw_slider(game, i, row, y):
     px.text(br - 3, y, shown, LIGHT if editing else PANEL_EDGE, anchor="r")
 
 
-# The world canvas has DOT canvas px per world unit (< 1), so a 1-unit line falls between pixels and
-# parts of it vanish: every mark is made of whole canvas pixels instead.
-PIXEL = 1 / DOT
-
-
-def _dot(x, y, colour):
-    qx, qy = round(x * DOT) / DOT, round(y * DOT) / DOT
-    pico2d.draw_rectangle(qx, qy, qx + PIXEL * 0.99, qy + PIXEL * 0.99, *colour, filled=True)
-
-
-def _line(x0, y0, x1, y1, colour, gap=1):
-    n = max(1, int(hypot(x1 - x0, y1 - y0) * DOT / gap))
-    for i in range(n + 1):
-        _dot(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, colour)
-
-
-def _arc(x, y, radius, a0, a1, colour, gap=1):
-    n = max(2, int(radius * abs(a1 - a0) * DOT / gap))
-    for i in range(n + 1):
-        a = a0 + (a1 - a0) * i / n
-        _dot(x + cos(a) * radius, y + sin(a) * radius, colour)
-
-
-def _wedge(x, y, radius, ang, half, colour, gap=1):
-    """The area a blow covers: radius out from (x, y), half radians either side of ang."""
-    _arc(x, y, radius, ang - half, ang + half, colour, gap)
-    for a in (ang - half, ang + half):
-        _line(x, y, x + cos(a) * radius, y + sin(a) * radius, colour, gap)
-
-
-def _box(l, b, r, t, colour, gap=1):
-    _line(l, b, r, b, colour, gap)
-    _line(l, t, r, t, colour, gap)
-    _line(l, b, l, t, colour, gap)
-    _line(r, b, r, t, colour, gap)
+# Ground marks in whole canvas pixels (moved to ground_marks.py, shared with attack_tells.py)
+from ground_marks import PIXEL, arc as _arc, box as _box, dot as _dot, line as _line, wedge as _wedge  # noqa: E402
 
 
 PART_COLOURS = {"head": (226, 70, 56), "torso": (196, 170, 92), "legs": (120, 160, 210)}
