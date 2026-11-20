@@ -28,6 +28,7 @@ def args():
     p.add_argument("--blend", required=True)
     p.add_argument("--preview", default=None)
     p.add_argument("--size", type=int, default=640)
+    p.add_argument("--hair", default=None, help="try another hair (asset name) without editing the spec")
     return p.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
 
@@ -84,10 +85,18 @@ def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mpfb()
     spec = json.loads(open(a.spec, encoding="utf-8").read())
+    if a.hair:
+        spec["hair"] = f"{a.hair}/{a.hair}.mhclo"
     settings = services.HumanService.get_default_deserialization_settings()
     settings["subdiv_levels"] = 0
     basemesh = services.HumanService.deserialize_from_dict(spec, settings)
     print("built", basemesh.name, [o.name for o in bpy.context.scene.objects])
+    # A bigger head for sprites (36 px: a real head is 5 px and the face disappears). Kept as a
+    # pose scale on the head bone (hair, eyes and eyebrows follow it); mpfb_pose.py reapplies it.
+    rig = next((o for o in bpy.context.scene.objects if o.type == "ARMATURE"), None)
+    if rig and spec.get("head_scale", 1.0) != 1.0:
+        rig["head_scale"] = spec["head_scale"]
+        rig.pose.bones["mixamorig:Head"].scale = (spec["head_scale"],) * 3
     os.makedirs(os.path.dirname(a.blend), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=a.blend)
     if a.preview:

@@ -100,6 +100,8 @@ def retarget(src, dst, frame):
             loc = dst_rest_h + move * k
         m = Matrix.Translation(loc) @ want.to_matrix().to_4x4()
         db.matrix = dw.inverted() @ m
+        if name == "mixamorig:Head" and dst.get("head_scale"):
+            db.scale = (dst["head_scale"],) * 3                  # the sprite head size (mpfb_hero.py)
         bpy.context.view_layer.update()
 
 
