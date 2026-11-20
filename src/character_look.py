@@ -242,11 +242,26 @@ class DirLook:
     def __getattr__(self, name):                      # has, blade_lines, impact_of, ... come from the old sheets
         return getattr(self.base, name)
 
+    def has(self, pose):
+        """Aiming pictures (2026-11-20): "ready_stand" = Aim/, "ready_<style>" (stepping with the
+        weapon raised) = AimStep/, legs walking under the aiming upper body. Else the old sheets."""
+        if self.on and pose == "ready_stand" and "aim" in self.anims:
+            return True
+        if self.on and pose.startswith("ready_") and "aimstep" in self.anims:
+            return True
+        return self.base.has(pose)
+
     def picture(self, pose, time, angle, contact=None):
         """(image, rows under the feet, hands key, direction, frame), or None for the old sheets."""
         if not self.on or angle is None or not self.stills:
             return None
         d = DIRS[round(angle / (pi / 4)) % 8]
+        if pose.startswith("ready_"):                  # aiming: standing, or stepping with it raised
+            key = "aim" if pose == "ready_stand" else "aimstep"
+            frames = self.anims.get(key, {}).get(d)
+            if frames:
+                i = int(time / self.FRAME_TIME) % len(frames)
+                return (*frames[i], key, d, i)
         if pose in MOVING:
             frames = self.anims.get("walk", {}).get(d)
             if frames:
@@ -269,8 +284,9 @@ class DirLook:
     def attack_table(self, pose):
         """Per-direction specs of this attack: the chosen variant's (to try motions in the game,
         docs/plans/2026-11-20_공격동작_바꿔가며_시연.md) or the attack's own."""
-        if pose == "chop" and self.variant:
-            table = self.keys.get("variants", {}).get(self.variant)
+        name = self.variant or self.keys.get("default_variant")   # F4 choice, else the folder's own
+        if pose == "chop" and name:
+            table = self.keys.get("variants", {}).get(name)
             if table:
                 return table
         return self.keys.get(pose, {})
@@ -358,6 +374,9 @@ class DirLook:
                 return
             image, under, key, d, i = pic
             point, fixed_ang = self.hand(key, d, i), None
+            held_at = self.keys.get("held_angles", {}).get(key, {}).get(d)
+            if held_at:                                # the weapon's direction measured in Blender
+                fixed_ang = radians(held_at[min(i, len(held_at) - 1)])
         w, h = image.w / self.k, image.h / self.k
         cy = feet_y - under / self.k + h / 2
         weapon, hand = None, None

@@ -46,6 +46,13 @@ VARIANTS = {
     "bash": ("Bash", {"windup": 4, "hit": 6, "recover": 8}),
     "baseball": ("Baseball_Hit", {"windup": 4, "hit": 6, "recover": 8}),
 }
+# Aiming (left button held): the spine and above from the baseball wind-up, the legs standing
+# or walking (docs/plans/2026-11-20_조준자세_하체걷기.md). Folder "AimStep", not "AimWalk":
+# DirLook treats any folder with "walk" in its name as the plain walk.
+AIM_UPPER = ["--upper", str(ROOT / "assets/source3d/mixamo/Baseball_Hit.fbx"), "--upper-at", "0.4",
+             "--weapon", "0.75", "--hide-weapon"]
+ACTIONS["aim"] = ("Breathing_Idle", 1, list(TURN), "Aim", AIM_UPPER)
+ACTIONS["aim_step"] = ("Walking", 6, list(TURN), "AimStep", AIM_UPPER)
 for _name, (_fbx, _) in VARIANTS.items():
     ACTIONS["v_" + _name] = (_fbx, 10, CHOP_DIRS, "MP_chop_" + _name, ["--weapon", "0.75", "--hide-weapon"])
 
@@ -105,7 +112,11 @@ def main():
                     keep = sorted(CHOP_KEYS.values()) if action == "chop" else range(frames)
                     for i in keep:
                         shutil.copy(pics[i], dest / f"{i}.png")
-                    if action == "walk":
+                    if action in ("aim", "aim_step"):
+                        key = folder.lower()
+                        hands.setdefault(key, {})[d] = [n["hand"] for n in notes]
+                        keys.setdefault("held_angles", {}).setdefault(key, {})[d] = [n["weapon"] for n in notes]
+                    elif action == "walk":
                         hands.setdefault("walk", {})[d] = [n["hand"] for n in notes]
                     elif action.startswith("v_"):
                         name = action[2:]
@@ -122,6 +133,7 @@ def main():
                                for k, i in CHOP_KEYS.items()},
                             "made_by": f"MPFB hero + Mixamo {fbx} (tools/sprites/build_hero3d.py)"}
             print("built", action, dirs)
+    keys["default_variant"] = "baseball"     # aim with the bat wind-up, swing the bat (2026-11-20)
     keys["note"] = ("Key-pose attacks for the 3D hero (build_hero3d.py): wind-up and hit picture per direction, "
                     "hand (picture px) and weapon direction (degrees, y up) measured in Blender.")
     out.mkdir(parents=True, exist_ok=True)

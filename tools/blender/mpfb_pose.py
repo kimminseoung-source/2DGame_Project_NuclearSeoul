@@ -47,6 +47,8 @@ def args():
     p.add_argument("--weapon-axis", default="z", choices=["x", "-x", "z", "-z"],
                    help="which way the pipe leaves the fist, in the hand bone's axes")
     p.add_argument("--damp", nargs="*", default=[], help="bone=share, e.g. Spine=0.5 (mixamorig: added)")
+    p.add_argument("--upper", default=None, help="another Mixamo action for the spine and above (aim while walking)")
+    p.add_argument("--upper-at", type=float, default=0.4, help="which moment of --upper, 0..1 of its length")
     p.add_argument("--hide-weapon", action="store_true",
                    help="keep the test pipe out of the picture (the game draws the weapon) but still measure it")
     p.add_argument("--record", default=None,
@@ -71,15 +73,24 @@ def import_source(path):
     return src
 
 
-def retarget(src, dst, frame, damp=None):
+def snapshot(src, frame):
+    """The source's bones at a frame, in world space (so two sources can be mixed)."""
+    bpy.context.scene.frame_set(frame)
+    bpy.context.view_layer.update()
+    return {b.name: src.matrix_world @ b.matrix for b in src.pose.bones}
+
+
+def retarget(src, dst, frame, damp=None, snap=None, only=None, rebase=None):
     """Pose dst like src at this frame (world orientations, rest offsets kept).
     damp: bone -> share of its own turn to keep (0.5 = half). Only that bone's local turn is
     eased; its children are still set to the source's world directions, so arms and head
-    point the same way while the torso bends less (2026-11-20: "허리가 과하게 젖혀짐")."""
+    point the same way while the torso bends less (2026-11-20: "허리가 과하게 젖혀짐").
+    snap / only / rebase mix two actions (2026-11-20, "하체를 분리해서 조준 상태에서도 걷게"):
+    only these bones are set, from a snapshot of another source, turned by `rebase` so they
+    sit on the hips the first action already posed."""
     damp = damp or {}
-    scene = bpy.context.scene
-    scene.frame_set(frame)
-    bpy.context.view_layer.update()
+    snap = snap or snapshot(src, frame)
+    rebase = rebase or Quaternion()
     sw, dw = src.matrix_world, dst.matrix_world
     order = []
 
@@ -90,17 +101,16 @@ def retarget(src, dst, frame, damp=None):
     for b in dst.data.bones:
         if b.parent is None:
             walk(b)
-    src_hips = src.pose.bones.get("mixamorig:Hips")
     src_rest_h = (sw @ src.data.bones["mixamorig:Hips"].matrix_local).to_translation()
     dst_rest_h = (dw @ dst.data.bones["mixamorig:Hips"].matrix_local).to_translation()
     k = dst_rest_h.z / max(1e-6, src_rest_h.z)
     for name in order:
-        sb, db = src.pose.bones.get(name), dst.pose.bones.get(name)
-        if sb is None or db is None:
+        db = dst.pose.bones.get(name)
+        if name not in snap or db is None or (only is not None and name not in only):
             continue
         s_rest = (sw @ src.data.bones[name].matrix_local).to_quaternion()
         d_rest = (dw @ dst.data.bones[name].matrix_local).to_quaternion()
-        s_now = (sw @ sb.matrix).to_quaternion()
+        s_now = rebase @ snap[name].to_quaternion()
         # Bones point along their Y axis. Turn our rest bone onto the source's rest direction
         # (T-pose vs A-pose arms), keep our roll, then follow the source's turn from there:
         # each bone ends up pointing exactly where the source bone points.
@@ -108,9 +118,8 @@ def retarget(src, dst, frame, damp=None):
         align = (d_rest @ y).rotation_difference(s_rest @ y)
         want = s_now @ (s_rest.inverted() @ (align @ d_rest))
         loc = (dw @ db.matrix).to_translation()
-        if name == "mixamorig:Hips" and src_hips is not None:
-            move = (sw @ src_hips.matrix).to_translation() - src_rest_h
-            loc = dst_rest_h + move * k
+        if name == "mixamorig:Hips":
+            loc = dst_rest_h + (snap[name].to_translation() - src_rest_h) * k
         m = Matrix.Translation(loc) @ want.to_matrix().to_4x4()
         db.matrix = dw.inverted() @ m
         if name in damp:
@@ -119,6 +128,18 @@ def retarget(src, dst, frame, damp=None):
         if name == "mixamorig:Head" and dst.get("head_scale"):
             db.scale = (dst["head_scale"],) * 3                  # the sprite head size (mpfb_hero.py)
         bpy.context.view_layer.update()
+
+
+def upper_bones(rig):
+    """The spine and everything above it (the part that aims), by the rig's own hierarchy."""
+    out = set()
+
+    def walk(b):
+        out.add(b.name)
+        for c in b.children:
+            walk(c)
+    walk(rig.data.bones["mixamorig:Spine"])
+    return out
 
 
 PARTS = {"skin": (0.85, 0.55, 0.40), "hair": (0.10, 0.10, 0.10), "eyes": (0.05, 0.9, 0.3),
@@ -302,9 +323,15 @@ def main():
     record = {}
     dst = target_rig()
     src = import_source(a.anim)
+    up_src = import_source(a.upper) if a.upper else None
     act = src.animation_data.action if src.animation_data else None
     f0, f1 = (int(act.frame_range[0]), int(act.frame_range[1])) if act else (1, 1)
     frames = [round(f0 + (f1 - f0) * i / max(1, a.frames)) for i in range(a.frames)]
+    if up_src is not None:
+        ua = up_src.animation_data.action
+        u0, u1 = ua.frame_range
+        up_snap = snapshot(up_src, round(u0 + (u1 - u0) * a.upper_at))
+        upper = upper_bones(dst)
     cam = setup(a)
     if a.weapon:
         pipe = add_weapon(dst, a.weapon, a.weapon_axis)
@@ -333,7 +360,11 @@ def main():
         for i, f in enumerate(frames):
             dst.rotation_euler[2] = 0                            # pose facing the source, then turn
             bpy.context.view_layer.update()
-            retarget(src, dst, f, {("mixamorig:" + k): float(v) for k, v in (d.split("=") for d in a.damp)})
+            snap = snapshot(src, f)
+            retarget(src, dst, f, {("mixamorig:" + k): float(v) for k, v in (d.split("=") for d in a.damp)}, snap)
+            if up_src is not None:                               # the aiming upper body on these legs
+                turn = snap["mixamorig:Hips"].to_quaternion() @ up_snap["mixamorig:Hips"].to_quaternion().inverted()
+                retarget(up_src, dst, f, snap=up_snap, only=upper, rebase=turn)
             dst.rotation_euler[2] = math.radians(t)
             bpy.context.view_layer.update()
             scene.render.filepath = os.path.join(a.out, f"{a.name}_t{int(t)}_{i}.png")
