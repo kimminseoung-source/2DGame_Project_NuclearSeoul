@@ -39,9 +39,9 @@ ACTIONS = {
 # picture in hands.json under the folder's name (= the game's pose name).
 BODY = {
     # pose: (Mixamo file, rendered, kept, folder)
-    "hurt": ("Hit_Reaction", 6, [1, 3], "Hurt"),
-    "down": ("Death_Backward", 8, [1, 3, 5, 7], "Down"),
-    "pickup": ("Picking_Up", 6, [1, 3], "Pickup"),
+    "hurt": ("Hit_Reaction", 10, [1, 4], "Hurt"),
+    "down": ("Death_Backward", 10, [2, 5, 7, 9], "Down"),     # reel, fall, land, lie
+    "pickup": ("Picking_Up", 10, [4, 6], "Pickup"),          # the hand lowest
     "sneak": ("Crouch_Walk_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak"),
     "sneak_idle": ("Crouch_Walk_Forward", 1, [0], "Sneak_Idle"),
 }
