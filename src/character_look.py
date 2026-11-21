@@ -210,6 +210,10 @@ class DirLook:
     SWING_ARC = 1.05                # radians either side of the aim a chop sweeps (60 degrees)
     THRUST = 6                      # picture px a stab pushes the weapon forward
     HANG_OUT = 0.3                  # radians a carried weapon leans out from straight down
+    # How a weapon is carried outside attacks (2026-11-21 "칼을 파란 선처럼 들고 있는 게"): "hang" points
+    # it down; "ready" holds it forward and up from the hand. F4 "들고 다니는 무기".
+    CARRY = "hang"
+    CARRY_UP = 0.8                  # "ready": how much up there is in it against forward (1 = 45 deg east)
 
     def __init__(self, folder, base):
         from PIL import Image                          # only to find where the feet are
@@ -364,7 +368,15 @@ class DirLook:
         return points[min(i, len(points) - 1)] if points else None
 
     def hang(self, d):
-        """A carried weapon points down, leaning a little out to the side its hand is on."""
+        """A carried weapon points down, leaning a little out to the side its hand is on - or, with
+        CARRY "ready", forward and up from the hand (forward on the screen: up and down count half,
+        the ground is seen at a slant; facing the camera or away it stands up, toward the hand's side)."""
+        if self.CARRY == "ready":
+            a = DIRS.index(d) * pi / 4
+            fx = cos(a)
+            if abs(fx) < 0.3:                          # north / south: lean toward the hand's side
+                fx += -0.3 if d in LEFT_HAND else 0.3
+            return atan2(sin(a) * 0.5 + self.CARRY_UP, fx)
         if d == "east":
             out = 1
         elif d == "west":

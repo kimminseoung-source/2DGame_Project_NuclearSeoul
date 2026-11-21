@@ -161,6 +161,14 @@ def _next_count(game, step):
     character_look.DirLook.key_count = order[(i + step) % len(order)]
 
 
+CARRY_NAMES = {"hang": "아래로 늘어뜨림", "ready": "앞 위로 듦"}
+
+
+def _next_carry(game, step):
+    look = character_look.DirLook
+    look.CARRY = "ready" if look.CARRY == "hang" else "hang"
+
+
 def _next_dodge(game, step):
     i = dodge_fx.STYLES.index(dodge_fx.style)
     dodge_fx.style = dodge_fx.STYLES[(i + step) % len(dodge_fx.STYLES)]
@@ -236,6 +244,7 @@ ROWS = (
     ("공격 장수 (3D 주인공)", lambda g: COUNT_NAMES[character_look.DirLook.key_count], _next_count),
     ("타격 효과 그림", lambda g: _on(slash_fx.SpriteFx.on), _fx_sprites),
     ("회피 연출 (Space)", lambda g: dodge_fx.STYLE_NAMES[dodge_fx.style], _next_dodge),
+    ("들고 다니는 무기", lambda g: CARRY_NAMES[character_look.DirLook.CARRY], _next_carry),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),
     _slider("주인공 속도", "run", *_module_value(hero_rules, "RUN_SPEED"), 30, 300, 10, lambda v: f"{v:g}"),
     _slider("강한 타격 멈춤", "clock", lambda g: _jolt()[0], lambda g, v: _set_jolt(v), 0, 0.3, 0.01, lambda v: f"{v:.2f}s"),
