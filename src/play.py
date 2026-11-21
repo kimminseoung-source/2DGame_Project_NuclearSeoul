@@ -36,14 +36,14 @@ from area import (BLOCK_LOOKS, BLOCKS, ENTRANCES, EXIT, EXIT_NAME, GROUND, ROOM_
 from character_look import DirLook, SheetLook
 
 # Hero picture folder: hero_px40 (PixelLab, 36 px) or hero_3d (MPFB 3D hero rendered to dots,
-# tools/sprites/build_hero3d.py). BUSAN_HERO picks one to compare them in the game (2026-11-20).
-HERO_PX = os.environ.get("BUSAN_HERO", "hero_px40")
+# tools/sprites/build_hero3d.py). The 3D hero is the default (2026-11-20); BUSAN_HERO=hero_px40 brings back the old one.
+HERO_PX = os.environ.get("BUSAN_HERO", "hero_3d")
 from condition import BANDAGE_HEAL, PANIC_RECOVER, Condition
 from hero import Hero
 from infected import GRAB_NEAR, GRAB_TIME, NOISE_ROLL, NOISE_SLASH, NOISE_STEP, Zombie
 import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
-                      ROLL_TIME, ROOT, SLOW_WORLD, WIDTH,
+                      ROLL_TIME, ROOT, SHOVE_ON, SLOW_WORLD, WIDTH,
                       ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
 from slash_fx import Blood, Crescent, Spark, SpriteFx, Streak, Tracer, draw_stains
 from sound import Sounds
@@ -229,8 +229,11 @@ class Game:
         self.jolt("light", z)
 
     def right_click(self, sx, sy):
-        """Shove: infected right in front reel (or fall) and any attack they wind up is broken off."""
+        """Shove: infected right in front reel (or fall) and any attack they wind up is broken off.
+        Off with settings.SHOVE_ON (2026-11-20): the right button does nothing in play."""
         self.aim = (sx, sy)
+        if not SHOVE_ON:
+            return
         hero = self.hero
         if not hero.start_shove(*self.mouse_world(sx, sy)):
             return
@@ -785,8 +788,14 @@ class Game:
                     push = weapon["push"]
                     if SpriteFx.on and not shot:             # the drawn burst where it lands
                         self.effects.append(SpriteFx("hit", zx, zy, atan2(zy - sy, zx - sx)))
+                    counter = z.counter_ready()                  # landed at the end of its wind-up
                     if not z.hurt(hero.x, hero.y, damage, part, push, weapon.get("stagger", False)):
                         self.wound_fx(z, zx, zy, sx, sy)          # it takes the blow and keeps coming
+                        if counter:                              # a counter (was the shove's, 2026-11-20)
+                            z.countered(hero.x, hero.y)
+                            self.jolt("heavy", z)
+                            self.effects.append(Spark(z.x, z.y + 40, big=True))
+                            self.sounds.play("slash_hit", 0.6, at=(z.x, z.y))
                         if z.prone and not was_crawling:              # legs cut: it drops - a heavier jolt
                             self.jolt("heavy", z)
                         continue
@@ -1068,7 +1077,7 @@ class Game:
         hero, marks = self.hero, []
         if hero.grabbed > 0:
             marks.append("[Space] 빠져나가기")
-        if "shove" not in self.used and any(
+        if SHOVE_ON and "shove" not in self.used and any(
                 z.alive and z.state == "windup" and hypot(z.x - hero.x, z.y - hero.y) <= SHOVE_REACH * 2
                 for z in self.zombies):
             marks.append("[우클릭] 밀치기")

@@ -131,16 +131,25 @@ class Zombie:
         self.seen_time = 0.0
         self.target, self.memory = (from_x, from_y), MEMORY    # it knows where the blow came from
 
+    def counter_ready(self):
+        """It is at the very end of its wind-up: a blow now (or a shove, if on) counters it."""
+        return self.alive and not self.prone and self.state == "windup" and self.timer <= COUNTER_WINDOW
+
+    def countered(self, from_x, from_y):
+        """Thrown back further and reeling longer, its attack broken off (a counter)."""
+        self.reel(from_x, from_y, COUNTER_PUSH, "stagger", COUNTER_STAGGER)
+        self.stagger_time = self.timer
+
     def shoved(self, from_x, from_y, weak=False):
         """Pushed back by the hero and reeling. A shove right at the end of its warning is a
         counter: it is thrown further and reels longer (a tired, weak shove never is). Returns True
         for a counter."""
-        countered = not weak and self.state == "windup" and self.timer <= COUNTER_WINDOW
+        countered = not weak and self.counter_ready()
         if countered:
-            self.reel(from_x, from_y, COUNTER_PUSH, "stagger", COUNTER_STAGGER)
+            self.countered(from_x, from_y)
         else:
             self.reel(from_x, from_y, SHOVE_PUSH, "stagger", STAGGER_TIME)
-        self.stagger_time = self.timer
+            self.stagger_time = self.timer
         return countered
 
     def hurt(self, from_x, from_y, damage=1, part="torso", push=HIT_PUSH, stagger=False):

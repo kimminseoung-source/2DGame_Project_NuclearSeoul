@@ -77,3 +77,8 @@ ZOMBIE_ARC = 1.0                # radians either side of where it lunged: step a
 # 2D이다 보니까"): off. Blows find only head and torso, no infected crawls. The code stays; True
 # brings it back (docs/plans/2026-11-20_다리_기어다니기_끄기.md).
 LEGS_AND_CRAWLERS = False
+
+# The shove (right click) and its counter (2026-11-20, "밀치기도 비활성화", "받아치기도 비활성화하세요.
+# 그걸 공격으로 옮기죠"): off. The counter is now a blow landed in the same moment (play.py,
+# Zombie.counter_ready). True brings the shove back (docs/plans/2026-11-20_밀치기_끄기_받아치기_공격으로.md).
+SHOVE_ON = False
