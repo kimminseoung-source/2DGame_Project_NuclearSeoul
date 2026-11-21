@@ -206,7 +206,7 @@ class DirLook:
     on = True                       # F4 "새 주인공 그림": off shows the old sheets for comparison
     FRAME_TIME = 0.1                # seconds per walking frame (until a stride is measured)
     BREATH_TIME = 0.6               # seconds per standing (breathing) picture, <folder>/Breath/<dir>/
-    ONCE = ("hurt", "down", "pickup", "push", "roll")   # poses drawn by progress 0..1, not looped
+    ONCE = ("hurt", "down", "pickup", "push", "roll", "roll_spin")   # poses drawn by progress 0..1, not looped
     SWING_ARC = 1.05                # radians either side of the aim a chop sweeps (60 degrees)
     THRUST = 6                      # picture px a stab pushes the weapon forward
     HANG_OUT = 0.3                  # radians a carried weapon leans out from straight down

@@ -7,6 +7,8 @@ looks sells the speed:
   streak      speed lines behind the body + the dust
   roll        a real roll (Mixamo Stand To Roll, Roll/ pictures; only east for now, 2026-11-21
               "구르기 동작 한쪽 방향으로만 해서 비교") + the dust; other directions glide
+  roll_spin   the same roll with three tucked pictures (Roll_Spin/: upside down, ball, coming over)
+              to compare with the 4-picture one ("한번 해 봐, 비교해 봐서")
 
 Any character with a look (DirLook / SheetLook) can use Trail; plan:
 docs/plans/2026-11-21_구르기_회피.md.
@@ -17,8 +19,8 @@ from math import cos, pi, sin
 
 import ground_marks as marks
 
-STYLES = ("ghost", "ghost_dust", "streak", "roll")
-STYLE_NAMES = {"ghost": "잔상", "ghost_dust": "잔상 + 먼지", "streak": "속도선 + 먼지", "roll": "구르기 그림 (동쪽만) + 먼지"}
+STYLES = ("ghost", "ghost_dust", "streak", "roll", "roll_spin")
+STYLE_NAMES = {"ghost": "잔상", "ghost_dust": "잔상 + 먼지", "streak": "속도선 + 먼지", "roll": "구르기 4장 (동쪽만)", "roll_spin": "구르기 6장, 말림 회전 (동쪽만)"}
 style = "ghost_dust"            # F4 "회피 연출"
 
 GHOST_EVERY = 0.035             # s between afterimages
@@ -33,18 +35,22 @@ DUST_COLOUR = (178, 164, 136)
 
 ROLL_EDGES = (0.15, 0.35, 0.8)  # the roll's crouch | dive | tucked | rising, when the look gives no timing
 PUFF_EVERY = 0.045              # s between dust puffs while it rolls along the ground
+# Which picture of each roll begins its dive, tucked part and rising (for the effects' timing).
+ROLL_PHASES = {"roll": (1, 2, 3), "roll_spin": (1, 2, 5)}
 
 
-def roll_edges(look):
+def roll_pose():
+    """The roll pictures (folder name) the chosen look uses; None when the dodge glides."""
+    return style if style in ROLL_PHASES else None
+
+
+def roll_edges(look, pose):
     """Where the roll's dive, tucked and rising pictures start (0..1), from the look's timing holds."""
-    shares = getattr(look, "keys", {}).get("timing", {}).get("roll")
-    if not shares or len(shares) != 4:
+    shares = getattr(look, "keys", {}).get("timing", {}).get(pose)
+    if not shares or pose not in ROLL_PHASES:
         return ROLL_EDGES
-    total, edges, acc = sum(shares), [], 0.0
-    for s in shares[:3]:
-        acc += s / total
-        edges.append(acc)
-    return tuple(edges)
+    total = sum(shares)
+    return tuple(sum(shares[:i]) / total for i in ROLL_PHASES[pose])
 
 
 class Trail:
@@ -71,7 +77,7 @@ class Trail:
             return
         self.angle = angle
         self.speed = 1.0
-        if style == "roll" and rolls(look, angle):
+        if rolls(look, angle):
             self.roll_effects(dt, x, y, angle, progress, look)
             return
         self.clock += dt
@@ -82,7 +88,7 @@ class Trail:
     def roll_effects(self, dt, x, y, angle, progress, look):
         """2026-11-21 구르기 다듬기: a faint afterimage while it dives, dust along the ground while it is
         tucked, and a puff to both sides as it comes up."""
-        dive, tuck, rise = roll_edges(look)
+        dive, tuck, rise = roll_edges(look, roll_pose())
         self.clock += dt
         if dive <= progress < tuck and self.clock >= GHOST_EVERY:
             self.clock = 0.0
@@ -110,15 +116,16 @@ class Trail:
                 marks.line(ox, oy, ox - ux * length, oy - uy * length, STREAK_COLOUR, gap=2)
             return
         for gx, gy, ang, age, prog in self.ghosts:
-            rolled = style == "roll" and rolls(look, ang)
-            look.draw("roll" if rolled else pose, prog if rolled else time, gx - cam_x, gy - cam_y, facing,
+            rolled = rolls(look, ang)
+            look.draw(roll_pose() if rolled else pose, prog if rolled else time, gx - cam_x, gy - cam_y, facing,
                       alpha=GHOST_ALPHA * (1 - age / GHOST_LIFE) * (0.7 if rolled else 1.0), tint=GHOST_TINT,
                       angle=ang)
 
 
 def rolls(look, angle):
     """Draw the dodge as a roll: that style is on and the look has roll pictures this way."""
-    return style == "roll" and bool(getattr(look, "has_dir", lambda p, a: False)("roll", angle))
+    pose = roll_pose()
+    return pose is not None and bool(getattr(look, "has_dir", lambda p, a: False)(pose, angle))
 
 
 class Dust:
@@ -144,7 +151,7 @@ class Dust:
 
     @staticmethod
     def wanted():
-        return style in ("ghost_dust", "streak", "roll")
+        return style != "ghost"
 
     def update(self, dt):
         self.age += dt

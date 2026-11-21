@@ -15,7 +15,8 @@ from vision_cone import ray_hit
 # Infected senses (numbers are ours; the rules come from Zomboid's sight / hearing / memory).
 SIGHT_RANGE = 260               # px an infected sees ahead of it
 SIGHT_HALF = 1.1                # radians either side of where it faces
-NOTICE_NEAR = 36                # px: so close it notices whatever way it faces
+NOTICE_NEAR = 110               # px: this close it notices whatever way it faces (2026-11-21 "앞뒤 차이가 크지
+                                # 않게": was 36, so right behind one felt safe; ahead it is SPOT_DIST 140)
 NOISE_STEP = 70                 # px the hero's footsteps carry
 NOISE_ROLL = 140
 NOISE_SLASH = 230

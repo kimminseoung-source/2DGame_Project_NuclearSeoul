@@ -44,13 +44,16 @@ BODY = {
     "pickup": ("Picking_Up", 10, [4, 6], "Pickup"),          # the hand lowest
     "sneak": ("Crouch_Walk_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak"),
     "sneak_idle": ("Crouch_Walk_Forward", 1, [0], "Sneak_Idle"),
-    "roll": ("Stand_To_Roll", 10, [2, 4, 6, 8], "Roll"),     # crouch, dive, tucked, rising (2026-11-21, one roll to try)
+    "roll": ("Stand_To_Roll", 10, [2, 4, 6, 8], "Roll"),
+    "roll_spin": ("Stand_To_Roll", 10, [2, 4, 5, 6, 7, 8], "Roll_Spin"),   # tucked: upside down, ball, over (compare)     # crouch, dive, tucked, rising (2026-11-21, one roll to try)
 }
 # Extra render options per body action (2026-11-21 구르기 다듬기): the roll is baked in place (the game
 # moves the hero) and records the weapon's direction so a held weapon turns with the body.
-BODY_EXTRA = {"roll": ["--in-place", "--weapon", "0.75", "--hide-weapon"]}
+BODY_EXTRA = {"roll": ["--in-place", "--weapon", "0.75", "--hide-weapon"],
+              "roll_spin": ["--in-place", "--weapon", "0.75", "--hide-weapon"]}
 # Share of the action's time each kept picture shows (timing holds); DirLook reads keyframes.json "timing".
-TIMING = {"roll": [0.15, 0.2, 0.45, 0.2]}      # crouch, dive, tucked (the roll itself), rising
+TIMING = {"roll": [0.15, 0.2, 0.45, 0.2],      # crouch, dive, tucked (the roll itself), rising
+          "roll_spin": [0.13, 0.17, 0.17, 0.18, 0.17, 0.18]}
 for _pose, (_fbx, _n, _keep, _folder) in BODY.items():
     ACTIONS["b_" + _pose] = (_fbx, _n, list(TURN), _folder, BODY_EXTRA.get(_pose, []))
 CHOP_KEYS = {"windup": 3, "hit": 4, "recover": 7}   # of the 10 rendered: pipe over the head, forward-down,

@@ -255,6 +255,7 @@ ROWS = (
     ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
     _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
     _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
+    _slider("피폭체 등 뒤 감지", "eye", *_module_value(infected, "NOTICE_NEAR"), 0, 200, 10, lambda v: f"{v:g}"),
     ("피폭체 소환 (커서)", None, _spawn(False)),
     *([("기어가는 피폭체 소환", None, _spawn(True))] if LEGS_AND_CRAWLERS else []),   # off: no crawlers
     ("피폭체 모두 없애기", None, _clear),
