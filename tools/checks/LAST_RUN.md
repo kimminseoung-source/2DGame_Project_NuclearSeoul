@@ -1,0 +1,76 @@
+# 점검 결과 (2026-11-21 23:25, 68개 중 68개 통과, 677초)
+
+`tools/checks/run_all.py`가 씀. PASS는 끝까지 돌았다는 뜻 — 숫자는 마지막 줄을 읽을 것.
+
+| 점검 | 결과 | 마지막 줄 | 오류 |
+|---|---|---|---|
+| check_8dirs | PASS | ok [5, 5, 5, 5, 5, 5, 5, 5] |  |
+| check_abc | PASS | [new] C  grabbed: yes, could walk while held: False, roll frees: True |  |
+| check_aim | PASS | holding 1 s: stamina 96 ready 1.0 |  |
+| check_aim3d | PASS | ok |  |
+| check_aim_weapons | PASS | ok |  |
+| check_arena | PASS | ok |  |
+| check_bag | PASS | game runs ok |  |
+| check_bag2 | PASS | ok |  |
+| check_bag3 | PASS | ok |  |
+| check_behind | PASS | NOTICE_NEAR 110 SPOT_DIST 140 |  |
+| check_body3d | PASS | ok |  |
+| check_cancel | PASS | heavy hit-stop 0.09 |  |
+| check_carry | PASS | ok |  |
+| check_combat | PASS | crawler False: pose chop, killed False |  |
+| check_counter_blow | PASS | COUNTER_STAGGER 1.56 |  |
+| check_daylight | PASS | ok |  |
+| check_defense | PASS | ok |  |
+| check_dev | PASS | ok |  |
+| check_director | PASS | ok |  |
+| check_director2 | PASS | ok |  |
+| check_dirlook | PASS | ok |  |
+| check_dodge | PASS | ok |  |
+| check_f5 | PASS | ok |  |
+| check_f6 | PASS | ok |  |
+| check_f6_live | PASS | ok |  |
+| check_feel | PASS | ok |  |
+| check_fence | PASS | ok |  |
+| check_gap | PASS | shove early in the warning: {'windup': 40} / |  |
+| check_identity | PASS | axe      noise - / torso -> health 23, flinch / quick head -> 23 |  |
+| check_inv | PASS | ok |  |
+| check_jolt | PASS | ok |  |
+| check_keypose | PASS | ok |  |
+| check_map | PASS | stuck: 1 |  |
+| check_mixed | PASS | crawl speed 12.6 px/s |  |
+| check_muffled | PASS | where the infected goes vs the real spot (min / avg / max px): {'behind the car': (0, 0, 0), 'in the open': (0, 0, 0)} |  |
+| check_nolegs | PASS | ok |  |
+| check_paperdoll | PASS | ok |  |
+| check_pick | PASS | ok |  |
+| check_pistol | PASS | fire frame caught: True |  |
+| check_pz2 | PASS | ok |  |
+| check_range | PASS | axe: range 45px / marked at the edge -> hit (shown torso) / outside range -> not hit / blow 1.01s + rest 0.35s (느림) |  |
+| check_real | PASS | ok |  |
+| check_reel | PASS | shoved idle, hero gone -> search no crash |  |
+| check_rings | PASS | ok |  |
+| check_roll8 | PASS | ok |  |
+| check_roll_ease | PASS | ease (1.6, 0.4) 144fps: distance 72.8px, half the time 47.0px (65%) |  |
+| check_rush | PASS | 2.77s windup  rush 0.00 speed 0 |  |
+| check_samurai | PASS | ok [5, 5, 5, 5, 5, 5, 5, 5] |  |
+| check_seeing | PASS | ok |  |
+| check_senses | PASS | windup_behind  old: None     new: None |  |
+| check_shadow_match | PASS | ok |  |
+| check_shadow_match_13 | PASS | ok |  |
+| check_shadow_match_22 | PASS | ok |  |
+| check_shove_crawler | PASS | draw ok |  |
+| check_slider | PASS | ok |  |
+| check_sneak8 | PASS | ok |  |
+| check_spawn | PASS | after a slash: next arrival 5.02s later, target (1203, 699) (hero at 120,120) |  |
+| check_spot | PASS | 살금 {30: True, 95: True, 135: True, 145: False, 250: False} / 등 돌림 100: True 30: True |  |
+| check_stage1 | PASS | ok |  |
+| check_stamina | PASS | draw ok |  |
+| check_stomp | PASS | 50px cursor low, far        held : shown torso  pose chop   -> ALIVE |  |
+| check_tells | PASS | ok |  |
+| check_toolcmp | PASS | ok |  |
+| check_top2 | PASS | ok |  |
+| check_tough2 | PASS | staggered (shoved): [(3, 7), (4, 3)] |  |
+| check_ui | PASS | ok |  |
+| check_variants | PASS | ok 18 rows |  |
+| check_walk | PASS | ok |  |
+
+되돌린 그림 35개(점검이 바꾼 docs/planning 그림): docs/planning/aim_stand_weapons.png, docs/planning/arena_8dirs.png, docs/planning/arena_view.png, docs/planning/attack_tells.png, docs/planning/attack_variants_game.png, docs/planning/bag_drag.png, docs/planning/bag_step2.png, docs/planning/carry_compare.png, docs/planning/daylight.png, docs/planning/dev_senses.png, docs/planning/dev_sliders.png, docs/planning/dev_sounds.png, docs/planning/dev_sounds_walk.png, docs/planning/dev_tools.png, docs/planning/director_f7.png, docs/planning/dodge_styles_east.png, docs/planning/f6_live.png, docs/planning/feel_flash.png, docs/planning/hero3d_8dirs_attack.png, docs/planning/hero3d_aim_game.png, docs/planning/hero3d_body_motions.png, docs/planning/hero_dirlook_ingame.png, docs/planning/hero_walk_south.gif, docs/planning/hero_walk_south_strip.png, docs/planning/keypose_fx.gif, docs/planning/keypose_fx_strip.png, docs/planning/paper_doll_ingame.png, docs/planning/pistol_ingame.png, docs/planning/samurai_game.png, docs/planning/station_before.png, docs/planning/station_defense.png, docs/planning/station_fence.png, docs/planning/station_train.png, docs/planning/tool_vs_pixellab.gif, docs/planning/tool_vs_pixellab_strip.png
