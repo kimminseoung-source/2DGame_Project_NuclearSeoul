@@ -52,6 +52,8 @@ def args():
     p.add_argument("--upper-skip", nargs="*", default=[],
                    help="bones (and what hangs on them) kept from the main action, e.g. Neck: the head looks "
                         "where the body faces, not where the batter looked (2026-11-20)")
+    p.add_argument("--in-place", action="store_true",
+                   help="keep the hips over the first picture's spot (Mixamo actions without an In Place option)")
     p.add_argument("--hide-weapon", action="store_true",
                    help="keep the test pipe out of the picture (the game draws the weapon) but still measure it")
     p.add_argument("--record", default=None,
@@ -368,11 +370,16 @@ def main():
         with open(os.path.join(a.out, "ids.json"), "w", encoding="utf-8") as f:
             json.dump({k: [round(c * 255) for c in v] for k, v in PARTS.items()}, f, indent=1)
     scene = bpy.context.scene
+    start_hips = snapshot(src, frames[0])["mixamorig:Hips"].to_translation()
     for t in a.turn:
         for i, f in enumerate(frames):
             dst.rotation_euler[2] = 0                            # pose facing the source, then turn
             bpy.context.view_layer.update()
             snap = snapshot(src, f)
+            if a.in_place:                                       # travels in the game, not in the picture
+                hips = snap["mixamorig:Hips"].copy()
+                hips.translation.x, hips.translation.y = start_hips.x, start_hips.y
+                snap["mixamorig:Hips"] = hips
             retarget(src, dst, f, {("mixamorig:" + k): float(v) for k, v in (d.split("=") for d in a.damp)}, snap)
             if up_src is not None:                               # the aiming upper body on these legs
                 turn = snap["mixamorig:Hips"].to_quaternion() @ up_snap["mixamorig:Hips"].to_quaternion().inverted()
