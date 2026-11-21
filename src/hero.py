@@ -55,6 +55,8 @@ class Hero:
         self.roll = 0.0
         self.roll_dir = (1.0, 0.0)
         self.roll_cooldown = 0.0
+        self.roll_buffer = None      # Space pressed while rolling: the next roll's direction (2026-11-21)
+        self.rolled_now = False      # a roll began this frame (the game puts its dust and sound)
         self.trail = dodge_fx.Trail()   # the dodge's afterimages / speed lines (2026-11-21)
         self.lunge = (0.0, 0.0)
         self.run_distance = 0.0
@@ -161,7 +163,10 @@ class Hero:
 
     def start_roll(self, mx, my):
         """False when it could not roll: busy, or no roll left (breath, when stamina is on)."""
-        if self.roll > 0 or self.roll_cooldown > 0 or self.dead:
+        if self.dead:
+            return False
+        if self.roll > 0 or self.roll_cooldown > 0:   # still rolling: it goes on as soon as this one ends
+            self.roll_buffer = (mx, my)
             return False
         if STAMINA_ON:
             if not self.stamina.can("roll"):
@@ -175,6 +180,8 @@ class Hero:
         self.roll = ROLL_TIME
         self.slash = None
         self.grabbed = 0.0           # rolling tears free
+        self.roll_buffer = None
+        self.rolled_now = True
         return True
 
     # Experiment (2026-11-18 "근접 전투가 답답하다"): the hero's own actions - swing, its rest,
@@ -233,6 +240,9 @@ class Hero:
             move_body(self, self.roll_dir[0] * go, self.roll_dir[1] * go)
             if self.roll <= 0:
                 self.roll_cooldown = ROLL_COOLDOWN
+        if self.roll <= 0 and self.roll_cooldown <= 0 and self.roll_buffer is not None:
+            pressed, self.roll_buffer = self.roll_buffer, None
+            self.start_roll(*pressed)           # the roll pressed during the last one (none left: red dots, no late roll)
         elif self.slash and not ((mx or my) and self.can_cancel()):
             self.slash["time"] += adt
             move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)

@@ -261,6 +261,7 @@ ROWS = (
     ("회피 연출 (Space)", lambda g: dodge_fx.STYLE_NAMES[dodge_fx.style], _next_dodge),
     _slider("구르기 횟수", "run", *_module_value(stamina_rules, "ROLL_CHARGES"), 1, 5, 1, lambda v: f"{v:g}번"),
     _slider("구르기 충전 시간", "clock", *_module_value(stamina_rules, "ROLL_RECHARGE"), 0.2, 4, 0.1, lambda v: f"{v:.1f}s"),
+    _slider("구르기 사이 텀", "clock", *_module_value(hero_rules, "ROLL_COOLDOWN"), 0, 0.6, 0.05, lambda v: f"{v:.2f}s"),
     ("구르기 속도", lambda g: "빨랐다 느려짐" if hero_rules.ROLL_EASE != (1.0, 1.0) else "일정", _roll_ease),
     ("들고 다니는 무기", lambda g: CARRY_NAMES[character_look.DirLook.CARRY], _next_carry),
     ("살금살금 자세", lambda g: SNEAK_NAMES[character_look.DirLook.SNEAK_ANIM], _next_sneak),

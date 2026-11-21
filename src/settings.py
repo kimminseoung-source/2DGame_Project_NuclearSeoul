@@ -41,7 +41,7 @@ TEMPO = 1.3
 RUN_SPEED = 110.0
 ROLL_TIME = 0.28 * TEMPO
 ROLL_SPEED = 260.0 * 0.28 / ROLL_TIME     # same 73 px roll
-ROLL_COOLDOWN = 0.35
+ROLL_COOLDOWN = 0.05            # s after a roll before the next (was 0.35; 2026-11-21 "연속 2번 구르기가 안 되지 않나": the charges limit it now)
 # The slash hits on its impact frame, not at once (was 0.06 s: no wind-up to see), and reaches as
 # far as the drawn blade does (tip ~44 px ahead of the body + the infected's half width).
 SLASH_TIME = 0.30 * TEMPO       # whole slash

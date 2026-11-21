@@ -442,10 +442,7 @@ class Game:
             rolled = self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
                                           keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
             if rolled:
-                if dodge_fx.Dust.wanted():
-                    self.effects.append(dodge_fx.Dust(self.hero.x, self.hero.y, self.hero.roll_angle()))
-                self.used.add("roll")
-                self.sounds.play("roll", 0.6)
+                self.used.add("roll")             # dust and sound: when a roll begins (update), chained ones too
         elif key == sdl2.SDLK_r:
             self.reset()
         elif key == sdl2.SDLK_e and not self.left and not self.hero.dead:
@@ -733,6 +730,11 @@ class Game:
         if hero.slash and any(z.alive and hypot(z.x - hero.x, z.y - hero.y) <= BODY_CONTACT for z in self.zombies):
             hero.lunge = (0.0, 0.0)           # bodies stop the lunge: no sliding past the one in front
         hero.update(real_dt, keys, aim_x)
+        if hero.rolled_now:                    # a roll began (pressed now or during the last one)
+            hero.rolled_now = False
+            if dodge_fx.Dust.wanted():
+                self.effects.append(dodge_fx.Dust(hero.x, hero.y, hero.roll_angle()))
+            self.sounds.play("roll", 0.6)
         if int(hero.run_distance) != self.hero_steps:
             self.hero_steps = int(hero.run_distance)
             self.sounds.play("step", 0.1 if hero.sneaking else 0.25)
