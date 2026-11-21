@@ -256,6 +256,20 @@ class DirLook:
             return ("aim" if pose.startswith("ready_stand_") else "aimstep") in self.anims
         return self.base.has(pose)
 
+    def timed_frame(self, pose, progress, count):
+        """Which picture of a one-off pose shows at this progress. keyframes.json "timing" may hold
+        each picture's share of the time (timing holds, 2026-11-21: the roll's tucked picture longest);
+        without it every picture gets an even share."""
+        shares = self.keys.get("timing", {}).get(pose)
+        if not shares or len(shares) != count:
+            return min(count - 1, int(progress * count))
+        edge = 0.0
+        for i, share in enumerate(shares):
+            edge += share / sum(shares)
+            if progress < edge:
+                return i
+        return count - 1
+
     def has_dir(self, pose, angle):
         """Pictures of this pose (its own folder) for the direction `angle` faces."""
         return bool(self.on and self.anims.get(pose, {}).get(DIRS[round(angle / (pi / 4)) % 8]))
@@ -274,7 +288,7 @@ class DirLook:
         own = self.anims.get(pose, {}).get(d)          # a folder named after the pose (Hurt/, Sneak/ ...)
         if own and pose not in ("walk", "run"):
             if pose in self.ONCE:                      # one-off: `time` is its progress 0..1
-                i = min(len(own) - 1, int(time * len(own)))
+                i = self.timed_frame(pose, time, len(own))
             else:
                 i = int(time / self.FRAME_TIME) % len(own)
             return (*own[i], pose, d, i)

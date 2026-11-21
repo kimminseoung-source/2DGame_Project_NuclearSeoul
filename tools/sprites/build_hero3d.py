@@ -46,8 +46,13 @@ BODY = {
     "sneak_idle": ("Crouch_Walk_Forward", 1, [0], "Sneak_Idle"),
     "roll": ("Stand_To_Roll", 10, [2, 4, 6, 8], "Roll"),     # crouch, dive, tucked, rising (2026-11-21, one roll to try)
 }
+# Extra render options per body action (2026-11-21 구르기 다듬기): the roll is baked in place (the game
+# moves the hero) and records the weapon's direction so a held weapon turns with the body.
+BODY_EXTRA = {"roll": ["--in-place", "--weapon", "0.75", "--hide-weapon"]}
+# Share of the action's time each kept picture shows (timing holds); DirLook reads keyframes.json "timing".
+TIMING = {"roll": [0.15, 0.2, 0.45, 0.2]}      # crouch, dive, tucked (the roll itself), rising
 for _pose, (_fbx, _n, _keep, _folder) in BODY.items():
-    ACTIONS["b_" + _pose] = (_fbx, _n, list(TURN), _folder, [])
+    ACTIONS["b_" + _pose] = (_fbx, _n, list(TURN), _folder, BODY_EXTRA.get(_pose, []))
 CHOP_KEYS = {"windup": 3, "hit": 4, "recover": 7}   # of the 10 rendered: pipe over the head, forward-down,
                                                      # coming back; only these 3 are kept (2026-11-20 plan)
 SPRITE = ["--pixel", "64", "--person-px", "36", "--feet", "12", "--tilt", "30"]
@@ -145,6 +150,11 @@ def main():
                         for j, i in enumerate(kept):
                             shutil.copy(pics[i], dest / f"{j}.png")
                         hands.setdefault(folder.lower(), {})[d] = [notes[i]["hand"] for i in kept]
+                        if "--weapon" in ACTIONS[action][4]:
+                            keys.setdefault("held_angles", {}).setdefault(folder.lower(), {})[d] = [
+                                notes[i]["weapon"] for i in kept]
+                        if action[2:] in TIMING:
+                            keys.setdefault("timing", {})[folder.lower()] = TIMING[action[2:]]
                     elif action in ("aim", "aim_step"):
                         key = folder.lower()
                         hands.setdefault(key, {})[d] = [n["hand"] for n in notes]

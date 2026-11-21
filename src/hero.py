@@ -176,7 +176,8 @@ class Hero:
         self.reeling = max(0.0, self.reeling - dt)
         self.slash_cooldown = max(0.0, self.slash_cooldown - adt)
         self.roll_cooldown = max(0.0, self.roll_cooldown - dt)
-        self.trail.update(dt, self.x, self.y, self.roll_angle(), self.roll > 0)   # fades even when busy
+        self.trail.update(dt, self.x, self.y, self.roll_angle(), self.roll > 0,   # fades even when busy
+                          1 - self.roll / ROLL_TIME, self.look)
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
         self.shove_cooldown = max(0.0, self.shove_cooldown - adt)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
