@@ -45,6 +45,8 @@ BODY = {
     "sneak": ("Crouch_Walk_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak"),
     "sneak_idle": ("Crouch_Walk_Forward", 1, [0], "Sneak_Idle"),
     "sneak_d": ("Crouch_Walk_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak_D"),   # legs crouch-walk, upper body standing (compare)
+    "sneak_sf": ("Sneaking_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak_SF"),   # Mixamo Sneaking Forward (compare)
+    "sneak_sw": ("Sneak_Walk", 6, [0, 1, 2, 3, 4, 5], "Sneak_SW"),         # Mixamo Sneak Walk, male (compare)
     "roll": ("Stand_To_Roll", 10, [2, 4, 6, 8], "Roll"),
     "roll_spin": ("Stand_To_Roll", 10, [2, 4, 5, 6, 7, 8], "Roll_Spin"),   # tucked: upside down, ball, over (compare)     # crouch, dive, tucked, rising (2026-11-21, one roll to try)
 }
@@ -52,6 +54,7 @@ BODY = {
 # moves the hero) and records the weapon's direction so a held weapon turns with the body.
 BODY_EXTRA = {"roll": ["--in-place", "--weapon", "0.75", "--hide-weapon"],
               "roll_spin": ["--in-place", "--weapon", "0.75", "--hide-weapon"],
+              "sneak_sf": ["--in-place"], "sneak_sw": ["--in-place"],
               # 2026-11-21 살금살금 D: hips bend less, spine and arms from the breathing idle (arms down)
               "sneak_d": ["--damp", "Hips=0.35", "--upper", str(ROOT / "assets/source3d/mixamo/Breathing_Idle.fbx"),
                           "--upper-at", "0.5", "--upper-skip", "Neck"]}

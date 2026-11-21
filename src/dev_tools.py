@@ -164,12 +164,14 @@ def _next_count(game, step):
 CARRY_NAMES = {"hang": "아래로 늘어뜨림", "ready": "앞 위로 듦"}
 
 
-SNEAK_NAMES = {"sneak": "지금 (팔 벌림)", "sneak_d": "D: 윗몸 서 있기 (동쪽만)"}
+SNEAK_NAMES = {"sneak": "지금 (팔 벌림)", "sneak_d": "D: 윗몸 서 있기 (동쪽만)",
+               "sneak_sf": "Sneaking Forward (동쪽만)", "sneak_sw": "Sneak Walk (동쪽만)"}
 
 
 def _next_sneak(game, step):
     look = character_look.DirLook
-    look.SNEAK_ANIM = "sneak_d" if look.SNEAK_ANIM == "sneak" else "sneak"
+    order = list(SNEAK_NAMES)
+    look.SNEAK_ANIM = order[(order.index(look.SNEAK_ANIM) + step) % len(order)]
 
 
 def _next_carry(game, step):
