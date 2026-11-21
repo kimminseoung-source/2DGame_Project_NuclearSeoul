@@ -5,6 +5,8 @@ looks sells the speed:
   ghost       fading copies of the body left along the way (afterimages)
   ghost_dust  afterimages + a puff of dust where it set off
   streak      speed lines behind the body + the dust
+  roll        a real roll (Mixamo Stand To Roll, Roll/ pictures; only east for now, 2026-11-21
+              "구르기 동작 한쪽 방향으로만 해서 비교") + the dust; other directions glide
 
 Any character with a look (DirLook / SheetLook) can use Trail; plan:
 docs/plans/2026-11-21_구르기_회피.md.
@@ -15,8 +17,8 @@ from math import cos, pi, sin
 
 import ground_marks as marks
 
-STYLES = ("ghost", "ghost_dust", "streak")
-STYLE_NAMES = {"ghost": "잔상", "ghost_dust": "잔상 + 먼지", "streak": "속도선 + 먼지"}
+STYLES = ("ghost", "ghost_dust", "streak", "roll")
+STYLE_NAMES = {"ghost": "잔상", "ghost_dust": "잔상 + 먼지", "streak": "속도선 + 먼지", "roll": "구르기 그림 (동쪽만) + 먼지"}
 style = "ghost_dust"            # F4 "회피 연출"
 
 GHOST_EVERY = 0.035             # s between afterimages
@@ -55,6 +57,8 @@ class Trail:
 
     def draw(self, look, pose, time, x, y, cam_x, cam_y, facing):
         """Under the body: afterimages or speed lines. (x, y) is where the body is now (world)."""
+        if style == "roll":                     # the roll pictures show it
+            return
         if style == "streak":
             if self.speed <= 0:
                 return
@@ -68,6 +72,11 @@ class Trail:
         for gx, gy, ang, age in self.ghosts:
             look.draw(pose, time, gx - cam_x, gy - cam_y, facing, alpha=GHOST_ALPHA * (1 - age / GHOST_LIFE),
                       tint=GHOST_TINT, angle=ang)
+
+
+def rolls(look, angle):
+    """Draw the dodge as a roll: that style is on and the look has roll pictures this way."""
+    return style == "roll" and bool(getattr(look, "has_dir", lambda p, a: False)("roll", angle))
 
 
 class Dust:
@@ -84,7 +93,7 @@ class Dust:
 
     @staticmethod
     def wanted():
-        return style in ("ghost_dust", "streak")
+        return style in ("ghost_dust", "streak", "roll")
 
     def update(self, dt):
         self.age += dt

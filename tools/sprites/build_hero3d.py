@@ -44,6 +44,7 @@ BODY = {
     "pickup": ("Picking_Up", 10, [4, 6], "Pickup"),          # the hand lowest
     "sneak": ("Crouch_Walk_Forward", 6, [0, 1, 2, 3, 4, 5], "Sneak"),
     "sneak_idle": ("Crouch_Walk_Forward", 1, [0], "Sneak_Idle"),
+    "roll": ("Stand_To_Roll", 10, [2, 4, 6, 8], "Roll"),     # crouch, dive, tucked, rising (2026-11-21, one roll to try)
 }
 for _pose, (_fbx, _n, _keep, _folder) in BODY.items():
     ACTIONS["b_" + _pose] = (_fbx, _n, list(TURN), _folder, [])
@@ -98,8 +99,13 @@ def render(action, tmp):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="assets/characters/hero_3d")
+    ap.add_argument("--dirs", nargs="*", default=None, help="only these directions (to try one first)")
     ap.add_argument("--only", nargs="*", default=["idle", "walk", "chop"], help=f"of {list(ACTIONS)}")
     a = ap.parse_args()
+    if a.dirs:                               # small first: one direction to compare in the game
+        for action in a.only:
+            fbx, frames, _, folder, extra = ACTIONS[action]
+            ACTIONS[action] = (fbx, frames, a.dirs, folder, extra)
     out = ROOT / a.out
     hands_file, keys_file = out / "hands.json", out / "keyframes.json"
     hands = json.loads(hands_file.read_text(encoding="utf-8")) if hands_file.exists() else {}

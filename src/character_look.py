@@ -256,6 +256,10 @@ class DirLook:
             return ("aim" if pose.startswith("ready_stand_") else "aimstep") in self.anims
         return self.base.has(pose)
 
+    def has_dir(self, pose, angle):
+        """Pictures of this pose (its own folder) for the direction `angle` faces."""
+        return bool(self.on and self.anims.get(pose, {}).get(DIRS[round(angle / (pi / 4)) % 8]))
+
     def picture(self, pose, time, angle, contact=None):
         """(image, rows under the feet, hands key, direction, frame), or None for the old sheets."""
         if not self.on or angle is None or not self.stills:

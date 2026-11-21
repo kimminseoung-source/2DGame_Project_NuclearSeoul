@@ -255,6 +255,8 @@ class Hero:
             self._draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held(), angle=self.angle)
         elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
             self._draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held(), angle=self.angle)
+        elif self.roll > 0 and dodge_fx.rolls(self.look, self.roll_angle()):   # F4: the real roll to compare
+            self._draw("roll", 1 - self.roll / ROLL_TIME, x, y, face, held=self.held(), angle=self.roll_angle())
         elif self.roll > 0:                    # the dodge: no roll pictures, it glides on one stride (2026-11-21)
             self._draw("run", stride, x, y, face, distance=self.run_distance, held=self.held(),
                        angle=self.roll_angle())
