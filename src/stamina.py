@@ -58,7 +58,7 @@ class Stamina:
 # Roll charges (2026-11-21, instead of breath for the roll): a few rolls stored, one coming back at a
 # time. Numbers are read live (F4 changes them). Any unit can carry Charges.
 ROLL_CHARGES = 2
-ROLL_RECHARGE = 1.2         # s for one roll to come back
+ROLL_RECHARGE = 1.5         # s for one roll to come back (2026-11-21 played: "1.5초 정도가 좋을 듯"; was 1.2)
 POP_TIME = 0.25             # s a refilled dot shows bigger and brighter
 EMPTY_FLASH = 0.5           # s the dots flash red after Space with none left
 
