@@ -213,6 +213,9 @@ class DirLook:
     # How a weapon is carried outside attacks (2026-11-21 "칼을 파란 선처럼 들고 있는 게"): "hang" points
     # it down; "ready" holds it forward and up from the hand. F4 "들고 다니는 무기".
     CARRY = "ready"                 # 2026-11-21 비교 뒤 "이게 낫다 위로 드는 게"
+    # Which folder draws sneaking steps (2026-11-21 살금살금 비교): "sneak" (Sneak/, the Mixamo crouch
+    # walk) or "sneak_d" (Sneak_D/: same legs, upper body standing). F4 "살금살금 자세".
+    SNEAK_ANIM = "sneak"
     CARRY_UP = 0.8                  # "ready": how much up there is in it against forward (1 = 45 deg east)
 
     def __init__(self, folder, base):
@@ -289,6 +292,8 @@ class DirLook:
             if frames:
                 i = int(time / self.FRAME_TIME) % len(frames)
                 return (*frames[i], key, d, i)
+        if pose == "sneak" and self.anims.get(self.SNEAK_ANIM, {}).get(d):
+            pose = self.SNEAK_ANIM                     # F4: another sneaking walk to compare
         own = self.anims.get(pose, {}).get(d)          # a folder named after the pose (Hurt/, Sneak/ ...)
         if own and pose not in ("walk", "run"):
             if pose in self.ONCE:                      # one-off: `time` is its progress 0..1
