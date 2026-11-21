@@ -20,8 +20,8 @@ from math import cos, pi, sin
 import ground_marks as marks
 
 STYLES = ("ghost", "ghost_dust", "streak", "roll", "roll_spin")
-STYLE_NAMES = {"ghost": "잔상", "ghost_dust": "잔상 + 먼지", "streak": "속도선 + 먼지", "roll": "구르기 4장 (동쪽만)", "roll_spin": "구르기 6장, 말림 회전 (동쪽만)"}
-style = "ghost_dust"            # F4 "회피 연출"
+STYLE_NAMES = {"ghost": "잔상", "ghost_dust": "잔상 + 먼지", "streak": "속도선 + 먼지", "roll": "구르기 4장 (동쪽만)", "roll_spin": "구르기 6장, 말림 회전 (기본)"}
+style = "roll_spin"             # F4 "회피 연출" (2026-11-21: the 6-picture roll, all 8 directions)
 
 GHOST_EVERY = 0.035             # s between afterimages
 GHOST_LIFE = 0.16               # s an afterimage takes to fade
