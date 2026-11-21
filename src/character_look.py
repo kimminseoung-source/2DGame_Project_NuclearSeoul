@@ -212,7 +212,7 @@ class DirLook:
     HANG_OUT = 0.3                  # radians a carried weapon leans out from straight down
     # How a weapon is carried outside attacks (2026-11-21 "칼을 파란 선처럼 들고 있는 게"): "hang" points
     # it down; "ready" holds it forward and up from the hand. F4 "들고 다니는 무기".
-    CARRY = "hang"
+    CARRY = "ready"                 # 2026-11-21 비교 뒤 "이게 낫다 위로 드는 게"
     CARRY_UP = 0.8                  # "ready": how much up there is in it against forward (1 = 45 deg east)
 
     def __init__(self, folder, base):
