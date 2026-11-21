@@ -179,6 +179,10 @@ def _next_carry(game, step):
     look.CARRY = "ready" if look.CARRY == "hang" else "hang"
 
 
+def _roll_ease(game, step):
+    hero_rules.ROLL_EASE = (1.0, 1.0) if hero_rules.ROLL_EASE != (1.0, 1.0) else (1.6, 0.4)
+
+
 def _next_dodge(game, step):
     i = dodge_fx.STYLES.index(dodge_fx.style)
     dodge_fx.style = dodge_fx.STYLES[(i + step) % len(dodge_fx.STYLES)]
@@ -254,6 +258,7 @@ ROWS = (
     ("공격 장수 (3D 주인공)", lambda g: COUNT_NAMES[character_look.DirLook.key_count], _next_count),
     ("타격 효과 그림", lambda g: _on(slash_fx.SpriteFx.on), _fx_sprites),
     ("회피 연출 (Space)", lambda g: dodge_fx.STYLE_NAMES[dodge_fx.style], _next_dodge),
+    ("구르기 속도", lambda g: "빨랐다 느려짐" if hero_rules.ROLL_EASE != (1.0, 1.0) else "일정", _roll_ease),
     ("들고 다니는 무기", lambda g: CARRY_NAMES[character_look.DirLook.CARRY], _next_carry),
     ("살금살금 자세", lambda g: SNEAK_NAMES[character_look.DirLook.SNEAK_ANIM], _next_sneak),
     ("실험: 빠르게 (주인공 동작 1.3배)", lambda g: _on(hero_rules.Hero.action_speed > 1.0), _fast),

@@ -27,9 +27,20 @@ LUNGE_SPEED = 60 * (1 - 0.82)   # the lunge fades by 0.82 a frame: start speed =
 # Cancelling the follow-through (2026-11-19 "공격 동작 때 잠깐 멈추는 틈이 더 짧으면, 각 동작마다 더
 # 부드러운 조작"): once the blow has landed, walking, rolling or the next blow end it early.
 CANCEL_MOVE = 0.06          # s after the hit that walking or a roll ends the blow
+# The roll's speed from start to end, as shares of ROLL_SPEED (2026-11-21 "출발은 확 튀고 끝은 미끄러지듯"):
+# it falls evenly from the first to the second; their mean is 1, so the roll still covers the same ground.
+# (1.0, 1.0) is the old even roll. F4 "구르기 속도".
+ROLL_EASE = (1.6, 0.4)
 CANCEL_BLOW = 0.5           # share of the follow-through after which the next blow may start
 CANCEL_REST = 0.5           # share of the weapon's rest (cooldown) kept after walking out of a blow
 
+
+
+def roll_share(p0, p1):
+    """Share of the whole roll's ground covered between progress p0 and p1 (0..1), with the speed
+    falling evenly from ROLL_EASE[0] to ROLL_EASE[1] times ROLL_SPEED."""
+    a, b = ROLL_EASE
+    return a * (p1 - p0) + (b - a) * (p1 * p1 - p0 * p0) / 2
 
 class Hero:
     def __init__(self, look):
@@ -209,8 +220,11 @@ class Hero:
                 self.shove_cooldown = SHOVE_COOLDOWN
             return
         if self.roll > 0:
+            before = 1 - self.roll / ROLL_TIME
             self.roll -= dt
-            move_body(self, self.roll_dir[0] * ROLL_SPEED * dt, self.roll_dir[1] * ROLL_SPEED * dt)
+            after = min(1.0, 1 - max(0.0, self.roll) / ROLL_TIME)
+            go = ROLL_SPEED * ROLL_TIME * roll_share(before, after)
+            move_body(self, self.roll_dir[0] * go, self.roll_dir[1] * go)
             if self.roll <= 0:
                 self.roll_cooldown = ROLL_COOLDOWN
         elif self.slash and not ((mx or my) and self.can_cancel()):
