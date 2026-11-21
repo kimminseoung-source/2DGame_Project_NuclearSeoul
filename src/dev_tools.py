@@ -281,6 +281,7 @@ ROWS = (
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
     ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),
     ("피폭체 공격 예고 (빨간 범위)", lambda g: _on(g.dev.tells), _flip("tells")),
+    ("맞을 때 흔들림·번쩍임", lambda g: _on(g.hit_fx), lambda g, s: setattr(g, "hit_fx", not g.hit_fx)),
     ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
     _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
     _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),

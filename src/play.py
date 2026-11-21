@@ -60,6 +60,10 @@ SPAWN_MIN_DIST = 240         # px: never right next to the hero
 # weight: (hitstop s, shake canvas px, shake s) - 2 frames / 9 frames of stop (play.jolt)
 JOLTS = {"light": (0.035, 1.0, 0.10), "heavy": (0.09, 4.0, 0.25)}   # heavy stop 0.15 -> 0.09 (2026-11-19 "멈추는 틈이 더 짧으면")
 FLASH_TIME = 0.035           # s a struck infected shows white (2 frames)
+# The hero hit (2026-11-22 "맞을 때 화면 흔들림, 붉은 번쩍임 정도만"): the view is knocked the way the blow
+# pushes him and wobbles out, and the whole screen flushes red and drains. F4 "맞을 때 흔들림·번쩍임".
+HIT_SHAKE = (6.0, 0.30)      # canvas px of the first knock, s it takes to settle
+HIT_RED = (0.30, 0.35)       # s the red takes to drain, its strength at first (share of full red)
 DEFENSE_TIME = 60.0          # s from the start of the station defense to the train (small first)
 DEFENSE_WAYS = 3             # they come in by this many entrances nearest the station
 STATION_PAD = (120, 40, 80)   # the fenced station: this far left, right and up from the exit
@@ -82,6 +86,9 @@ class Game:
         self.deaths = 0
         self.vision = VisionCone(BLOCKS, area.sight_blocks)   # wrecks and walls block the light, windows don't
         self.hurt_flash = 0.0               # s left of the red screen edge after the hero is hit
+        self.hit_red = 0.0                  # s left of the red flush over the whole screen (HIT_RED)
+        self.hit_fx = True                  # F4: hit shake + red flush on/off
+        self.shake_dir = None               # (x, y): a shake with a direction knocks that way
         self.used = set()                   # actions done at least once (their key marks go away)
         self.note_folded = False            # the goal note, folded to a tab by a click on it
         self.note_click = False             # this left press was on the note: no blow on release
@@ -208,6 +215,17 @@ class Game:
             self.cam = [self.hero.x - self.view_w / 2, self.hero.y - self.view_h / 2]
             self.clamp_camera()
 
+    def hero_hit_fx(self, z):
+        """The hero takes a blow from z: hit-stop, the view knocked the way he is pushed, red flush."""
+        if not self.hit_fx:
+            return
+        dx, dy = self.hero.x - z.x, self.hero.y - z.y
+        d = hypot(dx, dy) or 1.0
+        self.hitstop = max(self.hitstop, JOLTS["heavy"][0])
+        self.shake, self.shake_amp, self.shake_len = HIT_SHAKE[1], HIT_SHAKE[0], HIT_SHAKE[1]
+        self.shake_dir = (dx / d, dy / d)
+        self.hit_red = HIT_RED[0]
+
     def jolt(self, weight, z=None):
         """How a blow lands, in two weights (2026-11-18 "때려도 시원하지 않다", game-feel research:
         shaking on every hit numbs it, so only the blows that matter shake hard):
@@ -219,6 +237,7 @@ class Game:
         self.hitstop = max(self.hitstop, stop)
         if amp >= self.shake_amp or self.shake <= 0:
             self.shake, self.shake_amp, self.shake_len = length, amp, length
+            self.shake_dir = None
         if z is not None:
             z.flash = FLASH_TIME
 
@@ -722,6 +741,7 @@ class Game:
             self.exposure = max(0.0, self.exposure - EXPOSURE_FALL * real_dt)
         self.shake = max(0.0, self.shake - real_dt)
         self.hurt_flash = max(0.0, self.hurt_flash - real_dt)
+        self.hit_red = max(0.0, self.hit_red - real_dt)
         if self.hitstop > 0:
             self.hitstop -= real_dt
             return
@@ -882,6 +902,9 @@ class Game:
                     self.sounds.play("grab", 1.0)
                 if self.real:
                     self.effects.append(Blood(hero.x, hero.y + 16, atan2(hero.y - z.y, hero.x - z.x), 10))
+                if self.hit_fx:
+                    self.hero_hit_fx(z)                       # knocked view + red flush (any look)
+                elif self.real:
                     self.jolt("heavy")
                 else:
                     self.effects.append(Spark(hero.x, hero.y + 26))
@@ -984,7 +1007,11 @@ class Game:
         sdl2.SDL_RenderSetScale(canvas.renderer, DOT, DOT)  # world units -> canvas px
         canvas.canvas_height = self.view_h
         ui.world_labels = [] if DOT_LOOK else None
-        if self.shake > 0:                                 # both ways, fading out (jolt)
+        if self.shake > 0 and self.shake_dir is not None:  # knocked one way, wobbling out (hero hit)
+            p = 1 - self.shake / self.shake_len
+            off = self.shake_amp / DOT * (1 - p) * cos(p * 3 * pi)   # canvas px -> world units
+            cx, cy = cam[0] - self.shake_dir[0] * off, cam[1] - self.shake_dir[1] * off
+        elif self.shake > 0:                               # both ways, fading out (jolt)
             amp = self.shake_amp / DOT * (self.shake / self.shake_len)   # canvas px -> world units
             cx, cy = cam[0] + random.uniform(-amp, amp), cam[1] + random.uniform(-amp, amp)
         else:
@@ -1201,6 +1228,10 @@ class Game:
         dev_tools.draw_boxes(self, cx, cy)                  # F1
         if self.slow_blend > 0:
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 20, 60, 70, round(80 * self.slow_blend), filled=True)
+        if self.hit_red > 0:                               # the red flush of a blow, draining (HIT_RED)
+            share = self.hit_red / HIT_RED[0]
+            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 170, 16, 12,
+                                  round(255 * HIT_RED[1] * share * share), filled=True)
 
     def draw_screen(self):
         """Everything drawn on the screen itself over the world canvas."""
