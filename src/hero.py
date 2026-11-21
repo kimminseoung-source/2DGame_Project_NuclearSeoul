@@ -6,6 +6,7 @@ from math import atan2, cos, hypot, sin
 
 import sdl2
 
+import dodge_fx
 import stamina as breath
 from settings import DOT_LOOK
 import weapons
@@ -43,6 +44,7 @@ class Hero:
         self.roll = 0.0
         self.roll_dir = (1.0, 0.0)
         self.roll_cooldown = 0.0
+        self.trail = dodge_fx.Trail()   # the dodge's afterimages / speed lines (2026-11-21)
         self.lunge = (0.0, 0.0)
         self.run_distance = 0.0
         self.time = 0.0
@@ -174,6 +176,7 @@ class Hero:
         self.reeling = max(0.0, self.reeling - dt)
         self.slash_cooldown = max(0.0, self.slash_cooldown - adt)
         self.roll_cooldown = max(0.0, self.roll_cooldown - dt)
+        self.trail.update(dt, self.x, self.y, self.roll_angle(), self.roll > 0)   # fades even when busy
         self.slowed = max(0.0, self.slowed - SLOW_RECOVER * dt)
         self.shove_cooldown = max(0.0, self.shove_cooldown - adt)
         self.sneaking = bool(keys[sdl2.SDL_SCANCODE_LCTRL] or keys[sdl2.SDL_SCANCODE_RCTRL])
@@ -230,12 +233,20 @@ class Hero:
         elif aim_x is not None:
             self.facing = 1 if aim_x >= self.x else -1
 
+    DODGE_STRIDE = 2               # which walking picture the body glides on while dodging (legs apart)
+
+    def roll_angle(self):
+        return atan2(self.roll_dir[1], self.roll_dir[0])
+
     def _draw(self, *args, **kw):
         """Draws with the look and keeps where the weapon hand is (F1; None for side sheets)."""
         self.hand = self.look.draw(*args, **kw)
 
     def draw(self, cx, cy):
         x, y = self.x - cx, self.y - cy
+        stride = getattr(self.look, "FRAME_TIME", 0.1) * self.DODGE_STRIDE
+        face = 1 if self.roll_dir[0] >= 0 else -1
+        self.trail.draw(self.look, "run", stride, self.x, self.y, cx, cy, face)   # under the body
         if self.dead:
             self._draw("down", min(1.0, self.dead * 1.5), x, y, self.facing, angle=self.angle)
         elif self.reeling > 0:                 # reels from the blow (was: blinking)
@@ -244,10 +255,9 @@ class Hero:
             self._draw("pickup", 1 - self.pickup / PICKUP_TIME, x, y, self.facing, held=self.held(), angle=self.angle)
         elif self.shove > 0:                   # both hands out (2026-11-16: push sheet, UAL1 Push_Loop)
             self._draw("push", 1 - self.shove / SHOVE_TIME, x, y, self.facing, held=self.held(), angle=self.angle)
-        elif self.roll > 0:
-            face = 1 if self.roll_dir[0] >= 0 else -1
-            self._draw("run", (1 - self.roll / ROLL_TIME) * 0.5, x, y - 2, face,
-                           distance=self.run_distance + (1 - self.roll / ROLL_TIME) * 3, held=self.held())
+        elif self.roll > 0:                    # the dodge: no roll pictures, it glides on one stride (2026-11-21)
+            self._draw("run", stride, x, y, face, distance=self.run_distance, held=self.held(),
+                       angle=self.roll_angle())
         elif self.slash:
             s = self.slash
             self._draw(s["pose"], s["time"] / s["whole"], x, y, self.facing, contact=s["hit_at"] / s["whole"],

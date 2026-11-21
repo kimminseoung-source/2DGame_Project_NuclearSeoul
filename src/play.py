@@ -45,6 +45,7 @@ import infected
 from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, HERO_HP, HURT_INVULNERABLE,
                       ROLL_TIME, ROOT, SHOVE_ON, SLOW_WORLD, WIDTH,
                       ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
+import dodge_fx
 from slash_fx import Blood, Crescent, Spark, SpriteFx, Streak, Tracer, draw_stains
 from sound import Sounds
 import supplies as supply_rules
@@ -441,6 +442,8 @@ class Game:
             rolled = self.hero.start_roll(keys[sdl2.SDL_SCANCODE_D] - keys[sdl2.SDL_SCANCODE_A],
                                           keys[sdl2.SDL_SCANCODE_W] - keys[sdl2.SDL_SCANCODE_S])
             if rolled:
+                if dodge_fx.Dust.wanted():
+                    self.effects.append(dodge_fx.Dust(self.hero.x, self.hero.y, self.hero.roll_angle()))
                 self.used.add("roll")
                 self.sounds.play("roll", 0.6)
         elif key == sdl2.SDLK_r:
