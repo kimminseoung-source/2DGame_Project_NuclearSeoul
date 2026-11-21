@@ -69,6 +69,9 @@ def main():
     lines += [f"| {n} | {st} | {ln} | {er} |" for n, st, ln, er in rows]
     if restored:
         lines += ["", f"되돌린 그림 {len(restored)}개(점검이 바꾼 docs/planning 그림): " + ", ".join(restored)]
+    if names:                                  # a partial run does not replace the full table
+        print(f"{passed}/{len(rows)} PASS, restored {len(restored)} pictures (partial run: LAST_RUN.md kept)")
+        return
     (HERE / "LAST_RUN.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"{passed}/{len(rows)} PASS, restored {len(restored)} pictures -> tools/checks/LAST_RUN.md")
 

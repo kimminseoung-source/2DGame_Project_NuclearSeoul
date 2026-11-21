@@ -24,6 +24,7 @@ import sdl2
 import area
 import character_look
 import dodge_fx
+import stamina as stamina_rules
 import slash_fx
 import daylight
 import vision_cone
@@ -258,6 +259,8 @@ ROWS = (
     ("공격 장수 (3D 주인공)", lambda g: COUNT_NAMES[character_look.DirLook.key_count], _next_count),
     ("타격 효과 그림", lambda g: _on(slash_fx.SpriteFx.on), _fx_sprites),
     ("회피 연출 (Space)", lambda g: dodge_fx.STYLE_NAMES[dodge_fx.style], _next_dodge),
+    _slider("구르기 횟수", "run", *_module_value(stamina_rules, "ROLL_CHARGES"), 1, 5, 1, lambda v: f"{v:g}번"),
+    _slider("구르기 충전 시간", "clock", *_module_value(stamina_rules, "ROLL_RECHARGE"), 0.2, 4, 0.1, lambda v: f"{v:.1f}s"),
     ("구르기 속도", lambda g: "빨랐다 느려짐" if hero_rules.ROLL_EASE != (1.0, 1.0) else "일정", _roll_ease),
     ("들고 다니는 무기", lambda g: CARRY_NAMES[character_look.DirLook.CARRY], _next_carry),
     ("살금살금 자세", lambda g: SNEAK_NAMES[character_look.DirLook.SNEAK_ANIM], _next_sneak),

@@ -63,8 +63,11 @@ WEAPONS = {
         "stagger": False,           # a torso blow makes it reel (open), not just flinch
         "good": "균형·기는 놈까지", "bad": "큰 강점 없음",
     },
-    "knife": {                      # quick, short, precise: a stab to the head ends it
-        "name": "식칼", "style": "stab", "pose": "stab", "sprite": "knife",
+    # The knife swings like the rest (2026-11-21 "공격 방식은 휘두르기 지금 하나만 하죠"): one body
+    # motion for every melee weapon; the knife stays quick and short in its numbers. ("stab" is
+    # kept for the pistol until guns get their own motion.)
+    "knife": {                      # quick, short: the fastest blow
+        "name": "식칼", "style": "chop", "pose": "chop", "sprite": "knife",
         "time": 0.22 * TEMPO, "hit": 0.09 * TEMPO, "cooldown": 0.04, "lunge": 10.0,
         "cells": 1,
         "damage": (2, 3),

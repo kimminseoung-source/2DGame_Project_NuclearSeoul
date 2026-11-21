@@ -8,7 +8,7 @@ import sdl2
 
 import dodge_fx
 import stamina as breath
-from settings import DOT_LOOK
+from settings import DOT_LOOK, STAMINA_ON
 import weapons
 from area import HERO_START, move_body
 from settings import (CHEST, HERO_HP, HURT_REACT, ROLL_COOLDOWN, ROLL_SPEED, ROLL_TIME, RUN_SPEED,
@@ -70,6 +70,7 @@ class Hero:
         self.shove_cooldown = 0.0
         self.shove_weak = False      # a tired shove cannot knock anything down
         self.stamina = breath.Stamina()
+        self.rolls = breath.Charges()       # rolls stored (2026-11-21, stamina off)
         self.weapon = weapons.WEAPONS[weapons.DEFAULT]
         self.ready = None            # s the blow has been held ready (left button held), or None
 
@@ -159,13 +160,16 @@ class Hero:
         return True
 
     def start_roll(self, mx, my):
-        """False when it could not roll: busy, or no breath left for it."""
+        """False when it could not roll: busy, or no roll left (breath, when stamina is on)."""
         if self.roll > 0 or self.roll_cooldown > 0 or self.dead:
             return False
-        if not self.stamina.can("roll"):
-            self.stamina.tired_flash = 0.6
+        if STAMINA_ON:
+            if not self.stamina.can("roll"):
+                self.stamina.tired_flash = 0.6
+                return False
+            self.stamina.spend("roll")
+        elif not self.rolls.use():               # none stored: the dots flash red
             return False
-        self.stamina.spend("roll")
         length = hypot(mx, my)
         self.roll_dir = (mx / length, my / length) if length else (float(self.facing), 0.0)
         self.roll = ROLL_TIME
@@ -197,9 +201,11 @@ class Hero:
                 self.ready = None
             else:
                 self.ready += adt
-                self.stamina.value = max(0.0, self.stamina.value - weapons.READY_DRAIN * dt)
-                self.stamina.rest_in = breath.DELAY
+                if STAMINA_ON:
+                    self.stamina.value = max(0.0, self.stamina.value - weapons.READY_DRAIN * dt)
+                    self.stamina.rest_in = breath.DELAY
         self.stamina.update(dt, self.moving)
+        self.rolls.update(dt)
         if self.dead:
             self.dead += dt
             return

@@ -201,6 +201,10 @@ def draw_stamina(game):
     """Breath (stamina.py) as a thin pixel bar under the hero's feet, only while it is not full:
     what to watch is where the fight is, not in a corner (2026-11-16 "기력을 넣자")."""
     from stamina import MAX
+    from settings import STAMINA_ON
+    if not STAMINA_ON:
+        draw_roll_dots(game)
+        return
     hero, st = game.hero, game.hero.stamina
     if hero.dead or (st.value >= MAX - 0.5 and st.tired_flash <= 0):
         return
@@ -214,6 +218,37 @@ def draw_stamina(game):
     filled = round(w * st.value / MAX)
     if filled:
         px.rect(l, t, l + filled - 1, t + 1, colour)
+
+
+def draw_roll_dots(game):
+    """Rolls stored (stamina.Charges, 2026-11-21) as small dots under the hero's feet, only while one
+    is used or coming back. Juice: a dot that comes back pops bigger and brighter for a moment; Space
+    with none left flashes the dots red; the one coming back fills from the left."""
+    import stamina
+    hero, ch = game.hero, game.hero.rolls
+    if hero.dead or (ch.full and ch.pop <= 0 and ch.empty <= 0):
+        return
+    k = game.zoom * DOT
+    sx = (hero.x - game.cam[0]) * k / px.K
+    sy = (HEIGHT - (hero.y - game.cam[1]) * k) / px.K + 4
+    n, w, gap = int(round(stamina.ROLL_CHARGES)), 4, 3
+    left = round(sx) - (n * w + (n - 1) * gap) // 2
+    t = round(sy)
+    for i in range(n):
+        l = left + i * (w + gap)
+        edge = BLOOD if ch.empty > 0 else INK_C
+        if i == ch.left - 1 and ch.pop > 0:            # just came back: bigger, brighter
+            px.rect(l - 2, t - 2, l + w + 1, t + 3, edge)
+            px.rect(l - 1, t - 1, l + w, t + 2, LIGHT)
+            continue
+        px.rect(l - 1, t - 1, l + w, t + 2, edge)
+        px.rect(l, t, l + w - 1, t + 1, (40, 40, 38))
+        if i < ch.left:
+            px.rect(l, t, l + w - 1, t + 1, ROAD)
+        elif i == ch.left and ch.coming > 0:           # the one coming back fills from the left
+            fill = int(w * ch.coming)
+            if fill:
+                px.rect(l, t, l + fill - 1, t + 1, GREY_C)
 
 
 # ---- Tab: the bag laid out on a ground sheet (2026-11-16, bag B v4, "이대로 구현") --------------

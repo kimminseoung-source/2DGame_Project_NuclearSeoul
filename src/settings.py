@@ -82,3 +82,8 @@ LEGS_AND_CRAWLERS = False
 # 그걸 공격으로 옮기죠"): off. The counter is now a blow landed in the same moment (play.py,
 # Zombie.counter_ready). True brings the shove back (docs/plans/2026-11-20_밀치기_끄기_받아치기_공격으로.md).
 SHOVE_ON = False
+
+# Stamina (2026-11-21 "모든 동작에 스태미나가 있으니까, 속도감 있는 전투를 원하다 보니까 금방 빠지더라구요"):
+# off - blows and aiming cost nothing; the roll has its own charges instead (stamina.Charges,
+# ROLL_CHARGES / ROLL_RECHARGE). True brings breath back (docs/plans/2026-11-21_스태미나_대신_구르기_횟수.md).
+STAMINA_ON = False

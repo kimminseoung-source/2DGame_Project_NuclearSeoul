@@ -7,6 +7,8 @@ cannot knock anything down, and there is no roll at all - so mashing the button 
 out and every blow becomes a choice. The rules are numbers here so any unit can carry a Stamina.
 """
 
+from settings import STAMINA_ON
+
 MAX = 100.0
 COST = {"slash": 14.0, "stomp": 10.0, "shove": 12.0, "roll": 20.0}
 MISS = 8.0                 # extra for a slash that hits nothing
@@ -28,6 +30,8 @@ class Stamina:
         return self.pay(COST[action])
 
     def pay(self, cost):
+        if not STAMINA_ON:                     # off (2026-11-21): nothing costs breath
+            return True
         self.rest_in = DELAY
         if self.value >= cost:
             self.value -= cost
@@ -37,7 +41,7 @@ class Stamina:
         return False
 
     def can(self, action):
-        return self.value >= COST[action]
+        return not STAMINA_ON or self.value >= COST[action]
 
     @property
     def winded(self):
@@ -49,3 +53,48 @@ class Stamina:
             self.rest_in -= dt
             return
         self.value = min(MAX, self.value + REGEN * (REGEN_MOVING if moving else 1.0) * dt)
+
+
+# Roll charges (2026-11-21, instead of breath for the roll): a few rolls stored, one coming back at a
+# time. Numbers are read live (F4 changes them). Any unit can carry Charges.
+ROLL_CHARGES = 2
+ROLL_RECHARGE = 1.2         # s for one roll to come back
+POP_TIME = 0.25             # s a refilled dot shows bigger and brighter
+EMPTY_FLASH = 0.5           # s the dots flash red after Space with none left
+
+
+class Charges:
+    def __init__(self):
+        self.left = ROLL_CHARGES
+        self.timer = 0.0            # s into the next one coming back
+        self.pop = 0.0              # s left of the "just came back" flash
+        self.empty = 0.0            # s left of the "none left" flash
+
+    @property
+    def full(self):
+        return self.left >= ROLL_CHARGES
+
+    @property
+    def coming(self):
+        """0..1: how far the next roll is from coming back."""
+        return 0.0 if self.full else min(1.0, self.timer / ROLL_RECHARGE)
+
+    def use(self):
+        if self.left >= 1:
+            self.left -= 1
+            return True
+        self.empty = EMPTY_FLASH
+        return False
+
+    def update(self, dt):
+        self.pop = max(0.0, self.pop - dt)
+        self.empty = max(0.0, self.empty - dt)
+        self.left = min(self.left, ROLL_CHARGES)
+        if self.full:
+            self.timer = 0.0
+            return
+        self.timer += dt
+        if self.timer >= ROLL_RECHARGE:
+            self.timer = 0.0
+            self.left += 1
+            self.pop = POP_TIME

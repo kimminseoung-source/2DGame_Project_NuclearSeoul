@@ -10,7 +10,7 @@ h = g.hero; SX, SY = h.x, h.y
 for ease in ((1.0, 1.0), (1.6, 0.4)):
     hero_rules.ROLL_EASE = ease
     for fps in (60, 144):
-        h.x, h.y = SX, SY; h.roll = 0; h.roll_cooldown = 0; h.stamina.value = stamina.MAX
+        h.x, h.y = SX, SY; h.roll = 0; h.roll_cooldown = 0; h.stamina.value = stamina.MAX; h.rolls = stamina.Charges()
         x0 = h.x; ok = h.start_roll(1, 0); xs = [0.0]; print("started", ok, h.roll)
         while h.roll > 0:
             g.update(1 / fps, keys); xs.append(h.x - x0)
