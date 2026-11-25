@@ -23,6 +23,12 @@ NIGHT_TINT = (8, 16, 40, 70)  # rgba laid over the world at full night
 # day and night and made noon murky; thinner by day, the same at night.
 MUTE_DAY = 45
 MUTE_NIGHT = 70
+# Clear look (2026-11-25 "색이 또렷하고 대비가 분명한 화면"): instead of laying grey over the world (which lifts
+# the darks and dims the lights = murky), multiply it by a cold colour - darks stay dark, lights turn a little
+# blue. Per channel 0..255 by day and at night. F4 "선명한 화면".
+CLEAR = True
+CLEAR_DAY = (238, 242, 250)
+CLEAR_NIGHT = (205, 214, 232)
 
 
 class Daylight:

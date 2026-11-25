@@ -282,6 +282,7 @@ ROWS = (
     ("피폭체 멈춤", lambda g: _on(g.dev.freeze), _flip("freeze")),
     ("새 피폭체 안 옴", lambda g: _on(g.dev.no_spawn), _flip("no_spawn")),
     ("피폭체 공격 예고 (빨간 범위)", lambda g: _on(g.dev.tells), _flip("tells")),
+    ("선명한 화면 (색 곱하기)", lambda g: _on(daylight.CLEAR), lambda g, s: setattr(daylight, "CLEAR", not daylight.CLEAR)),
     ("HUD 아트 바이블 (체력판)", lambda g: _on(hud.BIBLE_HUD), lambda g, s: setattr(hud, "BIBLE_HUD", not hud.BIBLE_HUD)),
     ("맞을 때 흔들림·번쩍임", lambda g: _on(g.hit_fx), lambda g, s: setattr(g, "hit_fx", not g.hit_fx)),
     ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),

@@ -1235,7 +1235,13 @@ class Game:
         # the chest, every shadow sat CHEST units above where it is - behind a car looked lit)
         self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y - cy),
                          self.view_w, self.view_h)
-        if self.real:                                      # a muted, colder tone over everything, thinner by day
+        if self.real and daylight_rules.CLEAR:             # a colder tone by multiplying: darks stay dark (clear)
+            lt = self.daylight.light
+            r, g, b = (round(n + (d - n) * lt) for d, n in zip(daylight_rules.CLEAR_DAY, daylight_rules.CLEAR_NIGHT))
+            sdl2.SDL_SetRenderDrawBlendMode(canvas.renderer, sdl2.SDL_BLENDMODE_MOD)
+            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, r, g, b, 255, filled=True)
+            sdl2.SDL_SetRenderDrawBlendMode(canvas.renderer, sdl2.SDL_BLENDMODE_BLEND)
+        elif self.real:                                    # a muted, colder tone over everything, thinner by day
             mute = daylight_rules.MUTE_NIGHT + (daylight_rules.MUTE_DAY - daylight_rules.MUTE_NIGHT) * self.daylight.light
             pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 26, 30, 34, round(mute), filled=True)
         night = 1.0 - self.daylight.light                  # night: a cold blue over the world
