@@ -158,6 +158,37 @@ def health_shares(game):
     return shown, trail
 
 
+# ART_BIBLE.md (2026-11-25) UI pieces: things the hero carries - a dark blue-grey metal plate with a
+# rusty edge and rivets, bars cut into ticks, paper-coloured figures. F4 "HUD 아트 바이블" compares.
+BIBLE_HUD = True
+PLATE, PLATE_EDGE, PLATE_LIT, RIVET = (38, 45, 53), (82, 92, 102), (110, 119, 128), (140, 148, 155)
+PAPER, BIBLE_RED, BIBLE_RED_DARK, BIBLE_AMBER = (230, 224, 210), (184, 57, 44), (142, 42, 34), (217, 130, 43)
+
+
+def metal_plate(l, t, r, b):
+    """A riveted plate: dark fill, a 1 px rusty edge, a lit top line, a rivet in each corner."""
+    px.rect(l, t, r, b, PLATE)
+    px.frame(l, t, r, b, PLATE_EDGE)
+    px.rect(l + 1, t + 1, r - 1, t + 1, PLATE_LIT)
+    for cx, cy in ((l + 2, t + 2), (r - 3, t + 2), (l + 2, b - 3), (r - 3, b - 3)):
+        px.rect(cx, cy, cx + 1, cy + 1, RIVET)
+
+
+def tick_bar(l, t, ticks, shown, trail, colour=BIBLE_RED, width=4, gap=1, height=6):
+    """A bar of separate ticks (ART_BIBLE 6): full ticks in colour, the just-lost part pale, the rest dark."""
+    for i in range(ticks):
+        x = l + i * (width + gap)
+        edge = (i + 1) / ticks
+        if shown >= edge - 0.5 / ticks:
+            fill, top = colour, (220, 96, 76)
+        elif trail >= edge - 0.5 / ticks:
+            fill, top = (150, 120, 112), (170, 140, 132)
+        else:
+            fill, top = (26, 32, 38), (26, 32, 38)
+        px.rect(x, t, x + width - 1, t + height - 1, fill)
+        px.rect(x, t, x + width - 1, t, top)
+
+
 def draw_status(game):
     """Bottom left: health (number + a square pixel bar with the pale trail) and only the statuses
     that ask for something - bleeding (bandage), slowed - plus sneaking. Wounds are in the bag."""
@@ -172,15 +203,20 @@ def draw_status(game):
         px.text(wx + img.w * 2 + 8 + px.width(w["name"]), y + 2, f"{game.ammo}발", BLOOD if game.ammo <= 0 else ORANGE, bold=True)
     px.text(wx + img.w * 2 + 4, y + 16, "Q 바꾸기", GREY_C)
     pct = max(0, round(hero.hp / HERO_HP * 100))
-    px.text(x, y, f"{pct}", LIGHT if pct > 50 else ORANGE if pct > 25 else BLOOD, bold=True, scale=2)
     shown, trail = health_shares(game)
-    bx, by, bw = x + px.width(f"{pct}", True) * 2 + 6, y + 11, 96          # the bar right after the number
-    px.rect(bx - 1, by - 1, bx + bw, by + 5, (8, 8, 10))
-    if trail > 0:
-        px.rect(bx, by, bx + max(0, int(bw * trail) - 1), by + 4, (150, 120, 112))
-    if shown > 0.005:
-        px.rect(bx, by, bx + max(0, int(bw * shown) - 1), by + 4, BLOOD)
-        px.rect(bx, by, bx + max(0, int(bw * shown) - 1), by, (210, 80, 64))    # 1 px highlight
+    if BIBLE_HUD:                                       # ART_BIBLE 6: a metal plate, a ticked bar
+        metal_plate(x - 6, y - 5, x + 134, y + 25)
+        px.text(x, y, f"{pct}", PAPER if pct > 50 else BIBLE_AMBER if pct > 25 else BIBLE_RED, bold=True, scale=2)
+        tick_bar(x + px.width(f"{pct}", True) * 2 + 6, y + 8, 16, shown, trail)
+    else:
+        px.text(x, y, f"{pct}", LIGHT if pct > 50 else ORANGE if pct > 25 else BLOOD, bold=True, scale=2)
+        bx, by, bw = x + px.width(f"{pct}", True) * 2 + 6, y + 11, 96          # the bar right after the number
+        px.rect(bx - 1, by - 1, bx + bw, by + 5, (8, 8, 10))
+        if trail > 0:
+            px.rect(bx, by, bx + max(0, int(bw * trail) - 1), by + 4, (150, 120, 112))
+        if shown > 0.005:
+            px.rect(bx, by, bx + max(0, int(bw * shown) - 1), by + 4, BLOOD)
+            px.rect(bx, by, bx + max(0, int(bw * shown) - 1), by, (210, 80, 64))    # 1 px highlight
     ix, sy = x - 2, y + 30                      # the status line under the number
     shown_states = []
     if cond.bleeding:
