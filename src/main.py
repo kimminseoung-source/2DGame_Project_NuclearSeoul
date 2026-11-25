@@ -8,6 +8,7 @@ Tab bag (inventory), mouse wheel zoom, R restart, F1 debug boxes, F2 infected se
 The earlier 2.5D street game and the prototypes are kept in src/legacy/ (not imported).
 """
 
+import os
 import sys
 
 import pico2d
@@ -18,6 +19,8 @@ import bag_screen
 import dev_tools
 import ui
 from play import Game
+if os.environ.get("BUSAN_HERO") != "sword":   # red-jacket hero, gun + melee swap (2026-11-25)
+    from pistol_hero import RedJacketGame as Game
 from settings import EXPOSURE_ON, HEIGHT, WIDTH
 
 
