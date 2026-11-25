@@ -36,6 +36,12 @@
 3. **커밋은 한 곳**: GPT는 커밋하지 않고 작업판에 적어 둔다. Claude가 `tools/checks/run_all.py`로 점검한 뒤 묶음별로 커밋·푸시한다(커밋 메시지는 한국어).
 4. 올리지 않는 것: `docs/CLAUDE_HANDOFF.md`, `참고/`, `.vscode/`, 발표 영상·pptx·pdf, `src/item_ui.py`, `assets/source3d/` 안, 비밀 토큰 파일.
 
+### Claude가 GPT에게 직접 부탁할 때 (Codex CLI, 2026-11-25 설치)
+
+- 읽기만: `codex exec --sandbox read-only --ephemeral "<부탁>"` — 코드·계획 검토, 문서 요약.
+- 일 맡기기: `--sandbox workspace-write` + 부탁에 "AGENTS.md와 docs/COLLAB_BOARD.md를 먼저 읽고, 끝나면 작업판에 적을 것"을 넣는다. 작업판 "진행 중"에 GPT 이름으로 먼저 적는다.
+- ChatGPT 사용량 한도에 걸리면 멈추고 사용자에게 알린다(결제 안 함).
+
 ### 공통 기준
 
 - 한국어로 답하고 기록한다. 무료 도구만. 결제가 필요하면 멈추고 묻는다.
