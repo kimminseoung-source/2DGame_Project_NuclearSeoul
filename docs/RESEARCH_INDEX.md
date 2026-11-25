@@ -100,6 +100,7 @@
 | [research/ZOMBOID_COMMUNITY_RESEARCH.md](research/ZOMBOID_COMMUNITY_RESEARCH.md) | 11-16 | 좀보이드 커뮤니티·공략 | ○ |
 | [research/GAME_JUICE_2026-11-20.md](research/GAME_JUICE_2026-11-20.md) | 11-20 | **전투 손맛(게임 쥬스)**: 지금 있는 것(히트스톱·흔들림·번쩍·궤적·피·소리)과 더할 후보 12개 | ○ 다음 계획 |
 | [research/BG3_COMBAT_RESEARCH.md](research/BG3_COMBAT_RESEARCH.md) | 11-08 | 발더스 게이트 3 전투·UI | ✗ 턴제는 버림 |
+| [research/MOOD_UI_2026-11-25.md](research/MOOD_UI_2026-11-25.md) | 11-25 | **분위기(어둠·색·공기·화면 효과)와 총 중심 UI**: Darkwood·Zero Sievert·Fallout·The Long Dark, 탄약 표시 연구, 지금 화면 점검, 후보 A~H | ★ 사용자 선택 대기 |
 | [research/UI_NOT_AI_RESEARCH.md](research/UI_NOT_AI_RESEARCH.md) | 11-16 | UI에서 "AI 티" 없애기 | ★ UI 원칙 |
 | [research/GROUND_INVENTORY_UI_RESEARCH.md](research/GROUND_INVENTORY_UI_RESEARCH.md) | 11-16 | 바닥에 늘어놓는 인벤토리 UI | ✓ |
 | [planning/ui_redesign/UI_REDESIGN_PROPOSAL.md](planning/ui_redesign/UI_REDESIGN_PROPOSAL.md) | 11-16 | UI 전면 개편 제안 | ✓ |
@@ -152,6 +153,7 @@
 | [plans/2026-11-22_맞을때_흔들림_번쩍임.md](plans/2026-11-22_맞을때_흔들림_번쩍임.md) | 11-22 | 맞을 때 방향 흔들림 + 붉은 번쩍임 | 완료 |
 | [plans/2026-11-25_GPT작업_점검_커밋.md](plans/2026-11-25_GPT작업_점검_커밋.md) | 11-25 | GPT와 한 작업(11-23~24) 점검·묶음 커밋 | 완료 |
 | [plans/2026-11-25_GPT_공동작업_방식.md](plans/2026-11-25_GPT_공동작업_방식.md) | 11-25 | Claude·GPT 공동 작업 방식: AGENTS.md 한 곳, 작업판, 그림 요청서 | 완료 |
+| [plans/2026-11-25_분위기_UI_조사.md](plans/2026-11-25_분위기_UI_조사.md) | 11-25 | 게임 분위기·UI 조사 | 완료 |
 | [research/AI_COLLAB_2026-11-25.md](research/AI_COLLAB_2026-11-25.md) | 11-25 | 조사: Claude Code·Codex 함께 쓰기(AGENTS.md 불러오기, 공식 Codex 플러그인, 작업판·폴더 담당) | |
 | [COLLAB_BOARD.md](COLLAB_BOARD.md) | 11-25 | **작업판** — 둘 다 시작·끝에 읽고 고침 | 계속 |
 
