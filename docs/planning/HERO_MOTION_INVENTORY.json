@@ -1,0 +1,954 @@
+{
+  "date": "2026-11-23",
+  "scope": "file availability and direct loader probes; Hero.draw/has/feature flags further constrain reachable states; not a full playthrough or visual quality test",
+  "families": {
+    "hero_3d": {
+      "folder": "C:\\Users\\doboh\\Desktop\\Universitiy\\2026 - 2\\2D 겜플\\2D_Game_Project\\assets\\characters\\hero_3d",
+      "stills": [
+        "east",
+        "north",
+        "north-east",
+        "north-west",
+        "south",
+        "south-east",
+        "south-west",
+        "west"
+      ],
+      "animations": {
+        "aim": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 1,
+            "north": 1,
+            "north-east": 1,
+            "north-west": 1,
+            "south": 1,
+            "south-east": 1,
+            "south-west": 1,
+            "west": 1
+          }
+        },
+        "aimstep": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 6,
+            "north": 6,
+            "north-east": 6,
+            "north-west": 6,
+            "south": 6,
+            "south-east": 6,
+            "south-west": 6,
+            "west": 6
+          }
+        },
+        "breath": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 2,
+            "north": 2,
+            "north-east": 2,
+            "north-west": 2,
+            "south": 2,
+            "south-east": 2,
+            "south-west": 2,
+            "west": 2
+          }
+        },
+        "down": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 4,
+            "north": 4,
+            "north-east": 4,
+            "north-west": 4,
+            "south": 4,
+            "south-east": 4,
+            "south-west": 4,
+            "west": 4
+          }
+        },
+        "hurt": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 2,
+            "north": 2,
+            "north-east": 2,
+            "north-west": 2,
+            "south": 2,
+            "south-east": 2,
+            "south-west": 2,
+            "west": 2
+          }
+        },
+        "mp_chop": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 3,
+            "north": 3,
+            "north-east": 3,
+            "north-west": 3,
+            "south": 3,
+            "south-east": 3,
+            "south-west": 3,
+            "west": 3
+          }
+        },
+        "mp_chop_baseball": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 10,
+            "north": 10,
+            "north-east": 10,
+            "north-west": 10,
+            "south": 10,
+            "south-east": 10,
+            "south-west": 10,
+            "west": 10
+          }
+        },
+        "mp_chop_bash": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 10,
+            "north": 10,
+            "north-east": 10,
+            "north-west": 10,
+            "south": 10,
+            "south-east": 10,
+            "south-west": 10,
+            "west": 10
+          }
+        },
+        "mp_chop_downward": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 10,
+            "north": 10,
+            "north-east": 10,
+            "north-west": 10,
+            "south": 10,
+            "south-east": 10,
+            "south-west": 10,
+            "west": 10
+          }
+        },
+        "mp_chop_greatsword": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 10,
+            "north": 10,
+            "north-east": 10,
+            "north-west": 10,
+            "south": 10,
+            "south-east": 10,
+            "south-west": 10,
+            "west": 10
+          }
+        },
+        "mp_chop_heavy": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 10,
+            "north": 10,
+            "north-east": 10,
+            "north-west": 10,
+            "south": 10,
+            "south-east": 10,
+            "south-west": 10,
+            "west": 10
+          }
+        },
+        "pickup": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 2,
+            "north": 2,
+            "north-east": 2,
+            "north-west": 2,
+            "south": 2,
+            "south-east": 2,
+            "south-west": 2,
+            "west": 2
+          }
+        },
+        "roll": {
+          "directions": 1,
+          "frames_by_direction": {
+            "east": 4
+          }
+        },
+        "roll_spin": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 6,
+            "north": 6,
+            "north-east": 6,
+            "north-west": 6,
+            "south": 6,
+            "south-east": 6,
+            "south-west": 6,
+            "west": 6
+          }
+        },
+        "sneak": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 6,
+            "north": 6,
+            "north-east": 6,
+            "north-west": 6,
+            "south": 6,
+            "south-east": 6,
+            "south-west": 6,
+            "west": 6
+          }
+        },
+        "sneak_d": {
+          "directions": 1,
+          "frames_by_direction": {
+            "east": 6
+          }
+        },
+        "sneak_idle": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 1,
+            "north": 1,
+            "north-east": 1,
+            "north-west": 1,
+            "south": 1,
+            "south-east": 1,
+            "south-west": 1,
+            "west": 1
+          }
+        },
+        "sneak_sf": {
+          "directions": 1,
+          "frames_by_direction": {
+            "east": 6
+          }
+        },
+        "sneak_sw": {
+          "directions": 1,
+          "frames_by_direction": {
+            "east": 6
+          }
+        },
+        "walk": {
+          "directions": 8,
+          "frames_by_direction": {
+            "east": 6,
+            "north": 6,
+            "north-east": 6,
+            "north-west": 6,
+            "south": 6,
+            "south-east": 6,
+            "south-west": 6,
+            "west": 6
+          }
+        }
+      },
+      "sheets": {},
+      "default_attack_variant": "samurai",
+      "aim_styles": [
+        "chop"
+      ],
+      "key_refs_checked": 168,
+      "missing_key_refs": []
+    },
+    "hero_px40": {
+      "folder": "C:\\Users\\doboh\\Desktop\\Universitiy\\2026 - 2\\2D 겜플\\2D_Game_Project\\assets\\characters\\hero_px40",
+      "stills": [
+        "east",
+        "north",
+        "north-east",
+        "north-west",
+        "south",
+        "south-east",
+        "south-west",
+        "west"
+      ],
+      "animations": {
+        "ai_chop": {
+          "directions": 1,
+          "frames_by_direction": {
+            "south-east": 6
+          }
+        },
+        "lora_chop": {
+          "directions": 1,
+          "frames_by_direction": {
+            "south-east": 14
+          }
+        },
+        "pl_chop": {
+          "directions": 2,
+          "frames_by_direction": {
+            "south": 2,
+            "south-east": 2
+          }
+        },
+        "ssd_chop": {
+          "directions": 1,
+          "frames_by_direction": {
+            "south-east": 10
+          }
+        },
+        "strike": {
+          "directions": 4,
+          "frames_by_direction": {
+            "north-east": 2,
+            "north-west": 1,
+            "south-east": 2,
+            "south-west": 2
+          }
+        },
+        "tool_chop": {
+          "directions": 1,
+          "frames_by_direction": {
+            "south-east": 3
+          }
+        },
+        "walk": {
+          "directions": 1,
+          "frames_by_direction": {
+            "south": 6
+          }
+        }
+      },
+      "sheets": {},
+      "default_attack_variant": null,
+      "aim_styles": [],
+      "key_refs_checked": 10,
+      "missing_key_refs": []
+    },
+    "hero_dot": {
+      "folder": "C:\\Users\\doboh\\Desktop\\Universitiy\\2026 - 2\\2D 겜플\\2D_Game_Project\\assets\\characters\\hero_dot",
+      "stills": [],
+      "animations": {},
+      "sheets": {
+        "chop": {
+          "size": [
+            448,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 7
+        },
+        "down": {
+          "size": [
+            320,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 5
+        },
+        "hurt": {
+          "size": [
+            192,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 3
+        },
+        "idle": {
+          "size": [
+            256,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 4
+        },
+        "pickup": {
+          "size": [
+            256,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 4
+        },
+        "push": {
+          "size": [
+            256,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 4
+        },
+        "ready_chop": {
+          "size": [
+            768,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 12
+        },
+        "ready_stab": {
+          "size": [
+            768,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 12
+        },
+        "ready_swingh": {
+          "size": [
+            768,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 12
+        },
+        "run": {
+          "size": [
+            768,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 12
+        },
+        "sneak": {
+          "size": [
+            768,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 12
+        },
+        "sneak_idle": {
+          "size": [
+            256,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 4
+        },
+        "stab": {
+          "size": [
+            448,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 7
+        },
+        "stomp": {
+          "size": [
+            384,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 6
+        },
+        "swing": {
+          "size": [
+            448,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 7
+        },
+        "swing2": {
+          "size": [
+            448,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 7
+        },
+        "swing3": {
+          "size": [
+            448,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 7
+        },
+        "swingh": {
+          "size": [
+            448,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 7
+        },
+        "walk": {
+          "size": [
+            768,
+            48
+          ],
+          "cell": [
+            64,
+            48
+          ],
+          "horizontal_frames": 12
+        }
+      },
+      "default_attack_variant": null,
+      "aim_styles": [],
+      "key_refs_checked": 0,
+      "missing_key_refs": []
+    }
+  },
+  "new_preview_files": {
+    "hero_pistol_flow_v3": 23,
+    "hero_pistol_shared_v2": 34,
+    "hero_pistol_v1": 5,
+    "hero_poseguided_ai_v1": 9,
+    "hero_poseguided_ai_v2_twohanded": 12,
+    "hero_redjacket_motion_v1": 14,
+    "hero_redjacket_rig_v1": 38,
+    "hero_redjacket_v1": 7
+  },
+  "loader_routes": {
+    "hero_3d": {
+      "idle": {
+        "east": "picture:breath:east",
+        "north-east": "picture:breath:north-east",
+        "north": "picture:breath:north",
+        "north-west": "picture:breath:north-west",
+        "west": "picture:breath:west",
+        "south-west": "picture:breath:south-west",
+        "south": "picture:breath:south",
+        "south-east": "picture:breath:south-east"
+      },
+      "walk": {
+        "east": "picture:walk:east",
+        "north-east": "picture:walk:north-east",
+        "north": "picture:walk:north",
+        "north-west": "picture:walk:north-west",
+        "west": "picture:walk:west",
+        "south-west": "picture:walk:south-west",
+        "south": "picture:walk:south",
+        "south-east": "picture:walk:south-east"
+      },
+      "sneak": {
+        "east": "picture:sneak:east",
+        "north-east": "picture:sneak:north-east",
+        "north": "picture:sneak:north",
+        "north-west": "picture:sneak:north-west",
+        "west": "picture:sneak:west",
+        "south-west": "picture:sneak:south-west",
+        "south": "picture:sneak:south",
+        "south-east": "picture:sneak:south-east"
+      },
+      "sneak_idle": {
+        "east": "picture:sneak_idle:east",
+        "north-east": "picture:sneak_idle:north-east",
+        "north": "picture:sneak_idle:north",
+        "north-west": "picture:sneak_idle:north-west",
+        "west": "picture:sneak_idle:west",
+        "south-west": "picture:sneak_idle:south-west",
+        "south": "picture:sneak_idle:south",
+        "south-east": "picture:sneak_idle:south-east"
+      },
+      "aim_chop": {
+        "east": "picture:aim:east",
+        "north-east": "picture:aim:north-east",
+        "north": "picture:aim:north",
+        "north-west": "picture:aim:north-west",
+        "west": "picture:aim:west",
+        "south-west": "picture:aim:south-west",
+        "south": "picture:aim:south",
+        "south-east": "picture:aim:south-east"
+      },
+      "aimstep_chop": {
+        "east": "picture:aimstep:east",
+        "north-east": "picture:aimstep:north-east",
+        "north": "picture:aimstep:north",
+        "north-west": "picture:aimstep:north-west",
+        "west": "picture:aimstep:west",
+        "south-west": "picture:aimstep:south-west",
+        "south": "picture:aimstep:south",
+        "south-east": "picture:aimstep:south-east"
+      },
+      "hurt": {
+        "east": "picture:hurt:east",
+        "north-east": "picture:hurt:north-east",
+        "north": "picture:hurt:north",
+        "north-west": "picture:hurt:north-west",
+        "west": "picture:hurt:west",
+        "south-west": "picture:hurt:south-west",
+        "south": "picture:hurt:south",
+        "south-east": "picture:hurt:south-east"
+      },
+      "down": {
+        "east": "picture:down:east",
+        "north-east": "picture:down:north-east",
+        "north": "picture:down:north",
+        "north-west": "picture:down:north-west",
+        "west": "picture:down:west",
+        "south-west": "picture:down:south-west",
+        "south": "picture:down:south",
+        "south-east": "picture:down:south-east"
+      },
+      "pickup": {
+        "east": "picture:pickup:east",
+        "north-east": "picture:pickup:north-east",
+        "north": "picture:pickup:north",
+        "north-west": "picture:pickup:north-west",
+        "west": "picture:pickup:west",
+        "south-west": "picture:pickup:south-west",
+        "south": "picture:pickup:south",
+        "south-east": "picture:pickup:south-east"
+      },
+      "push": {
+        "east": "base_sheet:push",
+        "north-east": "base_sheet:push",
+        "north": "base_sheet:push",
+        "north-west": "base_sheet:push",
+        "west": "base_sheet:push",
+        "south-west": "base_sheet:push",
+        "south": "base_sheet:push",
+        "south-east": "base_sheet:push"
+      },
+      "roll": {
+        "east": "picture:roll:east",
+        "north-east": "base_sheet:idle",
+        "north": "base_sheet:idle",
+        "north-west": "base_sheet:idle",
+        "west": "base_sheet:idle",
+        "south-west": "base_sheet:idle",
+        "south": "base_sheet:idle",
+        "south-east": "base_sheet:idle"
+      },
+      "roll_spin": {
+        "east": "picture:roll_spin:east",
+        "north-east": "picture:roll_spin:north-east",
+        "north": "picture:roll_spin:north",
+        "north-west": "picture:roll_spin:north-west",
+        "west": "picture:roll_spin:west",
+        "south-west": "picture:roll_spin:south-west",
+        "south": "picture:roll_spin:south",
+        "south-east": "picture:roll_spin:south-east"
+      },
+      "stomp": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "chop_prepare": {
+        "east": "key_attack:east",
+        "north-east": "key_attack:north-east",
+        "north": "key_attack:north",
+        "north-west": "key_attack:north-west",
+        "west": "key_attack:west",
+        "south-west": "key_attack:south-west",
+        "south": "key_attack:south",
+        "south-east": "key_attack:south-east"
+      },
+      "chop_hit": {
+        "east": "key_attack:east",
+        "north-east": "key_attack:north-east",
+        "north": "key_attack:north",
+        "north-west": "key_attack:north-west",
+        "west": "key_attack:west",
+        "south-west": "key_attack:south-west",
+        "south": "key_attack:south",
+        "south-east": "key_attack:south-east"
+      },
+      "chop_recover": {
+        "east": "key_attack:east",
+        "north-east": "key_attack:north-east",
+        "north": "key_attack:north",
+        "north-west": "key_attack:north-west",
+        "west": "key_attack:west",
+        "south-west": "key_attack:south-west",
+        "south": "key_attack:south",
+        "south-east": "key_attack:south-east"
+      },
+      "pistol_shot_stab": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "gun_has_dedicated_stand_aim": false,
+      "gun_has_dedicated_moving_aim": false
+    },
+    "hero_px40": {
+      "idle": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "walk": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:walk:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "sneak": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:walk:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "sneak_idle": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "aim_chop": {
+        "east": "base_sheet:idle",
+        "north-east": "base_sheet:idle",
+        "north": "base_sheet:idle",
+        "north-west": "base_sheet:idle",
+        "west": "base_sheet:idle",
+        "south-west": "base_sheet:idle",
+        "south": "base_sheet:idle",
+        "south-east": "base_sheet:idle"
+      },
+      "aimstep_chop": {
+        "east": "base_sheet:ready_chop",
+        "north-east": "base_sheet:ready_chop",
+        "north": "base_sheet:ready_chop",
+        "north-west": "base_sheet:ready_chop",
+        "west": "base_sheet:ready_chop",
+        "south-west": "base_sheet:ready_chop",
+        "south": "base_sheet:ready_chop",
+        "south-east": "base_sheet:ready_chop"
+      },
+      "hurt": {
+        "east": "base_sheet:hurt",
+        "north-east": "base_sheet:hurt",
+        "north": "base_sheet:hurt",
+        "north-west": "base_sheet:hurt",
+        "west": "base_sheet:hurt",
+        "south-west": "base_sheet:hurt",
+        "south": "base_sheet:hurt",
+        "south-east": "base_sheet:hurt"
+      },
+      "down": {
+        "east": "base_sheet:down",
+        "north-east": "base_sheet:down",
+        "north": "base_sheet:down",
+        "north-west": "base_sheet:down",
+        "west": "base_sheet:down",
+        "south-west": "base_sheet:down",
+        "south": "base_sheet:down",
+        "south-east": "base_sheet:down"
+      },
+      "pickup": {
+        "east": "base_sheet:pickup",
+        "north-east": "base_sheet:pickup",
+        "north": "base_sheet:pickup",
+        "north-west": "base_sheet:pickup",
+        "west": "base_sheet:pickup",
+        "south-west": "base_sheet:pickup",
+        "south": "base_sheet:pickup",
+        "south-east": "base_sheet:pickup"
+      },
+      "push": {
+        "east": "base_sheet:push",
+        "north-east": "base_sheet:push",
+        "north": "base_sheet:push",
+        "north-west": "base_sheet:push",
+        "west": "base_sheet:push",
+        "south-west": "base_sheet:push",
+        "south": "base_sheet:push",
+        "south-east": "base_sheet:push"
+      },
+      "roll": {
+        "east": "base_sheet:idle",
+        "north-east": "base_sheet:idle",
+        "north": "base_sheet:idle",
+        "north-west": "base_sheet:idle",
+        "west": "base_sheet:idle",
+        "south-west": "base_sheet:idle",
+        "south": "base_sheet:idle",
+        "south-east": "base_sheet:idle"
+      },
+      "roll_spin": {
+        "east": "base_sheet:idle",
+        "north-east": "base_sheet:idle",
+        "north": "base_sheet:idle",
+        "north-west": "base_sheet:idle",
+        "west": "base_sheet:idle",
+        "south-west": "base_sheet:idle",
+        "south": "base_sheet:idle",
+        "south-east": "base_sheet:idle"
+      },
+      "stomp": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "chop_prepare": {
+        "east": "key_attack:north-east",
+        "north-east": "key_attack:north-east",
+        "north": "key_attack:north-east",
+        "north-west": "key_attack:north-west",
+        "west": "key_attack:north-west",
+        "south-west": "key_attack:south-west",
+        "south": "key_attack:south",
+        "south-east": "key_attack:south-east"
+      },
+      "chop_hit": {
+        "east": "key_attack:north-east",
+        "north-east": "key_attack:north-east",
+        "north": "key_attack:north-east",
+        "north-west": "key_attack:north-west",
+        "west": "key_attack:north-west",
+        "south-west": "key_attack:south-west",
+        "south": "key_attack:south",
+        "south-east": "key_attack:south-east"
+      },
+      "chop_recover": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "pistol_shot_stab": {
+        "east": "picture:idle:east",
+        "north-east": "picture:idle:north-east",
+        "north": "picture:idle:north",
+        "north-west": "picture:idle:north-west",
+        "west": "picture:idle:west",
+        "south-west": "picture:idle:south-west",
+        "south": "picture:idle:south",
+        "south-east": "picture:idle:south-east"
+      },
+      "gun_has_dedicated_stand_aim": false,
+      "gun_has_dedicated_moving_aim": false
+    },
+    "new_melee_trial_adapter": {
+      "idle": "idle",
+      "walk": "walk_2",
+      "sneak": "walk_2",
+      "sneak_idle": "idle",
+      "aim_chop": "windup",
+      "aimstep_chop": "walk_2",
+      "hurt": "idle",
+      "down": "idle",
+      "pickup": "idle",
+      "push": "guard",
+      "roll": "idle",
+      "roll_spin": "idle",
+      "stomp": "idle",
+      "chop_prepare": "windup",
+      "chop_hit": "impact",
+      "chop_recover": "recover",
+      "pistol_shot_stab": "recover"
+    },
+    "new_effective_dodge": "has_dir=False; Hero.draw requests run, so walk frames/afterimages are used, not the direct unsupported roll probe above",
+    "current_pistol_comparison": {
+      "default": "C",
+      "modes": [
+        "A",
+        "B",
+        "C"
+      ],
+      "C_images": [
+        "aim",
+        "aim_walk_0",
+        "aim_walk_1",
+        "aim_walk_2",
+        "aim_walk_3",
+        "down",
+        "fall",
+        "hurt",
+        "low",
+        "raise",
+        "recoil",
+        "settle",
+        "walk_0",
+        "walk_1",
+        "walk_2",
+        "walk_3"
+      ],
+      "runtime_check": "assets/characters/previews/hero_pistol_flow_v3/runtime_check.json",
+      "foot_audit": "assets/characters/previews/hero_pistol_flow_v3/foot_audit.json"
+    }
+  }
+}
