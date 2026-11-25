@@ -14,11 +14,15 @@ and how dark it is outside the hero's view cone because of it.
 HOUR = 30.0                 # real s per hour of the day
 START = 14.0                # the hour a play starts at
 DAWN, DAY, DUSK, NIGHT = 5.0, 7.0, 18.0, 20.0   # light rises DAWN..DAY, falls DUSK..NIGHT
-FOG_DAY = 60                # how dim the world is drawn outside the light by day...
+FOG_DAY = 40                # how dim the world is drawn outside the light by day (2026-11-25 "낮이 살짝 더 밝으면": was 60)...
 FOG_NIGHT = 150             # ...and at night (seeing the infected does not depend on these)
 DAY_RANGE = 520             # how far the view cone reaches by day...
 NIGHT_RANGE = 300           # ...and at night
 NIGHT_TINT = (8, 16, 40, 70)  # rgba laid over the world at full night
+# The realistic look's muted cold layer (F3), by the light (2026-11-25 "낮이 살짝 더 밝으면"): it was 70 all
+# day and night and made noon murky; thinner by day, the same at night.
+MUTE_DAY = 45
+MUTE_NIGHT = 70
 
 
 class Daylight:

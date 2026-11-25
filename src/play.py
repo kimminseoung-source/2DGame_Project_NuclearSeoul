@@ -1235,8 +1235,9 @@ class Game:
         # the chest, every shadow sat CHEST units above where it is - behind a car looked lit)
         self.vision.draw((self.hero.x, self.hero.y), self.look, (self.hero.x - cx, self.hero.y - cy),
                          self.view_w, self.view_h)
-        if self.real:                                      # a muted, colder tone over everything
-            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 26, 30, 34, 70, filled=True)
+        if self.real:                                      # a muted, colder tone over everything, thinner by day
+            mute = daylight_rules.MUTE_NIGHT + (daylight_rules.MUTE_DAY - daylight_rules.MUTE_NIGHT) * self.daylight.light
+            pico2d.draw_rectangle(0, 0, self.view_w, self.view_h, 26, 30, 34, round(mute), filled=True)
         night = 1.0 - self.daylight.light                  # night: a cold blue over the world
         if night > 0:
             r, g, b, a = daylight_rules.NIGHT_TINT
