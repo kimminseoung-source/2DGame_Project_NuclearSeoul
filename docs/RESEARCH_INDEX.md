@@ -28,6 +28,7 @@
 
 | 문서 | 날짜 | 무엇 | 결론·지금 |
 |---|---|---|---|
+| [planning/ART_BIBLE.md](planning/ART_BIBLE.md) | 11-25 | **아트 바이블(그래픽·UI·UX 기준)**: 회청색+초록 위험+붉은 주인공, 3/4 탑뷰, 세상 물건 같은 UI, 점검표 | ★ 초안, 모든 그림·UI가 따름 |
 | [planning/ART_STYLE_RESEARCH.md](planning/ART_STYLE_RESEARCH.md) | 11-14 | 2D 그래픽 스타일 6가지(도트+네온, 3D→도트, 고딕, 실루엣, 손그림, 도트+3D 배경) | ○ 3D→도트(Dead Cells 방식) 추천 |
 | [planning/ZOMBOID_VISUAL_REFERENCE.md](planning/ZOMBOID_VISUAL_REFERENCE.md) | 11-14 | 좀보이드 화면·동작 분석을 탑뷰에 적용 | ✓ 탑뷰 전환에 반영 |
 | [../assets/characters/ART_FEEDBACK.md](../assets/characters/ART_FEEDBACK.md) | 계속 | 사용자의 그림 지적, 원인, 교훈 + 보여 주기 전 점검표 | ★ 그림 보여 주기 전 반드시 |
@@ -155,6 +156,7 @@
 | [plans/2026-11-25_GPT_공동작업_방식.md](plans/2026-11-25_GPT_공동작업_방식.md) | 11-25 | Claude·GPT 공동 작업 방식: AGENTS.md 한 곳, 작업판, 그림 요청서 | 완료 |
 | [plans/2026-11-25_분위기_UI_조사.md](plans/2026-11-25_분위기_UI_조사.md) | 11-25 | 게임 분위기·UI 조사 | 완료 |
 | [plans/2026-11-25_낮_살짝_밝게.md](plans/2026-11-25_낮_살짝_밝게.md) | 11-25 | 낮 살짝 밝게(사실 모드 덮개 낮 45, 낮 시야 밖 40), 밤 그대로 | 완료 |
+| [plans/2026-11-25_아트바이블_먼저.md](plans/2026-11-25_아트바이블_먼저.md) | 11-25 | 그래픽·UI·UX 기준 먼저(Scavland 분석) | 진행 중 |
 | [research/AI_COLLAB_2026-11-25.md](research/AI_COLLAB_2026-11-25.md) | 11-25 | 조사: Claude Code·Codex 함께 쓰기(AGENTS.md 불러오기, 공식 Codex 플러그인, 작업판·폴더 담당) | |
 | [COLLAB_BOARD.md](COLLAB_BOARD.md) | 11-25 | **작업판** — 둘 다 시작·끝에 읽고 고침 | 계속 |
 
