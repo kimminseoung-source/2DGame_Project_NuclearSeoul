@@ -244,10 +244,12 @@ class Zombie:
         if not game.senses:
             if self.state in ("idle", "search") and dist < 300:          # the old rule
                 self.state = "chase"
+                self.spotted = SPOTTED_TIME
         elif self.state in ("idle", "alert", "search") and self.sees(hero):
             if dist <= SPOT_DIST:                         # close enough in its sight: "!"
                 self.state, self.seen_time = "chase", 0.0
                 self.target, self.memory = (hero.x, hero.y), MEMORY
+                self.spotted = SPOTTED_TIME    # also when this update goes straight to poised/windup
         elif self.state in ("chase", "poised"):
             if self.sees(hero):
                 self.seen_time += dt
@@ -309,7 +311,7 @@ class Zombie:
                     self.state = "chase"
         return event
 
-    show_marks = True        # "!" / "?" over the head
+    show_marks = True        # brief discovery "!" only (2026-11-23); no attack/hearing marks
     keep_out = []            # rects closed to the infected (area.kept_out; play sets the station's)
     blink_corpse = True      # the corpse blinks; off in the realistic look (bodies stay)
 
@@ -332,12 +334,8 @@ class Zombie:
             moving = self.state in ("chase", "search")
             self.look.draw("crawl", self.time * (1.6 if self.state in ("windup", "strike") else 1.0)
                            if moving or self.state in ("windup", "strike") else 0.0, x, y, self.facing)
-            if self.state == "windup" and self.show_marks:
-                ui.world_text_center(x, y + 30, "!", (255, 120, 80), 22)
         elif self.state == "windup":
             self.look.draw("attack", 0.25 * (1 - self.timer / self.windup), x, y, self.facing)
-            if self.show_marks:
-                ui.world_text_center(x, y + 66, "!", (255, 120, 80), 22)
         elif self.state == "strike":
             self.look.draw("attack", 0.45, x, y, self.facing)
         elif self.state == "recover":
@@ -352,9 +350,6 @@ class Zombie:
         else:
             self.look.draw("idle", self.time, x, y, self.facing)
         top = 32 if self.prone else 68
-        if self.heard > 0 and self.spotted <= 0 and self.state in ("alert", "search") and self.show_marks:
-            pop = 1 + 0.4 * max(0.0, self.heard - HEARD_TIME + 0.15) / 0.15        # pops in, then settles
-            ui.world_text_center(x, y + top, "?", (220, 200, 120), round(18 * pop))
-        if self.spotted > 0 and self.state not in ("dead", "windup") and self.show_marks:
+        if self.spotted > 0 and self.state != "dead" and self.show_marks:
             pop = 1 + 0.4 * max(0.0, self.spotted - SPOTTED_TIME + 0.15) / 0.15   # pops in, then settles
             ui.world_text_center(x, y + top, "!", (255, 220, 90), round(22 * pop))

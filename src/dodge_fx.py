@@ -136,18 +136,20 @@ class Dust:
         "kick": (0.9, (10, 22), 12, 0.3),
         "puff": (1.4, (3, 9), 4, 0.22),
         "land": (0.5, (8, 18), 10, 0.3),
+        "step": (0.7, (1, 3), 2, 0.10),  # opt-in soft foot contact, not a roll-sized cloud
     }
 
     def __init__(self, x, y, angle, kind="kick"):
         spread, (near, far), count, self.life = self.KINDS[kind]
         self.x, self.y = x, y
         self.age = 0.0
+        self.kind = kind
         if kind == "land":
             aims = [angle + pi / 2, angle - pi / 2]
         else:
             aims = [angle + pi]
         self.bits = [(random.choice(aims) + random.uniform(-spread, spread), random.uniform(near, far),
-                      random.uniform(0, 5)) for _ in range(count)]
+                      random.uniform(0, .4 if kind == 'step' else 5)) for _ in range(count)]
 
     @staticmethod
     def wanted():
@@ -164,5 +166,7 @@ class Dust:
                 continue
             r = reach * (0.3 + 0.7 * p)
             px, py = self.x - cam_x + cos(a) * r, self.y - cam_y + sin(a) * r * 0.5 + rise * p
-            for ox, oy in ((0, 0), (1, 0), (0, 1), (1, 1)):     # 2 x 2 canvas pixels: readable at this zoom
-                marks.dot(px + ox * marks.PIXEL, py + oy * marks.PIXEL, DUST_COLOUR)
+            offsets=((0,0),) if self.kind=='step' else ((0,0),(1,0),(0,1),(1,1))
+            colour=(102,100,88) if self.kind=='step' else DUST_COLOUR
+            for ox, oy in offsets:
+                marks.dot(px + ox * marks.PIXEL, py + oy * marks.PIXEL, colour)

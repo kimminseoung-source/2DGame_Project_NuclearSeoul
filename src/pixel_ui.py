@@ -66,8 +66,8 @@ def _text_image(s, colour, bold):
         texture = sdl2.SDL_CreateTextureFromSurface(pico2d.pico2d.renderer, surface)
         sdl2.SDL_FreeSurface(surface)
         _texts[key] = pico2d.Image(texture)
-        if len(_texts) > 600:                       # many one-off messages: start over
-            _texts.clear()
+        if len(_texts) > 600:                       # evict an old entry, never the item just added
+            _texts.pop(next(iter(_texts)))
     return _texts[key]
 
 

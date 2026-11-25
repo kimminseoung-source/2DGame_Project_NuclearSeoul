@@ -188,6 +188,8 @@ class Hero:
     # shove, pick-up, raising the weapon - run this many times faster. 1.3 undoes settings.TEMPO
     # for the hero only; walking and the infected stay as they are. Set by the F4 panel.
     action_speed = 1.0
+    walk_while_shooting = False      # opt-in gun animation trial; normal/melee behaviour unchanged
+    distance_step_audio = True       # default distance clock; refined trial supplies contact events
     hand = None                     # screen point of the weapon hand last drawn (8-direction art)
     angle = None                    # where the hero looks (world radians), set by play for 8-direction art
 
@@ -245,24 +247,30 @@ class Hero:
             self.start_roll(*pressed)           # the roll pressed during the last one (none left: red dots, no late roll)
         elif self.slash and not ((mx or my) and self.can_cancel()):
             self.slash["time"] += adt
-            move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)
+            if self.walk_while_shooting and self.slash["weapon"].get("shot") and (mx or my):
+                self._walk_step(dt, mx, my, raised=True)
+            else:
+                move_body(self, self.lunge[0] * dt, self.lunge[1] * dt)
             self.lunge = (self.lunge[0] * 0.82, self.lunge[1] * 0.82)
             if self.slash["time"] >= self.slash["whole"]:
                 self.slash_cooldown = self.slash["weapon"].get("cooldown", SLASH_COOLDOWN)   # the weapon's rest
                 self.slash = None
         elif mx or my:
             self.end_slash()                           # walking out of a landed blow (no-op otherwise)
-            length = hypot(mx, my)
-            speed = RUN_SPEED * (SNEAK_SPEED if self.sneaking else 1.0) * (1 - self.slowed)
-            if self.ready is not None:                 # weapon raised: a careful step
-                speed *= weapons.READY_SPEED
-            move_body(self, mx / length * speed * dt, my / length * speed * dt)
-            self.run_distance += speed * dt / 32
-            self.moving = True
-            if mx:
-                self.facing = mx
+            self._walk_step(dt, mx, my, raised=self.ready is not None)
         elif aim_x is not None:
             self.facing = 1 if aim_x >= self.x else -1
+
+    def _walk_step(self, dt, mx, my, raised=False):
+        length = hypot(mx, my)
+        speed = RUN_SPEED * (SNEAK_SPEED if self.sneaking else 1.0) * (1 - self.slowed)
+        if raised:
+            speed *= weapons.READY_SPEED
+        move_body(self, mx / length * speed * dt, my / length * speed * dt)
+        self.run_distance += speed * dt / 32
+        self.moving = True
+        if mx:
+            self.facing = mx
 
     DODGE_STRIDE = 2               # which walking picture the body glides on while dodging (legs apart)
 

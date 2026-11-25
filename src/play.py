@@ -97,7 +97,7 @@ class Game:
         self.dev = dev_tools.Dev()          # F1 debug boxes, F4 dev settings (kept across restarts)
         if area.TEST_ARENA:                 # the empty test map: nobody comes in, the infected wait
             self.dev.no_spawn = self.dev.freeze = True
-        infected.Zombie.show_marks = True   # "!" / "?" stay (2026-11-15 "이 부분은 넣어도 될 것 같습니다")
+        infected.Zombie.show_marks = True   # brief discovery "!" only (2026-11-23)
         infected.Zombie.blink_corpse = not self.real
         self.zoom = ZOOM_DEFAULT            # mouse wheel zoom (kept across restarts)
         self.zoom_shown = float(self.zoom)  # eases toward self.zoom (2026-11-16 "부드럽게")
@@ -134,6 +134,7 @@ class Game:
 
     def reset(self):
         self.hero = Hero(self.hero_look)
+        self.projectiles = []       # optional ranged trial; default stages spawn none
         # a start marked "crawler" is one; the others crawl by chance (infected.CRAWLER_SHARE)
         self.zombies = [Zombie(self.zombie_look, s[0], s[1],
                                crawler=s[2] == "crawler" if len(s) > 2 else random.random() < infected.CRAWLER_SHARE)
@@ -757,7 +758,8 @@ class Game:
             self.sounds.play("roll", 0.6)
         if int(hero.run_distance) != self.hero_steps:
             self.hero_steps = int(hero.run_distance)
-            self.sounds.play("step", 0.1 if hero.sneaking else 0.25)
+            if hero.distance_step_audio:
+                self.sounds.play("step", 0.1 if hero.sneaking else 0.25)
         if self.aim[0] is not None:          # the hero looks toward the mouse
             ax, ay = self.mouse_world(*self.aim)
             self.look = atan2(ay - hero.y, ax - hero.x)    # from the feet, like the light it turns
@@ -877,7 +879,6 @@ class Game:
                     z.groan_in = random.uniform(3.0, 7.0)
             if z.state != state:
                 if z.state == "chase" and state in ("idle", "alert", "search"):
-                    z.spotted = infected.SPOTTED_TIME                         # "!" - it spotted the hero
                     z.rush = infected.RUSH_TIME                               # ... and runs at him
                     self.sounds.play("ai_infected_scream", 0.6, at=(z.x, z.y))
                 elif z.state == "windup":
@@ -914,6 +915,8 @@ class Game:
                     self.deaths += 1
                     self.death_cause = "피폭체에게 당했다"
                     self.death_time = self.clock
+        if not self.dev.freeze:
+            self.projectiles = [p for p in self.projectiles if p.update(world_dt, self)]
         bled = self.condition.update(real_dt, hero, self.zombies)
         if bled and not hero.dead and not self.dev.god:                             # bleeding drains health until bandaged
             hero.hp = max(0.0, hero.hp - bled)
@@ -960,6 +963,25 @@ class Game:
     def clamp_camera(self):
         for i, (view, room) in enumerate(((self.view_w, ROOM_W), (self.view_h, ROOM_H + HUD_PAD))):
             self.cam[i] = max(0, min(room - view, self.cam[i]))
+
+    def spit_hit(self, shot):
+        """Trial projectile: direct damage, no melee grab, no new poison/bleed system."""
+        from spitter import SHOT_DAMAGE
+        hero = self.hero
+        if hero.dead or hero.invulnerable or self.dev.god:
+            return
+        hero.hp = max(0., hero.hp - SHOT_DAMAGE)
+        hero.hurt = HURT_INVULNERABLE
+        hero.take_blow()
+        self.director.hero_hit()
+        self.hurt_flash = .25
+        self.sounds.play('hurt', 1.)
+        if self.hit_fx:
+            self.hero_hit_fx(shot)
+        if hero.hp <= 0:
+            hero.dead = .001
+            self.deaths += 1
+            self.death_cause, self.death_time = '원거리 피폭체의 탄에 맞았다', self.clock
 
     def ease_zoom(self, dt):
         self.zoom_shown += (self.zoom - self.zoom_shown) * min(1.0, dt * 14)
@@ -1205,6 +1227,9 @@ class Game:
                 obj.draw(cx, cy)
         for e in self.effects:
             e.draw(cx, cy)
+        for p in self.projectiles:
+            if self.vision.visible((self.hero.x, self.hero.y), self.look, p.x, p.y):
+                p.draw(cx, cy)
         self.draw_aim(cx, cy)
         # drawn from the feet, where it is worked out (2026-11-18 "장애물 뒤 그림자 인식이 이상": drawn from
         # the chest, every shadow sat CHEST units above where it is - behind a car looked lit)

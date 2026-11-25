@@ -38,7 +38,7 @@ def draw(game, cx, cy):
         return
     hero = game.hero
     for z in game.zombies:
-        if not z.alive or z.state != "windup":
+        if not z.alive or z.state != "windup" or getattr(z, "ranged", False):
             continue
         x, y, r, ang, half = wedge_of(z)
         x, y = x - cx, y - cy
