@@ -122,16 +122,19 @@ def draw_hud(game):
     if EXPOSURE_ON:
         px.text(180, 15, f"피폭 {game.exposure:.0f}%", LIGHT)
     draw_status(game)
-    # quick slots: plain squares with a bevel like the wrecks' metal
+    # quick slots: plain squares with a bevel like the wrecks' metal (bible: only filled ones, plates)
     items = bag_items(game)
-    n = max(3, len(items))
+    n = len(items) if BIBLE_HUD else max(3, len(items))
     left = 320 - (n * 26 + (n - 1) * 4) // 2
     for i in range(n):
         l, t = left + i * 30, 326
-        if i < len(items):
-            px.rect(l, t, l + 25, t + 25, (20, 22, 26))
-        px.frame(l, t, l + 25, t + 25, (64, 66, 70))
-        px.rect(l + 1, t + 1, l + 24, t + 1, (84, 86, 90))
+        if BIBLE_HUD:
+            metal_plate(l, t, l + 25, t + 25)
+        else:
+            if i < len(items):
+                px.rect(l, t, l + 25, t + 25, (20, 22, 26))
+            px.frame(l, t, l + 25, t + 25, (64, 66, 70))
+            px.rect(l + 1, t + 1, l + 24, t + 1, (84, 86, 90))
         if i < len(items):
             kind, count = items[i]
             px.blit(f"bag/icon_{kind}.png", l + 5, t + 4)
@@ -140,10 +143,16 @@ def draw_hud(game):
             if key:
                 px.text(l + 1, t - 13, key, GREY_C)
     px.text(left + n * 30 + 2, 336, "Tab", GREY_C)
+    draw_cursor_ammo(game)
     # the latest message, a hard outline, gone after a while
     age = game.clock - game.message_at
     if game.message and (age < MESSAGE_TIME or game.left):
-        px.text(320, 286, game.message, (236, 214, 150), bold=True, anchor="m")
+        if BIBLE_HUD:                                   # on a small plate (ART_BIBLE 6)
+            half = px.width(game.message, True) // 2 + 8
+            metal_plate(320 - half, 281, 320 + half, 300)
+            px.text(320, 286, game.message, PAPER, bold=True, anchor="m")
+        else:
+            px.text(320, 286, game.message, (236, 214, 150), bold=True, anchor="m")
 
 
 def health_shares(game):
@@ -189,6 +198,27 @@ def tick_bar(l, t, ticks, shown, trail, colour=BIBLE_RED, width=4, gap=1, height
         px.rect(x, t, x + width - 1, t, top)
 
 
+AMMO_TICKS = 12          # rounds shown as ticks by the cursor; more than this shows the number only
+
+
+def draw_cursor_ammo(game):
+    """A gun's rounds right by the cursor (ART_BIBLE 7, MOOD_UI 3: ammo beside the sight beats a corner
+    count): one tick per round, dimmer than the sight, red and blinking when empty."""
+    hero = game.hero
+    if not BIBLE_HUD or "shot" not in hero.weapon or game.aim[0] is None or hero.dead or game.bag_open:
+        return
+    x, y = round(game.aim[0] / px.K) + 9, round(game.aim[1] / px.K) + 6
+    rounds = max(0, game.ammo)
+    if rounds <= 0:
+        if int(game.clock * 4) % 2 == 0:                # empty: a blinking red mark
+            px.text(x, y - 2, "0", BIBLE_RED, bold=True)
+        return
+    ticks = min(rounds, AMMO_TICKS)
+    for i in range(ticks):                              # one 2 x 4 tick per round, dim amber
+        px.rect(x + i * 3, y, x + i * 3 + 1, y + 3, (170, 104, 40))
+    px.text(x + ticks * 3 + 2, y - 3, str(rounds), (190, 160, 120))
+
+
 def draw_status(game):
     """Bottom left: health (number + a square pixel bar with the pale trail) and only the statuses
     that ask for something - bleeding (bandage), slowed - plus sneaking. Wounds are in the bag."""
@@ -197,9 +227,11 @@ def draw_status(game):
     w = hero.weapon                                     # the weapon in hand, by the health
     img = px.image(f"../weapons/{w['sprite']}.png")
     wx = 160                                            # between the health bar and the quick slots
+    if BIBLE_HUD:                                       # the weapon on its own plate (ART_BIBLE 6)
+        metal_plate(wx - 6, y - 5, wx + img.w * 2 + 12 + max(px.width(w["name"]), px.width("Q 바꾸기")), y + 29)
     px.blit(f"../weapons/{w['sprite']}.png", wx, y + 6, 2)
     px.text(wx + img.w * 2 + 4, y + 2, w["name"], LIGHT)
-    if "shot" in w:                                     # a gun: its rounds, red when empty
+    if "shot" in w and not BIBLE_HUD:                   # a gun: its rounds (bible: by the cursor instead)
         px.text(wx + img.w * 2 + 8 + px.width(w["name"]), y + 2, f"{game.ammo}발", BLOOD if game.ammo <= 0 else ORANGE, bold=True)
     px.text(wx + img.w * 2 + 4, y + 16, "Q 바꾸기", GREY_C)
     pct = max(0, round(hero.hp / HERO_HP * 100))
