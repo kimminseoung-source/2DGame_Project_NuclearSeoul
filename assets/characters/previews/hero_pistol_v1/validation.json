@@ -1,0 +1,33 @@
+{
+  "cell": [
+    64,
+    64
+  ],
+  "pivot": [
+    32,
+    58
+  ],
+  "shared_scale": 0.04539722572509458,
+  "frames": [
+    {
+      "pose": "low_ready",
+      "bbox": [
+        21,
+        22,
+        43,
+        58
+      ]
+    },
+    {
+      "pose": "aim",
+      "bbox": [
+        18,
+        24,
+        44,
+        58
+      ]
+    }
+  ],
+  "weapon_separated": false,
+  "game_integrated": false
+}

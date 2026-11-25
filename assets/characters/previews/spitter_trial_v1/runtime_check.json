@@ -1,0 +1,14 @@
+{
+  "mechanics": "7 checks passed",
+  "runtime_frames": 330,
+  "states": [
+    "poised",
+    "recover",
+    "strike",
+    "windup"
+  ],
+  "hero_hp_before": 100.0,
+  "hero_hp_after_150_frames": 88.0,
+  "reset_clears_projectiles": true,
+  "capture_uses_existing_hero": true
+}

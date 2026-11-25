@@ -1,0 +1,809 @@
+{
+  "method": "manual sole/boot centres on the 64px raster, reviewed using feet_grid.png; approximate foot identity and contact intervals, not a 3D IK solve",
+  "max_held_key_drift_native_px": 3.259259259259352,
+  "max_candidate_support_spread_native_px": 7.654320987654216,
+  "zero_foot_lock": false,
+  "samples": [
+    {
+      "tick": 0,
+      "key": 0,
+      "support": "near",
+      "phase": 0.03746275010642788,
+      "root_x": 501.8333333333333,
+      "boot_native_world_x": 301.3827160493827
+    },
+    {
+      "tick": 1,
+      "key": 0,
+      "support": "near",
+      "phase": 0.07492550021285577,
+      "root_x": 503.66666666666663,
+      "boot_native_world_x": 302.4691358024691
+    },
+    {
+      "tick": 2,
+      "key": 0,
+      "support": "near",
+      "phase": 0.11238825031928365,
+      "root_x": 505.49999999999994,
+      "boot_native_world_x": 303.5555555555555
+    },
+    {
+      "tick": 3,
+      "key": 1,
+      "support": "near",
+      "phase": 0.14985100042571153,
+      "root_x": 507.33333333333326,
+      "boot_native_world_x": 301.6419753086419
+    },
+    {
+      "tick": 4,
+      "key": 1,
+      "support": "near",
+      "phase": 0.18731375053213942,
+      "root_x": 509.1666666666666,
+      "boot_native_world_x": 302.72839506172835
+    },
+    {
+      "tick": 5,
+      "key": 1,
+      "support": "near",
+      "phase": 0.2247765006385673,
+      "root_x": 510.9999999999999,
+      "boot_native_world_x": 303.8148148148147
+    },
+    {
+      "tick": 6,
+      "key": 2,
+      "support": "near",
+      "phase": 0.2622392507449963,
+      "root_x": 512.8333333333333,
+      "boot_native_world_x": 300.40123456790116
+    },
+    {
+      "tick": 7,
+      "key": 2,
+      "support": "near",
+      "phase": 0.29970200085142534,
+      "root_x": 514.6666666666666,
+      "boot_native_world_x": 301.4876543209876
+    },
+    {
+      "tick": 8,
+      "key": 2,
+      "support": "near",
+      "phase": 0.33716475095785436,
+      "root_x": 516.5,
+      "boot_native_world_x": 302.5740740740741
+    },
+    {
+      "tick": 9,
+      "key": 2,
+      "support": "near",
+      "phase": 0.3746275010642834,
+      "root_x": 518.3333333333334,
+      "boot_native_world_x": 303.6604938271605
+    },
+    {
+      "tick": 10,
+      "key": 3,
+      "support": "near",
+      "phase": 0.4120902511707124,
+      "root_x": 520.1666666666667,
+      "boot_native_world_x": 297.24691358024694
+    },
+    {
+      "tick": 11,
+      "key": 3,
+      "support": "near",
+      "phase": 0.44955300127714143,
+      "root_x": 522.0000000000001,
+      "boot_native_world_x": 298.33333333333337
+    },
+    {
+      "tick": 12,
+      "key": 3,
+      "support": "near",
+      "phase": 0.48701575138357045,
+      "root_x": 523.8333333333335,
+      "boot_native_world_x": 299.4197530864198
+    },
+    {
+      "tick": 13,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5244785014899995,
+      "root_x": 525.6666666666669,
+      "boot_native_world_x": 315.5061728395063
+    },
+    {
+      "tick": 14,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5619412515964286,
+      "root_x": 527.5000000000002,
+      "boot_native_world_x": 316.5925925925927
+    },
+    {
+      "tick": 15,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5994040017028577,
+      "root_x": 529.3333333333336,
+      "boot_native_world_x": 317.67901234567915
+    },
+    {
+      "tick": 16,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6368667518092868,
+      "root_x": 531.166666666667,
+      "boot_native_world_x": 315.7654320987656
+    },
+    {
+      "tick": 17,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6743295019157158,
+      "root_x": 533.0000000000003,
+      "boot_native_world_x": 316.851851851852
+    },
+    {
+      "tick": 18,
+      "key": 5,
+      "support": "far",
+      "phase": 0.7117922520221449,
+      "root_x": 534.8333333333337,
+      "boot_native_world_x": 317.9382716049385
+    },
+    {
+      "tick": 19,
+      "key": 5,
+      "support": "far",
+      "phase": 0.749255002128574,
+      "root_x": 536.6666666666671,
+      "boot_native_world_x": 319.02469135802494
+    },
+    {
+      "tick": 20,
+      "key": 6,
+      "support": "far",
+      "phase": 0.7867177522350031,
+      "root_x": 538.5000000000005,
+      "boot_native_world_x": 316.11111111111137
+    },
+    {
+      "tick": 21,
+      "key": 6,
+      "support": "far",
+      "phase": 0.8241805023414321,
+      "root_x": 540.3333333333338,
+      "boot_native_world_x": 317.1975308641978
+    },
+    {
+      "tick": 22,
+      "key": 6,
+      "support": "far",
+      "phase": 0.8616432524478612,
+      "root_x": 542.1666666666672,
+      "boot_native_world_x": 318.28395061728423
+    },
+    {
+      "tick": 23,
+      "key": 7,
+      "support": "far",
+      "phase": 0.8991060025542903,
+      "root_x": 544.0000000000006,
+      "boot_native_world_x": 314.87037037037067
+    },
+    {
+      "tick": 24,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9365687526607194,
+      "root_x": 545.8333333333339,
+      "boot_native_world_x": 315.95679012345715
+    },
+    {
+      "tick": 25,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9740315027671484,
+      "root_x": 547.6666666666673,
+      "boot_native_world_x": 317.0432098765436
+    },
+    {
+      "tick": 26,
+      "key": 0,
+      "support": "near",
+      "phase": 0.011494252873577526,
+      "root_x": 549.5000000000007,
+      "boot_native_world_x": 329.62962962963
+    },
+    {
+      "tick": 27,
+      "key": 0,
+      "support": "near",
+      "phase": 0.04895700298000657,
+      "root_x": 551.333333333334,
+      "boot_native_world_x": 330.71604938271645
+    },
+    {
+      "tick": 28,
+      "key": 0,
+      "support": "near",
+      "phase": 0.08641975308643561,
+      "root_x": 553.1666666666674,
+      "boot_native_world_x": 331.8024691358029
+    },
+    {
+      "tick": 29,
+      "key": 0,
+      "support": "near",
+      "phase": 0.12388250319286465,
+      "root_x": 555.0000000000008,
+      "boot_native_world_x": 332.88888888888937
+    },
+    {
+      "tick": 30,
+      "key": 1,
+      "support": "near",
+      "phase": 0.1613452532992937,
+      "root_x": 556.8333333333342,
+      "boot_native_world_x": 330.9753086419758
+    },
+    {
+      "tick": 31,
+      "key": 1,
+      "support": "near",
+      "phase": 0.19880800340572274,
+      "root_x": 558.6666666666675,
+      "boot_native_world_x": 332.06172839506223
+    },
+    {
+      "tick": 32,
+      "key": 1,
+      "support": "near",
+      "phase": 0.2362707535121518,
+      "root_x": 560.5000000000009,
+      "boot_native_world_x": 333.14814814814866
+    },
+    {
+      "tick": 33,
+      "key": 2,
+      "support": "near",
+      "phase": 0.27373350361858084,
+      "root_x": 562.3333333333343,
+      "boot_native_world_x": 329.7345679012351
+    },
+    {
+      "tick": 34,
+      "key": 2,
+      "support": "near",
+      "phase": 0.31119625372500986,
+      "root_x": 564.1666666666677,
+      "boot_native_world_x": 330.8209876543215
+    },
+    {
+      "tick": 35,
+      "key": 2,
+      "support": "near",
+      "phase": 0.3486590038314389,
+      "root_x": 566.000000000001,
+      "boot_native_world_x": 331.907407407408
+    },
+    {
+      "tick": 36,
+      "key": 3,
+      "support": "near",
+      "phase": 0.3861217539378679,
+      "root_x": 567.8333333333344,
+      "boot_native_world_x": 325.49382716049445
+    },
+    {
+      "tick": 37,
+      "key": 3,
+      "support": "near",
+      "phase": 0.42358450404429693,
+      "root_x": 569.6666666666678,
+      "boot_native_world_x": 326.5802469135809
+    },
+    {
+      "tick": 38,
+      "key": 3,
+      "support": "near",
+      "phase": 0.46104725415072595,
+      "root_x": 571.5000000000011,
+      "boot_native_world_x": 327.6666666666673
+    },
+    {
+      "tick": 39,
+      "key": 3,
+      "support": "near",
+      "phase": 0.49851000425715497,
+      "root_x": 573.3333333333345,
+      "boot_native_world_x": 328.75308641975374
+    },
+    {
+      "tick": 40,
+      "key": 4,
+      "support": "far",
+      "phase": 0.535972754363584,
+      "root_x": 575.1666666666679,
+      "boot_native_world_x": 344.83950617284023
+    },
+    {
+      "tick": 41,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5734355044700131,
+      "root_x": 577.0000000000013,
+      "boot_native_world_x": 345.92592592592666
+    },
+    {
+      "tick": 42,
+      "key": 4,
+      "support": "far",
+      "phase": 0.6108982545764422,
+      "root_x": 578.8333333333346,
+      "boot_native_world_x": 347.0123456790131
+    },
+    {
+      "tick": 43,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6483610046828713,
+      "root_x": 580.666666666668,
+      "boot_native_world_x": 345.0987654320995
+    },
+    {
+      "tick": 44,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6858237547893004,
+      "root_x": 582.5000000000014,
+      "boot_native_world_x": 346.18518518518596
+    },
+    {
+      "tick": 45,
+      "key": 5,
+      "support": "far",
+      "phase": 0.7232865048957294,
+      "root_x": 584.3333333333347,
+      "boot_native_world_x": 347.2716049382724
+    },
+    {
+      "tick": 46,
+      "key": 6,
+      "support": "far",
+      "phase": 0.7607492550021585,
+      "root_x": 586.1666666666681,
+      "boot_native_world_x": 344.3580246913589
+    },
+    {
+      "tick": 47,
+      "key": 6,
+      "support": "far",
+      "phase": 0.7982120051085876,
+      "root_x": 588.0000000000015,
+      "boot_native_world_x": 345.4444444444453
+    },
+    {
+      "tick": 48,
+      "key": 6,
+      "support": "far",
+      "phase": 0.8356747552150167,
+      "root_x": 589.8333333333348,
+      "boot_native_world_x": 346.53086419753174
+    },
+    {
+      "tick": 49,
+      "key": 6,
+      "support": "far",
+      "phase": 0.8731375053214457,
+      "root_x": 591.6666666666682,
+      "boot_native_world_x": 347.6172839506182
+    },
+    {
+      "tick": 50,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9106002554278748,
+      "root_x": 593.5000000000016,
+      "boot_native_world_x": 344.2037037037046
+    },
+    {
+      "tick": 51,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9480630055343039,
+      "root_x": 595.333333333335,
+      "boot_native_world_x": 345.2901234567911
+    },
+    {
+      "tick": 52,
+      "key": 7,
+      "support": "far",
+      "phase": 0.985525755640733,
+      "root_x": 597.1666666666683,
+      "boot_native_world_x": 346.3765432098775
+    },
+    {
+      "tick": 53,
+      "key": 0,
+      "support": "near",
+      "phase": 0.022988505747161936,
+      "root_x": 599.0000000000017,
+      "boot_native_world_x": 358.96296296296396
+    },
+    {
+      "tick": 54,
+      "key": 0,
+      "support": "near",
+      "phase": 0.06045125585359098,
+      "root_x": 600.8333333333351,
+      "boot_native_world_x": 360.0493827160504
+    },
+    {
+      "tick": 55,
+      "key": 0,
+      "support": "near",
+      "phase": 0.09791400596002002,
+      "root_x": 602.6666666666684,
+      "boot_native_world_x": 361.1358024691368
+    },
+    {
+      "tick": 56,
+      "key": 1,
+      "support": "near",
+      "phase": 0.13537675606644906,
+      "root_x": 604.5000000000018,
+      "boot_native_world_x": 359.2222222222233
+    },
+    {
+      "tick": 57,
+      "key": 1,
+      "support": "near",
+      "phase": 0.1728395061728781,
+      "root_x": 606.3333333333352,
+      "boot_native_world_x": 360.30864197530974
+    },
+    {
+      "tick": 58,
+      "key": 1,
+      "support": "near",
+      "phase": 0.21030225627930715,
+      "root_x": 608.1666666666686,
+      "boot_native_world_x": 361.3950617283962
+    },
+    {
+      "tick": 59,
+      "key": 1,
+      "support": "near",
+      "phase": 0.2477650063857362,
+      "root_x": 610.0000000000019,
+      "boot_native_world_x": 362.4814814814826
+    },
+    {
+      "tick": 60,
+      "key": 2,
+      "support": "near",
+      "phase": 0.28522775649216525,
+      "root_x": 611.8333333333353,
+      "boot_native_world_x": 359.06790123456904
+    },
+    {
+      "tick": 61,
+      "key": 2,
+      "support": "near",
+      "phase": 0.3226905065985943,
+      "root_x": 613.6666666666687,
+      "boot_native_world_x": 360.15432098765547
+    },
+    {
+      "tick": 62,
+      "key": 2,
+      "support": "near",
+      "phase": 0.3601532567050233,
+      "root_x": 615.500000000002,
+      "boot_native_world_x": 361.24074074074196
+    },
+    {
+      "tick": 63,
+      "key": 3,
+      "support": "near",
+      "phase": 0.3976160068114523,
+      "root_x": 617.3333333333354,
+      "boot_native_world_x": 354.8271604938284
+    },
+    {
+      "tick": 64,
+      "key": 3,
+      "support": "near",
+      "phase": 0.43507875691788134,
+      "root_x": 619.1666666666688,
+      "boot_native_world_x": 355.9135802469148
+    },
+    {
+      "tick": 65,
+      "key": 3,
+      "support": "near",
+      "phase": 0.47254150702431036,
+      "root_x": 621.0000000000022,
+      "boot_native_world_x": 357.00000000000125
+    },
+    {
+      "tick": 66,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5100042571307394,
+      "root_x": 622.8333333333355,
+      "boot_native_world_x": 373.0864197530877
+    },
+    {
+      "tick": 67,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5474670072371685,
+      "root_x": 624.6666666666689,
+      "boot_native_world_x": 374.17283950617417
+    },
+    {
+      "tick": 68,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5849297573435975,
+      "root_x": 626.5000000000023,
+      "boot_native_world_x": 375.2592592592606
+    },
+    {
+      "tick": 69,
+      "key": 4,
+      "support": "far",
+      "phase": 0.6223925074500266,
+      "root_x": 628.3333333333356,
+      "boot_native_world_x": 376.34567901234703
+    },
+    {
+      "tick": 70,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6598552575564557,
+      "root_x": 630.166666666669,
+      "boot_native_world_x": 374.43209876543347
+    },
+    {
+      "tick": 71,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6973180076628848,
+      "root_x": 632.0000000000024,
+      "boot_native_world_x": 375.5185185185199
+    },
+    {
+      "tick": 72,
+      "key": 5,
+      "support": "far",
+      "phase": 0.7347807577693138,
+      "root_x": 633.8333333333358,
+      "boot_native_world_x": 376.60493827160633
+    },
+    {
+      "tick": 73,
+      "key": 6,
+      "support": "far",
+      "phase": 0.7722435078757429,
+      "root_x": 635.6666666666691,
+      "boot_native_world_x": 373.6913580246928
+    },
+    {
+      "tick": 74,
+      "key": 6,
+      "support": "far",
+      "phase": 0.809706257982172,
+      "root_x": 637.5000000000025,
+      "boot_native_world_x": 374.77777777777925
+    },
+    {
+      "tick": 75,
+      "key": 6,
+      "support": "far",
+      "phase": 0.8471690080886011,
+      "root_x": 639.3333333333359,
+      "boot_native_world_x": 375.8641975308657
+    },
+    {
+      "tick": 76,
+      "key": 7,
+      "support": "far",
+      "phase": 0.8846317581950301,
+      "root_x": 641.1666666666692,
+      "boot_native_world_x": 372.4506172839521
+    },
+    {
+      "tick": 77,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9220945083014592,
+      "root_x": 643.0000000000026,
+      "boot_native_world_x": 373.53703703703854
+    },
+    {
+      "tick": 78,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9595572584078883,
+      "root_x": 644.833333333336,
+      "boot_native_world_x": 374.62345679012503
+    },
+    {
+      "tick": 79,
+      "key": 7,
+      "support": "far",
+      "phase": 0.9970200085143174,
+      "root_x": 646.6666666666694,
+      "boot_native_world_x": 375.70987654321146
+    },
+    {
+      "tick": 80,
+      "key": 0,
+      "support": "near",
+      "phase": 0.034482758620746345,
+      "root_x": 648.5000000000027,
+      "boot_native_world_x": 388.2962962962979
+    },
+    {
+      "tick": 81,
+      "key": 0,
+      "support": "near",
+      "phase": 0.0719455087271754,
+      "root_x": 650.3333333333361,
+      "boot_native_world_x": 389.3827160493843
+    },
+    {
+      "tick": 82,
+      "key": 0,
+      "support": "near",
+      "phase": 0.10940825883360444,
+      "root_x": 652.1666666666695,
+      "boot_native_world_x": 390.46913580247076
+    },
+    {
+      "tick": 83,
+      "key": 1,
+      "support": "near",
+      "phase": 0.1468710089400335,
+      "root_x": 654.0000000000028,
+      "boot_native_world_x": 388.5555555555572
+    },
+    {
+      "tick": 84,
+      "key": 1,
+      "support": "near",
+      "phase": 0.18433375904646254,
+      "root_x": 655.8333333333362,
+      "boot_native_world_x": 389.6419753086437
+    },
+    {
+      "tick": 85,
+      "key": 1,
+      "support": "near",
+      "phase": 0.2217965091528916,
+      "root_x": 657.6666666666696,
+      "boot_native_world_x": 390.7283950617301
+    },
+    {
+      "tick": 86,
+      "key": 2,
+      "support": "near",
+      "phase": 0.25925925925932064,
+      "root_x": 659.500000000003,
+      "boot_native_world_x": 387.31481481481654
+    },
+    {
+      "tick": 87,
+      "key": 2,
+      "support": "near",
+      "phase": 0.29672200936574966,
+      "root_x": 661.3333333333363,
+      "boot_native_world_x": 388.401234567903
+    },
+    {
+      "tick": 88,
+      "key": 2,
+      "support": "near",
+      "phase": 0.3341847594721787,
+      "root_x": 663.1666666666697,
+      "boot_native_world_x": 389.4876543209894
+    },
+    {
+      "tick": 89,
+      "key": 2,
+      "support": "near",
+      "phase": 0.3716475095786077,
+      "root_x": 665.0000000000031,
+      "boot_native_world_x": 390.5740740740759
+    },
+    {
+      "tick": 90,
+      "key": 3,
+      "support": "near",
+      "phase": 0.4091102596850367,
+      "root_x": 666.8333333333364,
+      "boot_native_world_x": 384.1604938271623
+    },
+    {
+      "tick": 91,
+      "key": 3,
+      "support": "near",
+      "phase": 0.44657300979146575,
+      "root_x": 668.6666666666698,
+      "boot_native_world_x": 385.24691358024876
+    },
+    {
+      "tick": 92,
+      "key": 3,
+      "support": "near",
+      "phase": 0.48403575989789477,
+      "root_x": 670.5000000000032,
+      "boot_native_world_x": 386.3333333333352
+    },
+    {
+      "tick": 93,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5214985100043238,
+      "root_x": 672.3333333333366,
+      "boot_native_world_x": 402.4197530864216
+    },
+    {
+      "tick": 94,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5589612601107529,
+      "root_x": 674.1666666666699,
+      "boot_native_world_x": 403.50617283950805
+    },
+    {
+      "tick": 95,
+      "key": 4,
+      "support": "far",
+      "phase": 0.5964240102171819,
+      "root_x": 676.0000000000033,
+      "boot_native_world_x": 404.59259259259454
+    },
+    {
+      "tick": 96,
+      "key": 5,
+      "support": "far",
+      "phase": 0.633886760323611,
+      "root_x": 677.8333333333367,
+      "boot_native_world_x": 402.679012345681
+    },
+    {
+      "tick": 97,
+      "key": 5,
+      "support": "far",
+      "phase": 0.6713495104300401,
+      "root_x": 679.66666666667,
+      "boot_native_world_x": 403.7654320987674
+    },
+    {
+      "tick": 98,
+      "key": 5,
+      "support": "far",
+      "phase": 0.7088122605364692,
+      "root_x": 681.5000000000034,
+      "boot_native_world_x": 404.85185185185384
+    },
+    {
+      "tick": 99,
+      "key": 5,
+      "support": "far",
+      "phase": 0.7462750106428983,
+      "root_x": 683.3333333333368,
+      "boot_native_world_x": 405.93827160494027
+    }
+  ],
+  "limitation": "boot-centre approximation; candidate intervals and heel-to-toe movement require visual review"
+}

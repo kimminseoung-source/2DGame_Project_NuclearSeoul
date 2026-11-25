@@ -1,0 +1,60 @@
+{
+  "shared_scale": 0.08411214953271028,
+  "frames": [
+    {
+      "i": 0,
+      "bbox": [
+        25,
+        22,
+        41,
+        58
+      ]
+    },
+    {
+      "i": 1,
+      "bbox": [
+        22,
+        22,
+        41,
+        58
+      ]
+    },
+    {
+      "i": 2,
+      "bbox": [
+        19,
+        22,
+        40,
+        58
+      ]
+    },
+    {
+      "i": 3,
+      "bbox": [
+        24,
+        22,
+        41,
+        58
+      ]
+    },
+    {
+      "i": 4,
+      "bbox": [
+        21,
+        22,
+        41,
+        58
+      ]
+    },
+    {
+      "i": 5,
+      "bbox": [
+        22,
+        22,
+        39,
+        58
+      ]
+    }
+  ],
+  "scope": "pose-reference AI drawing; one-direction six-frame study; not integrated"
+}

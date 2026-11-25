@@ -1,0 +1,278 @@
+{
+  "cell": [
+    64,
+    64
+  ],
+  "fixed_ground": [
+    32,
+    58
+  ],
+  "virtual_source_cell": [
+    512,
+    512
+  ],
+  "common_scale": 0.07775377969762419,
+  "source_ground_y": 497,
+  "poses": [
+    {
+      "pose": "low",
+      "source_bbox": [
+        140,
+        34,
+        383,
+        497
+      ],
+      "bbox": [
+        23,
+        22,
+        42,
+        58
+      ],
+      "height": 36
+    },
+    {
+      "pose": "raise",
+      "source_bbox": [
+        128,
+        36,
+        386,
+        497
+      ],
+      "bbox": [
+        22,
+        22,
+        42,
+        58
+      ],
+      "height": 36
+    },
+    {
+      "pose": "aim",
+      "source_bbox": [
+        87,
+        44,
+        415,
+        497
+      ],
+      "bbox": [
+        19,
+        23,
+        44,
+        58
+      ],
+      "height": 35
+    },
+    {
+      "pose": "recoil",
+      "source_bbox": [
+        88,
+        47,
+        416,
+        497
+      ],
+      "bbox": [
+        19,
+        23,
+        44,
+        58
+      ],
+      "height": 35
+    },
+    {
+      "pose": "settle",
+      "source_bbox": [
+        113,
+        39,
+        409,
+        492
+      ],
+      "bbox": [
+        21,
+        22,
+        44,
+        57
+      ],
+      "height": 35
+    },
+    {
+      "pose": "hurt",
+      "source_bbox": [
+        99,
+        44,
+        384,
+        492
+      ],
+      "bbox": [
+        20,
+        22,
+        42,
+        57
+      ],
+      "height": 35
+    },
+    {
+      "pose": "fall",
+      "source_bbox": [
+        34,
+        108,
+        418,
+        491
+      ],
+      "bbox": [
+        15,
+        27,
+        45,
+        57
+      ],
+      "height": 30
+    },
+    {
+      "pose": "down",
+      "source_bbox": [
+        30,
+        300,
+        528,
+        482
+      ],
+      "bbox": [
+        12,
+        43,
+        50,
+        57
+      ],
+      "height": 14
+    },
+    {
+      "pose": "walk_0",
+      "source_bbox": [
+        120,
+        43,
+        392,
+        503
+      ],
+      "bbox": [
+        21,
+        22,
+        43,
+        58
+      ],
+      "height": 36
+    },
+    {
+      "pose": "walk_1",
+      "source_bbox": [
+        159,
+        35,
+        340,
+        502
+      ],
+      "bbox": [
+        24,
+        22,
+        39,
+        58
+      ],
+      "height": 36
+    },
+    {
+      "pose": "walk_2",
+      "source_bbox": [
+        92,
+        50,
+        401,
+        503
+      ],
+      "bbox": [
+        19,
+        23,
+        43,
+        58
+      ],
+      "height": 35
+    },
+    {
+      "pose": "walk_3",
+      "source_bbox": [
+        130,
+        46,
+        325,
+        502
+      ],
+      "bbox": [
+        22,
+        23,
+        37,
+        58
+      ],
+      "height": 35
+    },
+    {
+      "pose": "aim_walk_0",
+      "source_bbox": [
+        132,
+        57,
+        389,
+        485
+      ],
+      "bbox": [
+        22,
+        24,
+        42,
+        57
+      ],
+      "height": 33
+    },
+    {
+      "pose": "aim_walk_1",
+      "source_bbox": [
+        156,
+        48,
+        363,
+        483
+      ],
+      "bbox": [
+        24,
+        23,
+        40,
+        57
+      ],
+      "height": 34
+    },
+    {
+      "pose": "aim_walk_2",
+      "source_bbox": [
+        103,
+        61,
+        368,
+        484
+      ],
+      "bbox": [
+        20,
+        24,
+        41,
+        57
+      ],
+      "height": 33
+    },
+    {
+      "pose": "aim_walk_3",
+      "source_bbox": [
+        128,
+        59,
+        362,
+        483
+      ],
+      "bbox": [
+        22,
+        24,
+        40,
+        57
+      ],
+      "height": 33
+    }
+  ],
+  "no_per_frame_bbox_scaling_or_floor_alignment": true,
+  "walk_keys": 4,
+  "aim_walk_keys": 4,
+  "scope": "full-body AI art reference guided; one direction mirrored; weapon baked for motion-quality pilot"
+}

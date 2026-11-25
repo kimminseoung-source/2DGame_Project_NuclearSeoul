@@ -1,0 +1,13 @@
+{
+  "annotation_method": "manual sole/boot centres on the 64px raster, reviewed using feet_grid.png; approximate foot identity and contact intervals, not a 3D IK solve",
+  "near_leg": "large bright cargo pocket",
+  "far_leg": "darker leg without the large bright pocket",
+  "near_boot": [[36,57],[33,57],[28.5,57],[21,57],[20.5,57],[21,53],[29,51],[40,54]],
+  "far_boot": [[22.5,55],[23,52],[35,50],[40,53],[36,57],[33,57],[29,57],[24.5,57]],
+  "candidate_support": ["near","near","near","near","far","far","far","far"],
+  "phase_names": ["near_contact","near_load","far_pass","far_reach","far_contact","far_load","near_pass","near_reach"],
+  "cycle_native_pixels": 29.0,
+  "cycle_measurement": "2 * mean(near centre x0-x4 =15.5, far centre x4-x0 =13.5); both sheets retain the same approximate leg path; torso scale same 36px",
+  "cycle_distance_world": {"walk":48.9375,"aim_walk":48.9375},
+  "limitations": "Sole centre is not the same physical ground-contact point through heel-to-toe roll. Frame-hold drift and full candidate-support spread are reported separately. Backward traversal reverses phases; dedicated backward/vertical art remains absent."
+}

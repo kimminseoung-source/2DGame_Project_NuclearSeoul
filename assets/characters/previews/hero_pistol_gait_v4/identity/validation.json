@@ -1,0 +1,353 @@
+{
+  "canonical_source": "walk_0.png",
+  "head_size": [
+    10,
+    9
+  ],
+  "canonical_neck": [
+    31,
+    30
+  ],
+  "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649",
+  "records": [
+    {
+      "key": "low",
+      "source": "assets\\characters\\previews\\hero_pistol_flow_v3\\low.png",
+      "neck_anchor": [
+        33,
+        30
+      ],
+      "head_top_left": [
+        28,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "raise",
+      "source": "assets\\characters\\previews\\hero_pistol_flow_v3\\raise.png",
+      "neck_anchor": [
+        33,
+        30
+      ],
+      "head_top_left": [
+        28,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim",
+      "source": "assets\\characters\\previews\\hero_pistol_flow_v3\\aim.png",
+      "neck_anchor": [
+        32,
+        31
+      ],
+      "head_top_left": [
+        27,
+        23
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "recoil",
+      "source": "assets\\characters\\previews\\hero_pistol_flow_v3\\recoil.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "settle",
+      "source": "assets\\characters\\previews\\hero_pistol_flow_v3\\settle.png",
+      "neck_anchor": [
+        32,
+        30
+      ],
+      "head_top_left": [
+        27,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "hurt",
+      "source": "assets\\characters\\previews\\hero_pistol_flow_v3\\hurt.png",
+      "neck_anchor": [
+        27,
+        30
+      ],
+      "head_top_left": [
+        22,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_0",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_0.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_1",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_1.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_2",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_2.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_3",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_3.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_4",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_4.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_5",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_5.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_6",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_6.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "walk_7",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\walk_7.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "refinement/walk_2",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\refinement\\walk_2.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "refinement/walk_6",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\refinement\\walk_6.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_0",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_0.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_1",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_1.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_2",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_2.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_3",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_3.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_4",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_4.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_5",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_5.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_6",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_6.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "aim_walk_7",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\aim_walk_7.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "refinement/aim_walk_2",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\refinement\\aim_walk_2.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    },
+    {
+      "key": "refinement/aim_walk_6",
+      "source": "assets\\characters\\previews\\hero_pistol_gait_v4\\refinement\\aim_walk_6.png",
+      "neck_anchor": [
+        31,
+        30
+      ],
+      "head_top_left": [
+        26,
+        22
+      ],
+      "shared_head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649"
+    }
+  ],
+  "scope": "same-view upright keys only; fall/down keep their original angled artwork; original A/B/C assets untouched"
+}

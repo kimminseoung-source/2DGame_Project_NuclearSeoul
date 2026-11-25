@@ -1,0 +1,36 @@
+{
+  "stage": "phase 1 appearance review; not separated assets or game integration",
+  "weapon": "pistol_two_handed",
+  "direction": "south-east only",
+  "native_body_height": 36,
+  "sprite_canvas": [
+    64,
+    64
+  ],
+  "planned_ground_pivot": [
+    32,
+    58
+  ],
+  "poses": [
+    "low_ready",
+    "aim"
+  ],
+  "required_anchors": [
+    "ground",
+    "primary_grip",
+    "support_hand",
+    "muzzle"
+  ],
+  "measured_anchors": null,
+  "layers_planned": [
+    "body_and_hands",
+    "pistol",
+    "optional_fingers_occlusion"
+  ],
+  "existing_game_weapon": "assets/weapons/pistol.png",
+  "source_appearance": "assets/characters/previews/hero_redjacket_v1/generated_poses.png",
+  "notes": [
+    "Do not interpret proposed anchor names as measured production coordinates.",
+    "Guide arms are a new 2D design over the previous projected torso; no pistol IK solve claimed."
+  ]
+}

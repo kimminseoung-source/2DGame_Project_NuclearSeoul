@@ -1,0 +1,112 @@
+{
+  "frames": [
+    {
+      "kind": "body",
+      "frame": 0,
+      "size": [
+        64,
+        64
+      ],
+      "bbox": [
+        26,
+        17,
+        40,
+        53
+      ],
+      "height": 36,
+      "touches_edge": false,
+      "opaque_colors": 20
+    },
+    {
+      "kind": "body",
+      "frame": 1,
+      "size": [
+        64,
+        64
+      ],
+      "bbox": [
+        26,
+        17,
+        40,
+        53
+      ],
+      "height": 36,
+      "touches_edge": false,
+      "opaque_colors": 17
+    },
+    {
+      "kind": "held",
+      "frame": 0,
+      "size": [
+        64,
+        64
+      ],
+      "bbox": [
+        26,
+        17,
+        43,
+        53
+      ],
+      "height": 36,
+      "touches_edge": false,
+      "opaque_colors": 23
+    },
+    {
+      "kind": "held",
+      "frame": 1,
+      "size": [
+        64,
+        64
+      ],
+      "bbox": [
+        26,
+        17,
+        41,
+        53
+      ],
+      "height": 36,
+      "touches_edge": false,
+      "opaque_colors": 20
+    }
+  ],
+  "anchors": {
+    "canvas": [
+      64,
+      64
+    ],
+    "records": [
+      {
+        "frame": 1,
+        "grip": [
+          29.095,
+          36.3
+        ],
+        "tip": [
+          42.171,
+          43.487
+        ],
+        "ground": [
+          31.5,
+          47.819
+        ]
+      },
+      {
+        "frame": 150,
+        "grip": [
+          27.794,
+          36.04
+        ],
+        "tip": [
+          39.749,
+          44.238
+        ],
+        "ground": [
+          31.5,
+          47.819
+        ]
+      }
+    ],
+    "note": "Fixed camera; no per-frame crop or rescaling. Ground is projected model origin."
+  },
+  "scope": "idle only; no attack, no other directions; temporary game draw override"
+}

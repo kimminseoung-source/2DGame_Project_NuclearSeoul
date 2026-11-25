@@ -1,0 +1,488 @@
+{
+  "method": "estimated boot centre sampled each 1/60s; per-held-key candidate-stance drift",
+  "max_drift_canvas_px": 6.519,
+  "zero_foot_lock": false,
+  "samples": [
+    {
+      "tick": 0,
+      "key": 0,
+      "phase": 0.035256410256409895,
+      "root_world_x": 501.8333333333333,
+      "estimated_right_boot_world_x": 513.6458333333333,
+      "candidate_stance": true
+    },
+    {
+      "tick": 1,
+      "key": 0,
+      "phase": 0.07051282051281979,
+      "root_world_x": 503.66666666666663,
+      "estimated_right_boot_world_x": 515.4791666666666,
+      "candidate_stance": true
+    },
+    {
+      "tick": 2,
+      "key": 0,
+      "phase": 0.10576923076922969,
+      "root_world_x": 505.49999999999994,
+      "estimated_right_boot_world_x": 517.3125,
+      "candidate_stance": true
+    },
+    {
+      "tick": 3,
+      "key": 0,
+      "phase": 0.14102564102563958,
+      "root_world_x": 507.33333333333326,
+      "estimated_right_boot_world_x": 519.1458333333333,
+      "candidate_stance": true
+    },
+    {
+      "tick": 4,
+      "key": 0,
+      "phase": 0.1762820512820495,
+      "root_world_x": 509.1666666666666,
+      "estimated_right_boot_world_x": 520.9791666666665,
+      "candidate_stance": true
+    },
+    {
+      "tick": 5,
+      "key": 0,
+      "phase": 0.2115384615384594,
+      "root_world_x": 510.9999999999999,
+      "estimated_right_boot_world_x": 522.8124999999999,
+      "candidate_stance": true
+    },
+    {
+      "tick": 6,
+      "key": 0,
+      "phase": 0.2467948717948704,
+      "root_world_x": 512.8333333333333,
+      "estimated_right_boot_world_x": 524.6458333333333,
+      "candidate_stance": true
+    },
+    {
+      "tick": 7,
+      "key": 1,
+      "phase": 0.2820512820512814,
+      "root_world_x": 514.6666666666666,
+      "estimated_right_boot_world_x": 514.6666666666666,
+      "candidate_stance": true
+    },
+    {
+      "tick": 8,
+      "key": 1,
+      "phase": 0.31730769230769235,
+      "root_world_x": 516.5,
+      "estimated_right_boot_world_x": 516.5,
+      "candidate_stance": true
+    },
+    {
+      "tick": 9,
+      "key": 1,
+      "phase": 0.3525641025641033,
+      "root_world_x": 518.3333333333334,
+      "estimated_right_boot_world_x": 518.3333333333334,
+      "candidate_stance": true
+    },
+    {
+      "tick": 10,
+      "key": 1,
+      "phase": 0.3878205128205143,
+      "root_world_x": 520.1666666666667,
+      "estimated_right_boot_world_x": 520.1666666666667,
+      "candidate_stance": true
+    },
+    {
+      "tick": 11,
+      "key": 1,
+      "phase": 0.42307692307692524,
+      "root_world_x": 522.0000000000001,
+      "estimated_right_boot_world_x": 522.0000000000001,
+      "candidate_stance": true
+    },
+    {
+      "tick": 12,
+      "key": 1,
+      "phase": 0.4583333333333362,
+      "root_world_x": 523.8333333333335,
+      "estimated_right_boot_world_x": 523.8333333333335,
+      "candidate_stance": true
+    },
+    {
+      "tick": 13,
+      "key": 1,
+      "phase": 0.49358974358974717,
+      "root_world_x": 525.6666666666669,
+      "estimated_right_boot_world_x": 525.6666666666669,
+      "candidate_stance": true
+    },
+    {
+      "tick": 14,
+      "key": 2,
+      "phase": 0.5288461538461582,
+      "root_world_x": 527.5000000000002,
+      "estimated_right_boot_world_x": 514.0000000000002,
+      "candidate_stance": false
+    },
+    {
+      "tick": 15,
+      "key": 2,
+      "phase": 0.5641025641025692,
+      "root_world_x": 529.3333333333336,
+      "estimated_right_boot_world_x": 515.8333333333336,
+      "candidate_stance": false
+    },
+    {
+      "tick": 16,
+      "key": 2,
+      "phase": 0.5993589743589802,
+      "root_world_x": 531.166666666667,
+      "estimated_right_boot_world_x": 517.666666666667,
+      "candidate_stance": false
+    },
+    {
+      "tick": 17,
+      "key": 2,
+      "phase": 0.6346153846153912,
+      "root_world_x": 533.0000000000003,
+      "estimated_right_boot_world_x": 519.5000000000003,
+      "candidate_stance": false
+    },
+    {
+      "tick": 18,
+      "key": 2,
+      "phase": 0.6698717948718023,
+      "root_world_x": 534.8333333333337,
+      "estimated_right_boot_world_x": 521.3333333333337,
+      "candidate_stance": false
+    },
+    {
+      "tick": 19,
+      "key": 2,
+      "phase": 0.7051282051282133,
+      "root_world_x": 536.6666666666671,
+      "estimated_right_boot_world_x": 523.1666666666671,
+      "candidate_stance": false
+    },
+    {
+      "tick": 20,
+      "key": 2,
+      "phase": 0.7403846153846243,
+      "root_world_x": 538.5000000000005,
+      "estimated_right_boot_world_x": 525.0000000000005,
+      "candidate_stance": false
+    },
+    {
+      "tick": 21,
+      "key": 3,
+      "phase": 0.7756410256410353,
+      "root_world_x": 540.3333333333338,
+      "estimated_right_boot_world_x": 533.5833333333338,
+      "candidate_stance": false
+    },
+    {
+      "tick": 22,
+      "key": 3,
+      "phase": 0.8108974358974463,
+      "root_world_x": 542.1666666666672,
+      "estimated_right_boot_world_x": 535.4166666666672,
+      "candidate_stance": false
+    },
+    {
+      "tick": 23,
+      "key": 3,
+      "phase": 0.8461538461538574,
+      "root_world_x": 544.0000000000006,
+      "estimated_right_boot_world_x": 537.2500000000006,
+      "candidate_stance": false
+    },
+    {
+      "tick": 24,
+      "key": 3,
+      "phase": 0.8814102564102684,
+      "root_world_x": 545.8333333333339,
+      "estimated_right_boot_world_x": 539.0833333333339,
+      "candidate_stance": false
+    },
+    {
+      "tick": 25,
+      "key": 3,
+      "phase": 0.9166666666666794,
+      "root_world_x": 547.6666666666673,
+      "estimated_right_boot_world_x": 540.9166666666673,
+      "candidate_stance": false
+    },
+    {
+      "tick": 26,
+      "key": 3,
+      "phase": 0.9519230769230904,
+      "root_world_x": 549.5000000000007,
+      "estimated_right_boot_world_x": 542.7500000000007,
+      "candidate_stance": false
+    },
+    {
+      "tick": 27,
+      "key": 3,
+      "phase": 0.9871794871795014,
+      "root_world_x": 551.333333333334,
+      "estimated_right_boot_world_x": 544.583333333334,
+      "candidate_stance": false
+    },
+    {
+      "tick": 28,
+      "key": 0,
+      "phase": 0.022435897435912455,
+      "root_world_x": 553.1666666666674,
+      "estimated_right_boot_world_x": 564.9791666666674,
+      "candidate_stance": true
+    },
+    {
+      "tick": 29,
+      "key": 0,
+      "phase": 0.05769230769232344,
+      "root_world_x": 555.0000000000008,
+      "estimated_right_boot_world_x": 566.8125000000008,
+      "candidate_stance": true
+    },
+    {
+      "tick": 30,
+      "key": 0,
+      "phase": 0.09294871794873442,
+      "root_world_x": 556.8333333333342,
+      "estimated_right_boot_world_x": 568.6458333333342,
+      "candidate_stance": true
+    },
+    {
+      "tick": 31,
+      "key": 0,
+      "phase": 0.1282051282051454,
+      "root_world_x": 558.6666666666675,
+      "estimated_right_boot_world_x": 570.4791666666675,
+      "candidate_stance": true
+    },
+    {
+      "tick": 32,
+      "key": 0,
+      "phase": 0.1634615384615564,
+      "root_world_x": 560.5000000000009,
+      "estimated_right_boot_world_x": 572.3125000000009,
+      "candidate_stance": true
+    },
+    {
+      "tick": 33,
+      "key": 0,
+      "phase": 0.19871794871796739,
+      "root_world_x": 562.3333333333343,
+      "estimated_right_boot_world_x": 574.1458333333343,
+      "candidate_stance": true
+    },
+    {
+      "tick": 34,
+      "key": 0,
+      "phase": 0.23397435897437838,
+      "root_world_x": 564.1666666666677,
+      "estimated_right_boot_world_x": 575.9791666666677,
+      "candidate_stance": true
+    },
+    {
+      "tick": 35,
+      "key": 1,
+      "phase": 0.26923076923078937,
+      "root_world_x": 566.000000000001,
+      "estimated_right_boot_world_x": 566.000000000001,
+      "candidate_stance": true
+    },
+    {
+      "tick": 36,
+      "key": 1,
+      "phase": 0.30448717948720033,
+      "root_world_x": 567.8333333333344,
+      "estimated_right_boot_world_x": 567.8333333333344,
+      "candidate_stance": true
+    },
+    {
+      "tick": 37,
+      "key": 1,
+      "phase": 0.3397435897436113,
+      "root_world_x": 569.6666666666678,
+      "estimated_right_boot_world_x": 569.6666666666678,
+      "candidate_stance": true
+    },
+    {
+      "tick": 38,
+      "key": 1,
+      "phase": 0.37500000000002226,
+      "root_world_x": 571.5000000000011,
+      "estimated_right_boot_world_x": 571.5000000000011,
+      "candidate_stance": true
+    },
+    {
+      "tick": 39,
+      "key": 1,
+      "phase": 0.4102564102564332,
+      "root_world_x": 573.3333333333345,
+      "estimated_right_boot_world_x": 573.3333333333345,
+      "candidate_stance": true
+    },
+    {
+      "tick": 40,
+      "key": 1,
+      "phase": 0.4455128205128442,
+      "root_world_x": 575.1666666666679,
+      "estimated_right_boot_world_x": 575.1666666666679,
+      "candidate_stance": true
+    },
+    {
+      "tick": 41,
+      "key": 1,
+      "phase": 0.48076923076925515,
+      "root_world_x": 577.0000000000013,
+      "estimated_right_boot_world_x": 577.0000000000013,
+      "candidate_stance": true
+    },
+    {
+      "tick": 42,
+      "key": 2,
+      "phase": 0.5160256410256662,
+      "root_world_x": 578.8333333333346,
+      "estimated_right_boot_world_x": 565.3333333333346,
+      "candidate_stance": false
+    },
+    {
+      "tick": 43,
+      "key": 2,
+      "phase": 0.5512820512820772,
+      "root_world_x": 580.666666666668,
+      "estimated_right_boot_world_x": 567.166666666668,
+      "candidate_stance": false
+    },
+    {
+      "tick": 44,
+      "key": 2,
+      "phase": 0.5865384615384882,
+      "root_world_x": 582.5000000000014,
+      "estimated_right_boot_world_x": 569.0000000000014,
+      "candidate_stance": false
+    },
+    {
+      "tick": 45,
+      "key": 2,
+      "phase": 0.6217948717948992,
+      "root_world_x": 584.3333333333347,
+      "estimated_right_boot_world_x": 570.8333333333347,
+      "candidate_stance": false
+    },
+    {
+      "tick": 46,
+      "key": 2,
+      "phase": 0.6570512820513102,
+      "root_world_x": 586.1666666666681,
+      "estimated_right_boot_world_x": 572.6666666666681,
+      "candidate_stance": false
+    },
+    {
+      "tick": 47,
+      "key": 2,
+      "phase": 0.6923076923077213,
+      "root_world_x": 588.0000000000015,
+      "estimated_right_boot_world_x": 574.5000000000015,
+      "candidate_stance": false
+    },
+    {
+      "tick": 48,
+      "key": 2,
+      "phase": 0.7275641025641323,
+      "root_world_x": 589.8333333333348,
+      "estimated_right_boot_world_x": 576.3333333333348,
+      "candidate_stance": false
+    },
+    {
+      "tick": 49,
+      "key": 3,
+      "phase": 0.7628205128205433,
+      "root_world_x": 591.6666666666682,
+      "estimated_right_boot_world_x": 584.9166666666682,
+      "candidate_stance": false
+    },
+    {
+      "tick": 50,
+      "key": 3,
+      "phase": 0.7980769230769543,
+      "root_world_x": 593.5000000000016,
+      "estimated_right_boot_world_x": 586.7500000000016,
+      "candidate_stance": false
+    },
+    {
+      "tick": 51,
+      "key": 3,
+      "phase": 0.8333333333333653,
+      "root_world_x": 595.333333333335,
+      "estimated_right_boot_world_x": 588.583333333335,
+      "candidate_stance": false
+    },
+    {
+      "tick": 52,
+      "key": 3,
+      "phase": 0.8685897435897764,
+      "root_world_x": 597.1666666666683,
+      "estimated_right_boot_world_x": 590.4166666666683,
+      "candidate_stance": false
+    },
+    {
+      "tick": 53,
+      "key": 3,
+      "phase": 0.9038461538461874,
+      "root_world_x": 599.0000000000017,
+      "estimated_right_boot_world_x": 592.2500000000017,
+      "candidate_stance": false
+    },
+    {
+      "tick": 54,
+      "key": 3,
+      "phase": 0.9391025641025984,
+      "root_world_x": 600.8333333333351,
+      "estimated_right_boot_world_x": 594.0833333333351,
+      "candidate_stance": false
+    },
+    {
+      "tick": 55,
+      "key": 3,
+      "phase": 0.9743589743590094,
+      "root_world_x": 602.6666666666684,
+      "estimated_right_boot_world_x": 595.9166666666684,
+      "candidate_stance": false
+    },
+    {
+      "tick": 56,
+      "key": 0,
+      "phase": 0.00961538461542033,
+      "root_world_x": 604.5000000000018,
+      "estimated_right_boot_world_x": 616.3125000000018,
+      "candidate_stance": true
+    },
+    {
+      "tick": 57,
+      "key": 0,
+      "phase": 0.044871794871831315,
+      "root_world_x": 606.3333333333352,
+      "estimated_right_boot_world_x": 618.1458333333352,
+      "candidate_stance": true
+    },
+    {
+      "tick": 58,
+      "key": 0,
+      "phase": 0.0801282051282423,
+      "root_world_x": 608.1666666666686,
+      "estimated_right_boot_world_x": 619.9791666666686,
+      "candidate_stance": true
+    },
+    {
+      "tick": 59,
+      "key": 0,
+      "phase": 0.11538461538465328,
+      "root_world_x": 610.0000000000019,
+      "estimated_right_boot_world_x": 621.8125000000019,
+      "candidate_stance": true
+    }
+  ],
+  "limitation": "art boot annotation is approximate; does not verify anatomy or full gait contact intervals"
+}

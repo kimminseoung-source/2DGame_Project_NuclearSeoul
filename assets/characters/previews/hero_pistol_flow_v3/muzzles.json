@@ -1,0 +1,33 @@
+{
+  "method": "furthest forward grey barrel pixels in chest region, side-view pilot only",
+  "points": {
+    "aim": [
+      43.5,
+      30.5
+    ],
+    "recoil": [
+      40.5,
+      29.0
+    ],
+    "settle": [
+      42.5,
+      29.5
+    ],
+    "aim_walk_0": [
+      41.5,
+      30.5
+    ],
+    "aim_walk_1": [
+      38.5,
+      30.5
+    ],
+    "aim_walk_2": [
+      39.5,
+      31.5
+    ],
+    "aim_walk_3": [
+      39.5,
+      30.5
+    ]
+  }
+}

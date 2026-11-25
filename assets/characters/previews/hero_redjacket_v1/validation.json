@@ -1,0 +1,44 @@
+{
+  "shared_scale": 0.04603580562659847,
+  "frames": [
+    {
+      "pose": "idle",
+      "source_bbox": [
+        193,
+        73,
+        824,
+        855
+      ],
+      "output_bbox": [
+        18,
+        22,
+        46,
+        58
+      ],
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "guard",
+      "source_bbox": [
+        113,
+        74,
+        716,
+        855
+      ],
+      "output_bbox": [
+        18,
+        22,
+        46,
+        58
+      ],
+      "pivot": [
+        32,
+        58
+      ]
+    }
+  ],
+  "scope": "two appearance keys with baked sword; no model/rig/animation or game replacement"
+}

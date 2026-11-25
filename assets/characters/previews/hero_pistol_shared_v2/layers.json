@@ -1,0 +1,48 @@
+{
+  "scale": 0.04449938195302843,
+  "cell": [
+    64,
+    64
+  ],
+  "seam_y": 42,
+  "head_shared_rows": [
+    0,
+    31
+  ],
+  "upper_poses": 2,
+  "idle_lower": 1,
+  "walking_lowers": 8,
+  "weapon_images": 1,
+  "source_walking": "hero_poseguided_ai_v2_twohanded/walk_0..7.png",
+  "anchors": {
+    "low": {
+      "grip": [
+        34,
+        39
+      ],
+      "angle_clockwise": 45
+    },
+    "aim": {
+      "grip": [
+        39,
+        33
+      ],
+      "angle_clockwise": 0
+    }
+  },
+  "same_lower_bytes_per_state": true,
+  "anchors_are_preview_estimates": true,
+  "all_16_composites_inside_canvas": true,
+  "distinct_walk_lower_hashes": 8,
+  "gif_cycle_ms": 600,
+  "standing_boot_span_px": {
+    "old_aim": 26,
+    "new_low": 14,
+    "new_aim": 14
+  },
+  "upper_layer_sha256": {
+    "low": "37f1164844c16c6bf68fb9f60cd55ebb2b0a2a08d5c030a4ced177953765ea44",
+    "aim": "714b3484c1fa6133191118db259befa639414f97913b23290ac94798c6dd5ad7"
+  },
+  "scope": "single-direction layer/composition study, not game-integrated; no foot-world-lock claim"
+}

@@ -1,0 +1,228 @@
+{
+  "frames": [
+    {
+      "kind": "body",
+      "i": 0,
+      "bbox": [
+        27,
+        17,
+        40,
+        53
+      ]
+    },
+    {
+      "kind": "body",
+      "i": 1,
+      "bbox": [
+        26,
+        17,
+        43,
+        53
+      ]
+    },
+    {
+      "kind": "body",
+      "i": 2,
+      "bbox": [
+        25,
+        18,
+        41,
+        53
+      ]
+    },
+    {
+      "kind": "body",
+      "i": 3,
+      "bbox": [
+        25,
+        17,
+        41,
+        53
+      ]
+    },
+    {
+      "kind": "body",
+      "i": 4,
+      "bbox": [
+        23,
+        17,
+        43,
+        55
+      ]
+    },
+    {
+      "kind": "body",
+      "i": 5,
+      "bbox": [
+        26,
+        18,
+        42,
+        55
+      ]
+    },
+    {
+      "kind": "held",
+      "i": 0,
+      "bbox": [
+        27,
+        17,
+        47,
+        53
+      ]
+    },
+    {
+      "kind": "held",
+      "i": 1,
+      "bbox": [
+        26,
+        17,
+        49,
+        53
+      ]
+    },
+    {
+      "kind": "held",
+      "i": 2,
+      "bbox": [
+        25,
+        18,
+        47,
+        53
+      ]
+    },
+    {
+      "kind": "held",
+      "i": 3,
+      "bbox": [
+        25,
+        17,
+        41,
+        53
+      ]
+    },
+    {
+      "kind": "held",
+      "i": 4,
+      "bbox": [
+        23,
+        17,
+        43,
+        55
+      ]
+    },
+    {
+      "kind": "held",
+      "i": 5,
+      "bbox": [
+        25,
+        18,
+        42,
+        55
+      ]
+    }
+  ],
+  "animation": {
+    "animation": "Walking.fbx",
+    "samples_match": "mpfb_pose.main frames=6",
+    "camera_fixed": true,
+    "records": [
+      {
+        "index": 0,
+        "source_frame": 1,
+        "ground": [
+          31.5,
+          49.276
+        ],
+        "grip": [
+          29.529,
+          38.175
+        ],
+        "tip": [
+          45.089,
+          41.015
+        ]
+      },
+      {
+        "index": 1,
+        "source_frame": 7,
+        "ground": [
+          31.5,
+          49.276
+        ],
+        "grip": [
+          32.105,
+          37.597
+        ],
+        "tip": [
+          47.666,
+          35.619
+        ]
+      },
+      {
+        "index": 2,
+        "source_frame": 13,
+        "ground": [
+          31.5,
+          49.276
+        ],
+        "grip": [
+          30.851,
+          38.07
+        ],
+        "tip": [
+          46.104,
+          38.701
+        ]
+      },
+      {
+        "index": 3,
+        "source_frame": 20,
+        "ground": [
+          31.5,
+          49.276
+        ],
+        "grip": [
+          26.35,
+          36.66
+        ],
+        "tip": [
+          38.544,
+          46.595
+        ]
+      },
+      {
+        "index": 4,
+        "source_frame": 26,
+        "ground": [
+          31.5,
+          49.276
+        ],
+        "grip": [
+          24.594,
+          35.497
+        ],
+        "tip": [
+          34.514,
+          48.385
+        ]
+      },
+      {
+        "index": 5,
+        "source_frame": 32,
+        "ground": [
+          31.5,
+          49.276
+        ],
+        "grip": [
+          26.653,
+          37.334
+        ],
+        "tip": [
+          39.423,
+          47.376
+        ]
+      }
+    ]
+  },
+  "scope": "one-direction walk study; original rig and original six time samples"
+}

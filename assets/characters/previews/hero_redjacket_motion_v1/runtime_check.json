@@ -1,0 +1,13 @@
+{
+  "passed": [
+    "all six walk frames during real movement",
+    "idle does not advance walking distance",
+    "blocked wall movement does not cycle feet",
+    "quick cut: real damage and synchronized windup/impact/recover",
+    "charged cut: real damage and synchronized windup/impact/recover",
+    "dodge renders with new walk silhouettes/afterimages",
+    "hurt and reset retain new look"
+  ],
+  "game_montage_frames": 300,
+  "scope": "one southeast drawing direction, mirrored left; no new up/down/roll/hurt/death art"
+}

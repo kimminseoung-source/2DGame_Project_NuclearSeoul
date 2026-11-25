@@ -1,0 +1,39 @@
+{
+  "canvas": [
+    64,
+    64
+  ],
+  "records": [
+    {
+      "frame": 1,
+      "grip": [
+        29.095,
+        36.3
+      ],
+      "tip": [
+        42.171,
+        43.487
+      ],
+      "ground": [
+        31.5,
+        47.819
+      ]
+    },
+    {
+      "frame": 150,
+      "grip": [
+        27.794,
+        36.04
+      ],
+      "tip": [
+        39.749,
+        44.238
+      ],
+      "ground": [
+        31.5,
+        47.819
+      ]
+    }
+  ],
+  "note": "Fixed camera; no per-frame crop or rescaling. Ground is projected model origin."
+}

@@ -1,0 +1,103 @@
+{
+  "animation": "Walking.fbx",
+  "samples_match": "mpfb_pose.main frames=6",
+  "camera_fixed": true,
+  "records": [
+    {
+      "index": 0,
+      "source_frame": 1,
+      "ground": [
+        31.5,
+        49.276
+      ],
+      "grip": [
+        29.529,
+        38.175
+      ],
+      "tip": [
+        45.089,
+        41.015
+      ]
+    },
+    {
+      "index": 1,
+      "source_frame": 7,
+      "ground": [
+        31.5,
+        49.276
+      ],
+      "grip": [
+        32.105,
+        37.597
+      ],
+      "tip": [
+        47.666,
+        35.619
+      ]
+    },
+    {
+      "index": 2,
+      "source_frame": 13,
+      "ground": [
+        31.5,
+        49.276
+      ],
+      "grip": [
+        30.851,
+        38.07
+      ],
+      "tip": [
+        46.104,
+        38.701
+      ]
+    },
+    {
+      "index": 3,
+      "source_frame": 20,
+      "ground": [
+        31.5,
+        49.276
+      ],
+      "grip": [
+        26.35,
+        36.66
+      ],
+      "tip": [
+        38.544,
+        46.595
+      ]
+    },
+    {
+      "index": 4,
+      "source_frame": 26,
+      "ground": [
+        31.5,
+        49.276
+      ],
+      "grip": [
+        24.594,
+        35.497
+      ],
+      "tip": [
+        34.514,
+        48.385
+      ]
+    },
+    {
+      "index": 5,
+      "source_frame": 32,
+      "ground": [
+        31.5,
+        49.276
+      ],
+      "grip": [
+        26.653,
+        37.334
+      ],
+      "tip": [
+        39.423,
+        47.376
+      ]
+    }
+  ]
+}

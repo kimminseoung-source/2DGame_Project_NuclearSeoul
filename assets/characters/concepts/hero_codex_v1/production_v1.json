@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "reference": "hero_concept_v4_sword.png",
+  "stage": "south-east idle preview; not an approved game replacement",
+  "body": {"width_scale": 1.16, "head_scale": 1.18},
+  "camera": {"tilt_degrees": 30, "sprite_canvas": 64, "body_pixels": 36, "feet_from_bottom": 12},
+  "palette": {
+    "skin": [[113,73,53],[181,126,86],[222,171,122]],
+    "jacket": [[102,64,31],[174,113,43],[221,158,72]],
+    "shirt": [[24,25,27],[39,40,41],[64,64,61]],
+    "jeans": [[28,29,32],[48,49,53],[73,73,75]],
+    "hair": [[15,14,16],[29,26,27],[58,49,46]],
+    "eyes": [[16,14,14],[23,19,18],[46,32,25]],
+    "boots": [[40,30,25],[72,50,36],[106,77,52]],
+    "backpack": [[40,40,31],[72,70,47],[106,100,66]],
+    "strap": [[24,25,23],[45,45,36],[69,66,49]],
+    "gloves": [[16,17,19],[28,29,31],[47,46,44]],
+    "wrap": [[98,91,79],[169,157,134],[206,195,166]],
+    "steel": [[71,75,78],[135,143,145],[203,211,204]],
+    "edge": [[129,136,137],[187,196,193],[231,235,222]],
+    "grip": [[28,23,22],[55,41,31],[88,64,42]]
+  },
+  "backpack": {"width": 0.29, "depth": 0.145, "height": 0.34, "bedroll": false},
+  "sword": {"blade_length": 0.70, "blade_width": 0.075, "grip_length": 0.17, "guard_width": 0.11},
+  "notes": ["Retain rig and existing licensed assets; no downloaded dependencies.", "Fixed camera and world ground pivot; body and sword are separate renders.", "Palette is a production interpretation of the concept, not automatic color matching."]
+}

@@ -1,0 +1,31 @@
+{
+  "checks": [
+    "normal walk uses all four full-body keys",
+    "stationary raise reaches planted A-like aim",
+    "aimed movement uses short-step keys, then settles before idle aim",
+    "real release consumes one bullet, hurts target and triggers recoil",
+    "hurt and death have real body keys instead of standing idle",
+    "reset and A/B/C/D switching retain position/health/ammo"
+  ],
+  "states_observed": [
+    "aim",
+    "aim_walk_0",
+    "aim_walk_1",
+    "aim_walk_2",
+    "aim_walk_3",
+    "down",
+    "fall",
+    "hurt",
+    "low",
+    "raise",
+    "recoil",
+    "settle",
+    "walk_0",
+    "walk_1",
+    "walk_2",
+    "walk_3"
+  ],
+  "montage_frames": 300,
+  "foot_drift_canvas_px": 6.519,
+  "direction_scope": "one direction mirrored; no dedicated vertical/roll/pickup keys"
+}

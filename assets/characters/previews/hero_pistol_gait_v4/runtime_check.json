@@ -1,0 +1,87 @@
+{
+  "checks": [
+    "all 8 normal walking phases selected by actual displacement",
+    "all 8 aim-walk phases and raised stationary aim reachable",
+    "real moving release hits and consumes 1 round; legs display and phase continue during recoil",
+    "stationary / blocked displacement does not advance gait",
+    "aim facing can remain left while moving right; backward phase traversal works",
+    "paused presentation clock does not advance gait",
+    "moving quick tap from low-ready uses raised muzzle and retains walking",
+    "A/B/C/D comparison preserves position, health and ammo; reset clears motion"
+  ],
+  "observed": [
+    "aim_walk_0",
+    "aim_walk_1",
+    "aim_walk_2",
+    "aim_walk_3",
+    "aim_walk_4",
+    "aim_walk_5",
+    "aim_walk_6",
+    "aim_walk_7",
+    "walk_0",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "walk_5",
+    "walk_6",
+    "walk_7"
+  ],
+  "moving_shot": [
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.2188165176670595
+    },
+    {
+      "sprite": "aim_walk_1",
+      "phase": 0.23754789272027288
+    },
+    {
+      "sprite": "aim_walk_2",
+      "phase": 0.25627926777348625
+    },
+    {
+      "sprite": "aim_walk_2",
+      "phase": 0.2750106428266996
+    },
+    {
+      "sprite": "aim_walk_2",
+      "phase": 0.31247339293312865
+    },
+    {
+      "sprite": "aim_walk_2",
+      "phase": 0.34993614303955767
+    },
+    {
+      "sprite": "aim_walk_3",
+      "phase": 0.3873988931459867
+    }
+  ],
+  "max_held_key_drift_native_px": 3.259,
+  "max_candidate_support_spread_native_px": 7.654,
+  "scope": "side view mirrored; moving-body recoil not authored, muzzle flash/tracer/camera remain; no full 8-direction guarantee"
+}

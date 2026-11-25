@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "26 upright base/refined pose assets share identical 10x9 head pixels without resampling; rows32+ unchanged",
+    "both F10 branches actually load shared-head state/movement assets; C original images stay separate",
+    "650 real SDL/TTF cache insertions stay bounded at600 and retain the newest texture",
+    "actual idle/walk/aim/aim-walk transitions render after cache pressure; FACE-R1 build screenshot saved"
+  ],
+  "head_sha256": "5e98f7276fa8d4123115f6656faa814a660bf25ae41efe5147ca47d0b974a649",
+  "verified_pose_assets": 26,
+  "cache_limit": 600,
+  "cache_insertions": 650,
+  "scope": "same-view upright head consistency, not angled death redraw or body-wide design equivalence"
+}

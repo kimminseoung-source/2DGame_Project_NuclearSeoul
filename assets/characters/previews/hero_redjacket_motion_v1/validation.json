@@ -1,0 +1,322 @@
+{
+  "cell": [
+    64,
+    64
+  ],
+  "pivot": [
+    32,
+    58
+  ],
+  "walk_cycle_world": 64,
+  "new_motion_shared_scale": 0.0989010989010989,
+  "records": [
+    {
+      "pose": "walk_0",
+      "source_bbox": [
+        75,
+        27,
+        391,
+        391
+      ],
+      "source_ground": [
+        207.5,
+        391
+      ],
+      "observed_boot_midpoint": [
+        205.0,
+        391
+      ],
+      "bbox": [
+        18,
+        22,
+        49,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "walk_1",
+      "source_bbox": [
+        103,
+        32,
+        391,
+        391
+      ],
+      "source_ground": [
+        207.5,
+        391
+      ],
+      "observed_boot_midpoint": [
+        187.5,
+        391
+      ],
+      "bbox": [
+        21,
+        22,
+        50,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "walk_2",
+      "source_bbox": [
+        121,
+        26,
+        382,
+        391
+      ],
+      "source_ground": [
+        207.5,
+        391
+      ],
+      "observed_boot_midpoint": [
+        204.0,
+        391
+      ],
+      "bbox": [
+        23,
+        22,
+        49,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "walk_3",
+      "source_bbox": [
+        59,
+        25,
+        395,
+        391
+      ],
+      "source_ground": [
+        207.5,
+        391
+      ],
+      "observed_boot_midpoint": [
+        186.5,
+        391
+      ],
+      "bbox": [
+        17,
+        22,
+        50,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "walk_4",
+      "source_bbox": [
+        94,
+        28,
+        399,
+        391
+      ],
+      "source_ground": [
+        207.5,
+        391
+      ],
+      "observed_boot_midpoint": [
+        178.5,
+        391
+      ],
+      "bbox": [
+        20,
+        22,
+        50,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "walk_5",
+      "source_bbox": [
+        130,
+        24,
+        396,
+        391
+      ],
+      "source_ground": [
+        207.5,
+        391
+      ],
+      "observed_boot_midpoint": [
+        207.5,
+        391
+      ],
+      "bbox": [
+        24,
+        21,
+        50,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "windup",
+      "source_bbox": [
+        64,
+        32,
+        353,
+        433
+      ],
+      "source_ground": [
+        207.5,
+        433
+      ],
+      "observed_boot_midpoint": [
+        208.0,
+        433
+      ],
+      "bbox": [
+        17,
+        18,
+        46,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "impact",
+      "source_bbox": [
+        39,
+        51,
+        391,
+        400
+      ],
+      "source_ground": [
+        207.5,
+        400
+      ],
+      "observed_boot_midpoint": [
+        177.0,
+        400
+      ],
+      "bbox": [
+        15,
+        23,
+        49,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "recover",
+      "source_bbox": [
+        40,
+        46,
+        389,
+        402
+      ],
+      "source_ground": [
+        207.5,
+        402
+      ],
+      "observed_boot_midpoint": [
+        168.0,
+        402
+      ],
+      "bbox": [
+        15,
+        23,
+        49,
+        58
+      ],
+      "scale": 0.0989010989010989,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "idle",
+      "source_bbox": [
+        193,
+        73,
+        824,
+        855
+      ],
+      "source_ground": [
+        443.5,
+        855
+      ],
+      "observed_boot_midpoint": [
+        438.0,
+        855
+      ],
+      "bbox": [
+        21,
+        21,
+        50,
+        58
+      ],
+      "scale": 0.04603580562659847,
+      "pivot": [
+        32,
+        58
+      ]
+    },
+    {
+      "pose": "guard",
+      "source_bbox": [
+        113,
+        74,
+        716,
+        855
+      ],
+      "source_ground": [
+        443.5,
+        855
+      ],
+      "observed_boot_midpoint": [
+        414.0,
+        855
+      ],
+      "bbox": [
+        17,
+        22,
+        45,
+        58
+      ],
+      "scale": 0.04603580562659847,
+      "pivot": [
+        32,
+        58
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+ "default_variant": "samurai",
+ "aim_styles": [
+  "chop"
+ ],
+ "note": "Key-pose attacks for the 3D hero (build_hero3d.py): wind-up and hit picture per direction, hand (picture px) and weapon direction (degrees, y up) measured in Blender."
+}

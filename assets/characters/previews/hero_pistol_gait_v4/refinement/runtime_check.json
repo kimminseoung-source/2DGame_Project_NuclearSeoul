@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "four AI swing-leg edits extend lower; original upper body and planted boots stay pixel-identical",
+    "refined D disables distance audio; one step call per actual half-cycle contact",
+    "standing does not replay foot contacts or add footstep audio",
+    "exactly two contact boundaries per forward cycle; blocked/paused updates emit none",
+    "F10 toggles prior/refined D, retaining mechanics and gait phase without a synthetic contact",
+    "foot dust is two short-lived tiny particles; roll dust parameters unchanged"
+  ],
+  "contact_key_sequence": [
+    4,
+    0
+  ],
+  "runtime_steps": 8,
+  "scope": "four passing keys, contact audio/tiny reused dust; no speed/camera/noise-rule changes"
+}

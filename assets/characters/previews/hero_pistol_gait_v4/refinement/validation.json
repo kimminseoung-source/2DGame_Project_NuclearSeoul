@@ -1,0 +1,86 @@
+{
+  "method": "AI redraw of four swing legs; registered original upper/grounded boot masks",
+  "common_edited_ground": 479,
+  "frames": [
+    {
+      "key": "walk_2",
+      "upper_rows_preserved": [
+        0,
+        40
+      ],
+      "support_boot_preserved": [
+        22,
+        51,
+        33,
+        59
+      ],
+      "bbox": [
+        23,
+        22,
+        40,
+        58
+      ],
+      "changed_pixels": 161
+    },
+    {
+      "key": "walk_6",
+      "upper_rows_preserved": [
+        0,
+        40
+      ],
+      "support_boot_preserved": [
+        22,
+        51,
+        33,
+        59
+      ],
+      "bbox": [
+        23,
+        22,
+        38,
+        58
+      ],
+      "changed_pixels": 139
+    },
+    {
+      "key": "aim_walk_2",
+      "upper_rows_preserved": [
+        0,
+        40
+      ],
+      "support_boot_preserved": [
+        22,
+        51,
+        33,
+        59
+      ],
+      "bbox": [
+        24,
+        22,
+        45,
+        58
+      ],
+      "changed_pixels": 162
+    },
+    {
+      "key": "aim_walk_6",
+      "upper_rows_preserved": [
+        0,
+        40
+      ],
+      "support_boot_preserved": [
+        22,
+        51,
+        33,
+        59
+      ],
+      "bbox": [
+        24,
+        22,
+        45,
+        58
+      ],
+      "changed_pixels": 134
+    }
+  ]
+}
