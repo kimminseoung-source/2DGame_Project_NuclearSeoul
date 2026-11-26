@@ -1,4 +1,4 @@
-# 점검 결과 (2026-11-26 12:21, 80개 중 80개 통과, 408초)
+# 점검 결과 (2026-11-26 12:36, 81개 중 81개 통과, 390초)
 
 `tools/checks/run_all.py`가 씀. PASS는 끝까지 돌았다는 뜻 — 숫자는 마지막 줄을 읽을 것.
 
@@ -41,6 +41,7 @@
 | check_keypose | PASS | ok |  |
 | check_map | PASS | stuck: 1 |  |
 | check_mixed | PASS | crawl speed 12.6 px/s |  |
+| check_mood | PASS | ok |  |
 | check_muffled | PASS | where the infected goes vs the real spot (min / avg / max px): {'behind the car': (0, 0, 0), 'in the open': (0, 0, 0)} |  |
 | check_nolegs | PASS | ok |  |
 | check_paperdoll | PASS | ok |  |
@@ -70,7 +71,7 @@
 | check_shove_crawler | PASS | draw ok |  |
 | check_slider | PASS | ok |  |
 | check_sneak8 | PASS | ok |  |
-| check_spawn | PASS | after a slash: next arrival 5.02s later, target (335, 609) (hero at 120,120) |  |
+| check_spawn | PASS | after a slash: next arrival 5.02s later, target (402, 249) (hero at 120,120) |  |
 | check_spitter | PASS | OK |  |
 | check_spitter_mix | PASS | PASS |  |
 | check_spot | PASS | 살금 {30: True, 95: True, 135: True, 145: False, 250: False} / 등 돌림 100: True 30: True |  |
@@ -85,4 +86,4 @@
 | check_variants | PASS | ok 18 rows |  |
 | check_walk | PASS | ok |  |
 
-되돌린 그림 17개(점검이 바꾼 docs/planning 그림): docs/planning/attack_tells.png, docs/planning/attack_variants_game.png, docs/planning/dev_sliders.png, docs/planning/dev_sounds_walk.png, docs/planning/hero_walk_south.gif, docs/planning/hero_walk_south_strip.png, docs/planning/mood_preview/D_vignette.png, docs/planning/mood_preview/D_vignette_lowhp.png, docs/planning/mood_preview/G_offscreen_arrow.png, docs/planning/paper_doll_ingame.png, docs/planning/pistol_ingame.png, docs/planning/roll_8dirs_game.png, docs/planning/roll_dots.png, docs/planning/samurai_game.png, docs/planning/sneak_8dirs_game.png, docs/planning/tool_vs_pixellab.gif, docs/planning/tool_vs_pixellab_strip.png
+되돌린 그림 14개(점검이 바꾼 docs/planning 그림): docs/planning/attack_tells.png, docs/planning/attack_variants_game.png, docs/planning/dev_sliders.png, docs/planning/dev_sounds_walk.png, docs/planning/hero_walk_south.gif, docs/planning/hero_walk_south_strip.png, docs/planning/paper_doll_ingame.png, docs/planning/pistol_ingame.png, docs/planning/roll_8dirs_game.png, docs/planning/roll_dots.png, docs/planning/samurai_game.png, docs/planning/sneak_8dirs_game.png, docs/planning/tool_vs_pixellab.gif, docs/planning/tool_vs_pixellab_strip.png

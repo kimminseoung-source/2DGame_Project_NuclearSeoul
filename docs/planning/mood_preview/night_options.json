@@ -1,0 +1,22 @@
+{
+ "지금": {
+  "ambient": 0.45,
+  "light_radius_px": 150,
+  "soft_px": 90
+ },
+ "1안": {
+  "ambient": 0.55,
+  "light_radius_px": 240,
+  "soft_px": 140
+ },
+ "2안": {
+  "ambient": 0.62,
+  "light_radius_px": 320,
+  "soft_px": 180
+ },
+ "3안": {
+  "ambient": 0.7,
+  "light_radius_px": 400,
+  "soft_px": 220
+ }
+}

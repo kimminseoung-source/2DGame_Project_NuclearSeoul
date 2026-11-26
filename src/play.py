@@ -21,6 +21,7 @@ import dev_tools
 from director import Director
 from daylight import Daylight
 import daylight as daylight_rules
+import mood_fx
 import survivors
 import weapons
 from weapons import BODY_CONTACT
@@ -1287,6 +1288,7 @@ class Game:
 
     def draw_screen(self):
         """Everything drawn on the screen itself over the world canvas."""
+        mood_fx.draw(self)                                 # night dark round the hero + vignette (mood_fx.py)
         self.draw_world_labels()
         if self.bag_open:                                  # the bag screen replaces the HUD
             hud.draw_inventory(self)
