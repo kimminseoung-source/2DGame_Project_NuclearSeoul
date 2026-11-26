@@ -287,8 +287,8 @@ ROWS = (
     ("맞을 때 흔들림·번쩍임", lambda g: _on(g.hit_fx), lambda g, s: setattr(g, "hit_fx", not g.hit_fx)),
     ("피폭체 감각 (F2)", lambda g: _on(g.senses), _senses),
     _slider("피폭체 속도", "zed", *_module_value(infected, "ZOMBIE_SPEED"), 0, 300, 10, lambda v: f"{v:g}"),
-    _slider("피폭체 발견 거리", "eye", *_module_value(infected, "SPOT_DIST"), 30, 400, 10, lambda v: f"{v:g}"),
-    _slider("피폭체 등 뒤 감지", "eye", *_module_value(infected, "NOTICE_NEAR"), 0, 200, 10, lambda v: f"{v:g}"),
+    _slider("피폭체 시야·발견 거리", "eye", *_module_value(infected, "SIGHT_RANGE"), 30, 400, 10, lambda v: f"{v:g}"),
+    _slider("피폭체 근접 감지 (사방)", "eye", *_module_value(infected, "NOTICE_NEAR"), 0, 200, 10, lambda v: f"{v:g}"),
     ("피폭체 소환 (커서)", None, _spawn(False)),
     *([("기어가는 피폭체 소환", None, _spawn(True))] if LEGS_AND_CRAWLERS else []),   # off: no crawlers
     ("피폭체 모두 없애기", None, _clear),
@@ -582,7 +582,7 @@ def draw_boxes(game, cx, cy):
                (255, 60, 50) if striking else (150, 60, 56), 1 if striking else 3)                     # its claw (bright when it comes)
 
 
-SIGHT, NEAR = (110, 150, 240), (150, 190, 255)
+SIGHT, NEAR = (240, 210, 90), (240, 90, 80)   # 2026-11-26: sight yellow, near red (sound rings stay blue)
 NOISE = (240, 200, 90)
 NOISE_SHOW = 0.3                     # s a footstep ring stays after the steps stop
 LOUD_SHOW = 0.8                      # s a loud one (roll, swing, shot) stays: one moment, easy to miss at 0.3
@@ -609,15 +609,15 @@ def age_noises(game, dt):
 
 
 def draw_sight(game, cx, cy):
-    """F5. The cone out to where the hero is spotted at once ("!") - SPOT_DIST, the same whatever
+    """F5. The cone out to where the hero is spotted at once ("!") - SIGHT_RANGE, the same whatever
     he does - plus the all-round ring (NOTICE_NEAR);
     a wall in between hides him."""
     if not game.dev.sight:
         return
-    spot = infected.SPOT_DIST
-    for z in game.zombies:
-        if not z.alive:
-            continue
+    spot = infected.SIGHT_RANGE
+    h = game.hero                    # 2026-11-26: only the 3 nearest, so the rings do not pile up
+    near = sorted((z for z in game.zombies if z.alive), key=lambda z: (z.x - h.x) ** 2 + (z.y - h.y) ** 2)[:3]
+    for z in near:
         zx, zy = z.x - cx, z.y - cy
         _wedge(zx, zy, spot, z.heading, infected.SIGHT_HALF, SIGHT, 2)
         _arc(zx, zy, infected.NOTICE_NEAR, -3.15, 3.15, NEAR, 2)

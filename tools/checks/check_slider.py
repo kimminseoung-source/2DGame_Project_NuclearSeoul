@@ -20,7 +20,7 @@ print("click middle:", dev_tools.click(g, *at(i, (tl + tr) / 2), False), "->", h
 dev_tools.drag(g, *at(i, tr + 30)); print("drag past the end ->", hero_rules.RUN_SPEED)
 dev_tools.release(g); dev_tools.drag(g, *at(i, tl)); print("after release, move does nothing ->", hero_rules.RUN_SPEED)
 # type into the box: 발견 거리 = 175 -> snapped 180? (step 10)
-i = row("피폭체 발견 거리"); bl, br = dev_tools.BOX
+i = row("피폭체 시야·발견 거리"); bl, br = dev_tools.BOX
 dev_tools.click(g, *at(i, (bl + br) / 2), False); dev_tools.release(g)
 for k in (sdl2.SDLK_1, sdl2.SDLK_7, sdl2.SDLK_5): g.key_down(k, keys)
 print("typing:", repr(g.dev.text), "| quick slot not used:", g.message == "")
@@ -30,7 +30,7 @@ sdl2.SDL_RenderReadPixels(canvas.renderer, None, sdl2.SDL_PIXELFORMAT_ARGB8888, 
 raw = ctypes.string_at(s.contents.pixels, s.contents.pitch * settings.HEIGHT)
 pico2d.update_canvas()
 Image.frombuffer("RGBA", (settings.WIDTH, settings.HEIGHT), raw, "raw", "BGRA", s.contents.pitch, 1).convert("RGB").crop((720, 40, 1280, 700)).save("docs/planning/dev_sliders.png")
-g.key_down(sdl2.SDLK_RETURN, keys); print("Enter ->", infected.SPOT_DIST)
+g.key_down(sdl2.SDLK_RETURN, keys); print("Enter ->", infected.SIGHT_RANGE)
 # percent row: type 35 -> bleed chance 0.35
 i = row("출혈 확률"); dev_tools.click(g, *at(i, (bl + br) / 2), False); dev_tools.release(g)
 for k in (sdl2.SDLK_3, sdl2.SDLK_5): g.key_down(k, keys)

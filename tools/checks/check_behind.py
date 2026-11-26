@@ -4,7 +4,7 @@ from math import pi
 import pico2d, sdl2, play, settings, ui, infected
 keys = (sdl2.Uint8 * sdl2.SDL_NUM_SCANCODES)()
 pico2d.open_canvas(settings.WIDTH, settings.HEIGHT, sync=False); ui.enable_blending()
-for gap in (40, 80, 105, 130):
+for gap in (40, 80, 105, 150):
     random.seed(1)
     g = play.Game(); g.to_spawn = 0
     z = g.zombies[0]; z.prone = False; g.zombies[:] = [z]
@@ -13,4 +13,4 @@ for gap in (40, 80, 105, 130):
     if not g.senses: g.toggle_senses()
     for _ in range(10): g.update(1 / 60, keys)
     print(f"등 뒤 {gap}px (가만히): {z.state}")
-print("NOTICE_NEAR", infected.NOTICE_NEAR, "SPOT_DIST", infected.SPOT_DIST)
+print("NOTICE_NEAR", infected.NOTICE_NEAR, "SIGHT_RANGE", infected.SIGHT_RANGE)

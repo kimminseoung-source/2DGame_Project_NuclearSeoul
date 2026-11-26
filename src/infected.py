@@ -13,11 +13,13 @@ from settings import LEGS_AND_CRAWLERS, TEMPO, ZOMBIE_ARC, ZOMBIE_REACH, ZOMBIE_
 from vision_cone import ray_hit
 
 # Infected senses (numbers are ours; the rules come from Zomboid's sight / hearing / memory).
-SIGHT_RANGE = 260               # px an infected sees ahead of it
+# 2026-11-26 rule "보이면·가까우면 들키고, 쏘면 몰려온다": seen in the cone = spotted (one distance),
+# this close = spotted whatever way it faces, a wall hides both [확정]. Footsteps make no noise.
+SIGHT_RANGE = 250               # px an infected sees ahead of it AND spots the hero ("!"); was 260 / 140
 SIGHT_HALF = 1.1                # radians either side of where it faces
-NOTICE_NEAR = 110               # px: this close it notices whatever way it faces (2026-11-21 "앞뒤 차이가 크지
-                                # 않게": was 36, so right behind one felt safe; ahead it is SPOT_DIST 140)
-NOISE_STEP = 70                 # px the hero's footsteps carry
+NOTICE_NEAR = 90                # px: this close it notices whatever way it faces (2026-11-21 "앞뒤 차이가 크지
+                                # 않게": was 36, so right behind one felt safe; ahead it is SIGHT_RANGE; 110 -> 90 on 2026-11-26)
+NOISE_STEP = 70                 # px a quiet melee blow carries (footsteps are silent since 2026-11-26)
 NOISE_ROLL = 140
 NOISE_SLASH = 230
 MEMORY = 8.0                    # s it keeps going to the last place it saw or heard the hero (was 3)
@@ -26,7 +28,6 @@ MEMORY = 8.0                    # s it keeps going to the last place it saw or h
 # once ("!"). Farther, never - it only keeps one it has already spotted in sight up to SIGHT_RANGE.
 # One distance whatever the hero does (2026-11-18 "시야 범위를 일정하게, 움직일 때 변하니까 별로";
 # was 160 moving / 90 still or sneaking). Sneaking still pays off: its footsteps are quieter.
-SPOT_DIST = 140
 FRONT_SOUND = 0.6               # radians: a sound this close to where it faces needs no turn
 WANDER_TURN = (2.0, 5.0)        # s between idle head turns
 SPOTTED_TIME = 0.8              # s the "!" stays after it spots the hero
@@ -246,10 +247,9 @@ class Zombie:
                 self.state = "chase"
                 self.spotted = SPOTTED_TIME
         elif self.state in ("idle", "alert", "search") and self.sees(hero):
-            if dist <= SPOT_DIST:                         # close enough in its sight: "!"
-                self.state, self.seen_time = "chase", 0.0
-                self.target, self.memory = (hero.x, hero.y), MEMORY
-                self.spotted = SPOTTED_TIME    # also when this update goes straight to poised/windup
+            self.state, self.seen_time = "chase", 0.0             # in its sight = spotted: "!"
+            self.target, self.memory = (hero.x, hero.y), MEMORY
+            self.spotted = SPOTTED_TIME    # also when this update goes straight to poised/windup
         elif self.state in ("chase", "poised"):
             if self.sees(hero):
                 self.seen_time += dt

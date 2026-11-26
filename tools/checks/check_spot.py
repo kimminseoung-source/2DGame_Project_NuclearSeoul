@@ -14,8 +14,8 @@ class H:
 def spotted(h, dist, facing=True):
     z = infected.Zombie.__new__(infected.Zombie)
     z.x, z.y, z.heading = dist, 0.0, pi if facing else 0.0
-    return z.sees(h) and dist <= infected.SPOT_DIST
+    return z.sees(h) and dist <= infected.SIGHT_RANGE
 
 
 for label, h in (("걷기", H(True)), ("가만히", H(False)), ("살금", H(True, True))):
-    print(label, {d: spotted(h, d) for d in (30, 95, 135, 145, 250)}, "| 등 돌림 100:", spotted(h, 100, False), "30:", spotted(h, 30, False))
+    print(label, {d: spotted(h, d) for d in (30, 95, 135, 145, 240, 260)}, "| 등 돌림 80:", spotted(h, 80, False), "150:", spotted(h, 150, False), "30:", spotted(h, 30, False))

@@ -874,8 +874,6 @@ class Game:
                 self.make_noise(NOISE_STEP if hero.slash.get("quiet") else NOISE_SLASH)   # every melee blow sounds alike (2026-11-16 "근접 무기는 큰 차이 없어도")
             elif hero.roll > 0 and hero.roll >= ROLL_TIME - real_dt:
                 self.make_noise(NOISE_ROLL)
-            elif hero.moving:
-                self.make_noise(NOISE_STEP * (0.4 if hero.sneaking else 1.0))   # sneaking is quiet
         for z in self.zombies:
             if self.dev.freeze:                            # dev panel: they stand still
                 break

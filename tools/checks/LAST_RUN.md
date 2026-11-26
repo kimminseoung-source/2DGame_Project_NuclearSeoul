@@ -1,4 +1,4 @@
-# 점검 결과 (2026-11-26 12:36, 81개 중 81개 통과, 390초)
+# 점검 결과 (2026-11-26 13:22, 82개 중 82개 통과, 388초)
 
 `tools/checks/run_all.py`가 씀. PASS는 끝까지 돌았다는 뜻 — 숫자는 마지막 줄을 읽을 것.
 
@@ -13,7 +13,7 @@
 | check_bag | PASS | game runs ok |  |
 | check_bag2 | PASS | ok |  |
 | check_bag3 | PASS | ok |  |
-| check_behind | PASS | NOTICE_NEAR 110 SPOT_DIST 140 |  |
+| check_behind | PASS | NOTICE_NEAR 90 SIGHT_RANGE 250 |  |
 | check_body3d | PASS | ok |  |
 | check_cancel | PASS | heavy hit-stop 0.09 |  |
 | check_carry | PASS | ok |  |
@@ -22,6 +22,7 @@
 | check_daylight | PASS | ok |  |
 | check_default_hero | PASS | check_default_hero: PASS |  |
 | check_defense | PASS | ok |  |
+| check_detect_rules | PASS | 감지 규칙 OK |  |
 | check_dev | PASS | ok |  |
 | check_director | PASS | ok |  |
 | check_director2 | PASS | ok |  |
@@ -55,7 +56,7 @@
 | check_range | PASS | axe: range 45px / marked at the edge -> hit (shown torso) / outside range -> not hit / blow 1.01s + rest 0.35s (느림) |  |
 | check_real | PASS | ok |  |
 | check_redjacket_motion | PASS | ["all six walk frames during real movement", "idle does not advance walking distance", "blocked wall movement does not cycle feet", "quick cut: real d |  |
-| check_reel | PASS | shoved idle, hero gone -> search no crash |  |
+| check_reel | PASS | shoved idle, hero gone -> idle no crash |  |
 | check_rings | PASS | ok |  |
 | check_roll8 | PASS | ok |  |
 | check_roll_chain | PASS | gap between rolls (s): [0.066] / rolls: 2 / dust puffs at starts: 2 / moved 417 px (walking adds the rest) |  |
@@ -71,10 +72,10 @@
 | check_shove_crawler | PASS | draw ok |  |
 | check_slider | PASS | ok |  |
 | check_sneak8 | PASS | ok |  |
-| check_spawn | PASS | after a slash: next arrival 5.02s later, target (402, 249) (hero at 120,120) |  |
+| check_spawn | PASS | after a slash: next arrival 5.02s later, target (524, 352) (hero at 120,120) |  |
 | check_spitter | PASS | OK |  |
 | check_spitter_mix | PASS | PASS |  |
-| check_spot | PASS | 살금 {30: True, 95: True, 135: True, 145: False, 250: False} / 등 돌림 100: True 30: True |  |
+| check_spot | PASS | 살금 {30: True, 95: True, 135: True, 145: True, 240: True, 260: False} / 등 돌림 80: True 150: False 30: True |  |
 | check_stage1 | PASS | ok |  |
 | check_stamina | PASS | draw ok |  |
 | check_stomp | PASS | 50px cursor low, far        held : shown torso  pose chop   -> ALIVE |  |
