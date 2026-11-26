@@ -1,6 +1,7 @@
 """Ranged infected prototype: authored key poses, independent glow, interruptible tell.
 
-Only tools/run_spitter_trial.py spawns this type. Existing stages are unchanged.
+The alley mixes a few in (play.Game.new_arrival, 2026-11-26); the station defense never gets one.
+tools/run_spitter_trial.py is the isolated trial.
 """
 from math import atan2, cos, hypot, sqrt
 from pathlib import Path

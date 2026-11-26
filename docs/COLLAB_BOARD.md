@@ -22,6 +22,7 @@
 | (비어 있음) | | | |
 
 ## 다음 후보 (사용자가 고르면 "진행 중"으로)
+- 분위기 후보(A/D/G/H) 중 사용자가 고른 것 실제 게임 적용 — `docs/planning/mood_preview/params.json` 값 사용, 별도 세션
 
 | 후보 | 맡을 쪽 | 메모 |
 |---|---|---|
@@ -37,11 +38,12 @@
 
 | 요청 | 상태 | 요청서 |
 |---|---|---|
-| 붉은 재킷 **근접(검) 그림을 FACE-R1 머리로 다시**(idle·guard·windup·impact·recover·walk 0~5, 64px, `hero_redjacket_motion_v1`과 같은 틀) — 지금 근접 얼굴이 권총 얼굴과 다른 사람으로 보임 | GPT 대기 | 계획서 `docs/plans/2026-11-25_권총주인공_기본연결.md` 결과 |
+| 붉은 재킷 **근접(검) 그림을 FACE-R1 머리로 다시**(idle·guard·windup·impact·recover·walk 0~5, 64px, `hero_redjacket_motion_v1`과 같은 틀) — 지금 근접 얼굴이 권총 얼굴과 다른 사람으로 보임 | GPT 대기(11-27 09:31 이후 부탁, 사용자 확인 후) | [requests/2026-11-25_근접주인공_FACE-R1.md](collab/requests/2026-11-25_근접주인공_FACE-R1.md) (통과 기준: 11장 머리 SHA 동일·목 ±2px·피부색) |
 | 아트 바이블 기준 장면 한 장(골목·주인공·피폭체·UI) | GPT 대기(11-27 이후) |
 | 배경 비교 시안: 지금 골목 한 조각을 도트 타일·소품으로(같은 구도) — 차이를 보고 결정 | GPT 대기(11-27 이후) | [requests/2026-11-25_기준장면.md](collab/requests/2026-11-25_기준장면.md) |
 
 ## 끝남 (최근 것 위로, 오래된 건 DEVLOG로)
+- [시험] 2026-11-26 Claude: 분위기·UI 후보 비교 그림(A 밤 어둠, D 비네트, G 화면 밖 화살표, H 안내 숨김). `tools/mood_preview.py`(숨긴 창 캡처+PIL 덧씌움, 게임 코드 그대로) → `docs/planning/mood_preview/*.png`, 값은 `params.json`(A 원 밖 밝기 0.45·빛 반지름 150px·번짐 90px / D 시작 0.45·세기 0.75·저체력 0.70 붉게 / G 여백 28px·24px 초록 / H 처음 3번만). 서브에이전트 검수: 주인공이 밝은 원 안, H 안내 사라짐 확인. 게임 연결 안 됨.
 - **[확정 범위] 기본 게임 = 붉은 재킷 주인공 (Claude, 11-25)**: src/pistol_hero.py 새로, src/main.py 기본 Game 교체(BUSAN_HERO=sword면 예전 3D 검). 권총 들고 6발·마체테 배낭, Q로 바꾸면 그림도 바뀜(권총=D·FACE-R1, 근접=붉은 재킷 검 시험 그림). 검수: check_default_hero PASS(걷기 8/8·접지 8, 이동 사격 탄 6→5·명중·다리 유지, Q 전환, 사망 fall→down, R 재시작), run_all 79/79(pz2는 묶음 실행 시간 초과, 단독 PASS). **남은 것**: 근접 그림 얼굴 FACE-R1 미달(그림 요청 올림), 위/아래·대각선·구르기 전용 그림 없음, 사용자 실제 플레이 미확인. 계획·결과: docs/plans/2026-11-25_권총주인공_기본연결.md.
 
 | 날짜 | 누구 | 한 일 | 검수 | 커밋 |

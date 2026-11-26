@@ -38,7 +38,10 @@ def draw(game, cx, cy):
         return
     hero = game.hero
     for z in game.zombies:
-        if not z.alive or z.state != "windup" or getattr(z, "ranged", False):
+        if not z.alive or z.state != "windup":
+            continue
+        if getattr(z, "ranged", False):
+            draw_spit(z, cx, cy)
             continue
         x, y, r, ang, half = wedge_of(z)
         x, y = x - cx, y - cy
@@ -52,3 +55,23 @@ def draw(game, cx, cy):
         while k < grown:
             gm.arc(x, y, k, ang - half, ang + half, fill, gap=3 * sparse)
             k += step
+
+
+SPIT_RING = 10                 # px: the circle where the locked aim lands
+
+
+def spit_path(z):
+    """(start, aim) of a spitter's shot: the same points SpitShot is made from (aim locked at wind-up)."""
+    sx = z.x + z.facing * 16
+    return (sx, z.y), z.aim
+
+
+def draw_spit(z, cx, cy):
+    """Ranged tell (2026-11-26): a dotted line toward the locked aim, filling in as the wind-up runs out,
+    and a ring where it is aimed. Step aside and it misses."""
+    (sx, sy), (ax, ay) = spit_path(z)
+    done = min(1.0, 1 - z.timer / max(1e-6, getattr(z, "windup", 0.8) or 0.8))
+    now = z.timer <= COUNTER_WINDOW
+    edge, fill = (EDGE_NOW, FILL_NOW) if now else (EDGE, FILL)
+    gm.line(sx - cx, sy - cy, sx - cx + (ax - sx) * done, sy - cy + (ay - sy) * done, fill, gap=3)
+    gm.arc(ax - cx, ay - cy, SPIT_RING, -pi, pi, edge, gap=2)

@@ -54,6 +54,7 @@ from vision_cone import CONE_HALF, VisionCone, ray_hit
 
 
 WAVE_TOTAL = 12              # infected in this area, the starting ones included
+SPIT_FROM, SPIT_MAX, SPIT_CHANCE = 4, 2, 0.5   # ranged spitters: from this arrival, at most, chance each
 SPAWN_AFTER_NOISE = 1.5      # s: a slash or roll brings the next one this soon
 NOISE_PULL = 5.0             # s a loud noise keeps pulling arrivals toward it
 SPAWN_MIN_DIST = 240         # px: never right next to the hero
@@ -82,6 +83,9 @@ class Game:
         if DOT_LOOK and (ROOT / f"assets/characters/{HERO_PX}").exists():    # 8-direction PixelLab hero (2026-11-19)
             self.hero_look = DirLook(ROOT / f"assets/characters/{HERO_PX}", self.hero_look)
         self.zombie_look = SheetLook(ROOT / f"assets/characters/infected{LOOK_SUFFIX}")
+        if not hasattr(self, "spitter_look"):              # ranged infected mixed into the alley (2026-11-26)
+            from spitter import SpitterLook
+            self.spitter_look = SpitterLook()
         self.aim = (None, None)
         self.deaths = 0
         self.vision = VisionCone(BLOCKS, area.sight_blocks)   # wrecks and walls block the light, windows don't
@@ -165,6 +169,7 @@ class Game:
         self.message = ""                  # the keys are taught by marks under the hero (TEACH)
         self.cleared = False
         self.to_spawn = WAVE_TOTAL - len(self.zombies)
+        self.arrivals = self.spitters_made = 0   # alley arrivals so far / ranged ones among them
         self.director = Director()   # when the infected come in: build up, peak, relax (director.py)
         self.daylight = Daylight()   # the hour: by day the dark outside the cone is lighter (daylight.py)
         self.clock = 0.0
@@ -666,7 +671,7 @@ class Game:
         pulled = self.pulled_entrances()
         if pulled:
             x, y = random.choice(pulled)
-            z = Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
+            z = self.new_arrival(x, y)
             z.state, z.target, z.memory = "search", (self.loud[0], self.loud[1]), 8.0
             return self.arrive(z)
         far = [pos for pos, _ in ENTRANCES if hypot(pos[0] - hero.x, pos[1] - hero.y) >= SPAWN_MIN_DIST]
@@ -676,11 +681,26 @@ class Game:
         if not choices:
             return False
         x, y = random.choice(choices)
-        z = Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
+        z = self.new_arrival(x, y)
         if self.senses:                                    # wanders in somewhere
             z.state, z.target, z.memory = "search", (random.uniform(200, ROOM_W - 200),
                                                      random.uniform(150, ROOM_H - 150)), 8.0
         return self.arrive(z)
+
+    def new_arrival(self, x, y):
+        """Alley only, never the defense (2026-11-26 사용자 "디펜스 요소는 빼고"): from the
+        SPIT_FROM-th arrival on, a ranged spitter now and then, SPIT_MAX in all, one up at a time.
+        docs/plans/2026-11-26_원거리피폭체_섞기.md"""
+        from spitter import Spitter
+        self.arrivals += 1
+        if (self.defense is None and not area.TEST_ARENA and self.arrivals >= SPIT_FROM
+                and self.spitters_made < SPIT_MAX and random.random() < SPIT_CHANCE
+                and not any(z.alive and getattr(z, "ranged", False) for z in self.zombies)):
+            self.spitters_made += 1
+            if self.spitters_made == 1:
+                self.message = "멀리서 무언가 뱉어낸다"
+            return Spitter(self.spitter_look, x, y)
+        return Zombie(self.zombie_look, x, y, crawler=random.random() < infected.CRAWLER_SHARE)
 
     def arrive(self, z):
         x, y = z.x, z.y
