@@ -1,0 +1,53 @@
+{
+ "hero_screen": [
+  85,
+  360
+ ],
+ "A": "docs/planning/mood_preview/A_night_dark.png",
+ "D": "docs/planning/mood_preview/D_vignette.png",
+ "D_lowhp": "docs/planning/mood_preview/D_vignette_lowhp.png",
+ "G": "docs/planning/mood_preview/G_offscreen_arrow.png",
+ "G_pos": [
+  1252,
+  183
+ ],
+ "H": "docs/planning/mood_preview/H_teach_hidden.png",
+ "ALL": "docs/planning/mood_preview/AD_together.png",
+ "diff_H_mean": 0.402,
+ "params": {
+  "A_night_dark": {
+   "ambient": 0.45,
+   "light_radius_px": 150,
+   "soft_px": 90,
+   "light_tint": [
+    255,
+    226,
+    180
+   ]
+  },
+  "D_vignette": {
+   "start": 0.45,
+   "strength": 0.75,
+   "low_hp_strength": 0.7,
+   "low_hp_color": [
+    120,
+    0,
+    0
+   ]
+  },
+  "G_arrow": {
+   "margin_px": 28,
+   "size_px": 24,
+   "color": [
+    120,
+    225,
+    90
+   ],
+   "only_when": "화면 밖 원거리 피폭체가 쏠 때"
+  },
+  "H_teach": {
+   "show_first_n": 3,
+   "hide_empty_quick_slots": true
+  }
+ }
+}
