@@ -1,4 +1,4 @@
-# 점검 결과 (2026-11-25 17:28, 79개 중 78개 통과, 2541초)
+# 점검 결과 (2026-11-26 12:21, 80개 중 80개 통과, 408초)
 
 `tools/checks/run_all.py`가 씀. PASS는 끝까지 돌았다는 뜻 — 숫자는 마지막 줄을 읽을 것.
 
@@ -50,7 +50,7 @@
 | check_pistol_gait | PASS | {"checks": ["all 8 normal walking phases selected by actual displacement", "all 8 aim-walk phases and raised stationary aim reachable", "real moving r |  |
 | check_pistol_identity | PASS | {"checks": ["26 upright base/refined pose assets share identical 10x9 head pixels without resampling; rows32+ unchanged", "both F10 branches actually  |  |
 | check_pistol_refinement | PASS | {"checks": ["four AI swing-leg edits extend lower; original upper body and planted boots stay pixel-identical", "refined D disables distance audio; on |  |
-| check_pz2 | TIMEOUT |  |  |
+| check_pz2 | PASS | ok |  |
 | check_range | PASS | axe: range 45px / marked at the edge -> hit (shown torso) / outside range -> not hit / blow 1.01s + rest 0.35s (느림) |  |
 | check_real | PASS | ok |  |
 | check_redjacket_motion | PASS | ["all six walk frames during real movement", "idle does not advance walking distance", "blocked wall movement does not cycle feet", "quick cut: real d |  |
@@ -70,8 +70,9 @@
 | check_shove_crawler | PASS | draw ok |  |
 | check_slider | PASS | ok |  |
 | check_sneak8 | PASS | ok |  |
-| check_spawn | PASS | after a slash: next arrival 5.02s later, target (207, 765) (hero at 120,120) |  |
+| check_spawn | PASS | after a slash: next arrival 5.02s later, target (335, 609) (hero at 120,120) |  |
 | check_spitter | PASS | OK |  |
+| check_spitter_mix | PASS | PASS |  |
 | check_spot | PASS | 살금 {30: True, 95: True, 135: True, 145: False, 250: False} / 등 돌림 100: True 30: True |  |
 | check_stage1 | PASS | ok |  |
 | check_stamina | PASS | draw ok |  |
@@ -84,4 +85,4 @@
 | check_variants | PASS | ok 18 rows |  |
 | check_walk | PASS | ok |  |
 
-되돌린 그림 39개(점검이 바꾼 docs/planning 그림): docs/planning/aim_stand_weapons.png, docs/planning/arena_8dirs.png, docs/planning/arena_view.png, docs/planning/attack_tells.png, docs/planning/attack_variants_game.png, docs/planning/bag_drag.png, docs/planning/bag_step2.png, docs/planning/carry_compare.png, docs/planning/daylight.png, docs/planning/dev_senses.png, docs/planning/dev_sliders.png, docs/planning/dev_sounds.png, docs/planning/dev_sounds_walk.png, docs/planning/dev_tools.png, docs/planning/director_f7.png, docs/planning/dodge_styles_east.png, docs/planning/f6_live.png, docs/planning/feel_flash.png, docs/planning/hero3d_8dirs_attack.png, docs/planning/hero3d_aim_game.png, docs/planning/hero3d_body_motions.png, docs/planning/hero_dirlook_ingame.png, docs/planning/hero_walk_south.gif, docs/planning/hero_walk_south_strip.png, docs/planning/hit_fx.png, docs/planning/keypose_fx.gif, docs/planning/keypose_fx_strip.png, docs/planning/paper_doll_ingame.png, docs/planning/pistol_ingame.png, docs/planning/roll_8dirs_game.png, docs/planning/roll_dots.png, docs/planning/samurai_game.png, docs/planning/sneak_8dirs_game.png, docs/planning/station_before.png, docs/planning/station_defense.png, docs/planning/station_fence.png, docs/planning/station_train.png, docs/planning/tool_vs_pixellab.gif, docs/planning/tool_vs_pixellab_strip.png
+되돌린 그림 17개(점검이 바꾼 docs/planning 그림): docs/planning/attack_tells.png, docs/planning/attack_variants_game.png, docs/planning/dev_sliders.png, docs/planning/dev_sounds_walk.png, docs/planning/hero_walk_south.gif, docs/planning/hero_walk_south_strip.png, docs/planning/mood_preview/D_vignette.png, docs/planning/mood_preview/D_vignette_lowhp.png, docs/planning/mood_preview/G_offscreen_arrow.png, docs/planning/paper_doll_ingame.png, docs/planning/pistol_ingame.png, docs/planning/roll_8dirs_game.png, docs/planning/roll_dots.png, docs/planning/samurai_game.png, docs/planning/sneak_8dirs_game.png, docs/planning/tool_vs_pixellab.gif, docs/planning/tool_vs_pixellab_strip.png

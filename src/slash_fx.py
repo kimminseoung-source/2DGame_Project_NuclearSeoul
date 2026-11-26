@@ -103,11 +103,19 @@ class Streak:
             pico2d.draw_rectangle(x - 1, y - 1, x + 1, y + 1, 236, 238, 240, round(255 * fade), filled=True)
 
 
+# Blood colours (ART_BIBLE "피 색"): people bleed red, the infected a murky dark green
+# (cold blue-grey world + green = danger).  (falling drop, stain on the ground)
+BLOOD_RED = ((110, 12, 14), (70, 10, 12))
+BLOOD_INFECTED = ((52, 68, 34), (32, 44, 24))
+
+
 class Blood:
     """Dark drops thrown from a wound along the blow; where they land they leave stains
-    (handed back by `landed()` so the play loop can keep them on the ground)."""
+    (handed back by `landed()` so the play loop can keep them on the ground).
+    `infected=True` gives the infected's murky green; people stay red."""
 
-    def __init__(self, x, y, angle, amount=14):
+    def __init__(self, x, y, angle, amount=14, infected=False):
+        self.colors = BLOOD_INFECTED if infected else BLOOD_RED
         rng = random.Random()
         self.drops = []
         for _ in range(amount):
@@ -127,7 +135,7 @@ class Blood:
                 d[2] *= 0.9
                 d[3] *= 0.9
                 if d[4] <= 0:
-                    self.stains.append((d[0], d[1], d[5]))
+                    self.stains.append((d[0], d[1], d[5], self.colors[1]))
         return any(d[4] > 0 for d in self.drops)
 
     def landed(self):
@@ -138,13 +146,15 @@ class Blood:
         for x, y, vx, vy, h, size in self.drops:
             if h > 0:
                 pico2d.draw_rectangle(x - cam_x, y + h - cam_y, x - cam_x + size, y + h - cam_y + size,
-                                      110, 12, 14, filled=True)
+                                      *self.colors[0], filled=True)
 
 
 def draw_stains(stains, cam_x, cam_y):
-    """Blood on the ground (stays for the whole area)."""
-    for x, y, size in stains:
-        pico2d.draw_rectangle(x - cam_x, y - cam_y, x - cam_x + size + 1, y - cam_y + size, 70, 10, 12, 220,
+    """Blood on the ground (stays for the whole area). A stain is (x, y, size[, colour]); red if no colour."""
+    for st in stains:
+        x, y, size = st[0], st[1], st[2]
+        r, g, b = st[3] if len(st) > 3 else BLOOD_RED[1]
+        pico2d.draw_rectangle(x - cam_x, y - cam_y, x - cam_x + size + 1, y - cam_y + size, r, g, b, 220,
                               filled=True)
 
 

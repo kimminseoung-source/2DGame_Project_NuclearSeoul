@@ -46,7 +46,7 @@ from settings import (CHEST, EXPOSURE_FALL, EXPOSURE_ON, EXPOSURE_RISE, HEIGHT, 
                       ROLL_TIME, ROOT, SHOVE_ON, SLOW_WORLD, WIDTH,
                       ZOOM_DEFAULT, ZOOM_STEPS, AREA_DIR, DOT, DOT_LOOK, LOOK_SUFFIX)
 import dodge_fx
-from slash_fx import Blood, Crescent, Spark, SpriteFx, Streak, Tracer, draw_stains
+from slash_fx import BLOOD_INFECTED, Blood, Crescent, Spark, SpriteFx, Streak, Tracer, draw_stains
 from sound import Sounds
 import supplies as supply_rules
 from supplies import KINDS, PILL_EFFECT, Supply
@@ -251,7 +251,7 @@ class Game:
         """A slash that does not drop the infected: a little blood or a spark, a short hitstop."""
         ang = atan2(zy - sy, zx - sx)
         self.sounds.play("slash_hit", 0.8)
-        self.effects.append(Blood(zx, zy - 6, ang, 10) if self.real else Spark(zx, zy + 4))
+        self.effects.append(Blood(zx, zy - 6, ang, 10, infected=True) if self.real else Spark(zx, zy + 4))
         self.jolt("light", z)
 
     def right_click(self, sx, sy):
@@ -851,18 +851,18 @@ class Game:
                         self.effects.append(SpriteFx("hit_big", zx, zy))
                     self.kills += 1
                     if part == "head":                           # a head blow that ends it: felt
-                        self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26))
+                        self.effects.append(Blood(zx, zy - 4, atan2(zy - sy, zx - sx), 26, infected=True))
                         self.jolt("heavy", z)
                     self.sounds.play("slash_hit", 0.9)
                     self.sounds.play("infected_down", 0.6, at=(z.x, z.y))
                     if self.real:
-                        self.effects.append(Blood(zx, zy - 6, atan2(zy - sy, zx - sx), 18))
+                        self.effects.append(Blood(zx, zy - 6, atan2(zy - sy, zx - sx), 18, infected=True))
                         ang = atan2(zy - sy, zx - sx)          # a pool where the body will lie
                         for k in range(9):
                             d = random.uniform(4, 22)
                             self.stains.append((z.x + cos(ang) * d + random.uniform(-6, 6),
                                                 z.y + sin(ang) * d * 0.5 + random.uniform(-4, 3),
-                                                random.randint(3, 6)))
+                                                random.randint(3, 6), BLOOD_INFECTED[1]))
                         self.jolt("heavy", z)
                     else:
                         self.effects.append(Spark(zx, zy + 4, big=True))
